@@ -1,0 +1,27 @@
+MYSQL:
+  conn: 127.0.0.1
+  usr: test
+
+BASICS:
+  text: test
+  dictionary:
+    one: value
+    two: value
+  number: 2
+  list:
+    - one
+    - two
+    - four
+    - name: John
+      age: 20
+  USERNAME:
+    type: env
+    load: USERNAME
+  callable:
+    type: lambda
+    load: "lambda: print('hell world!')"
+  brightfield:
+    type: secret
+    project_id: 'rsg-dna2b-dev-2c64'
+    secret_id: 'BRIGHTFIELD_AUTH_URL'
+    version_id: 'latest'

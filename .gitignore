@@ -1,3 +1,15 @@
+# Project specific
+.integration
+.unittest
+coverage_report/**
+requirements.txt
+.idea
+.env
+deploy/
+deploy/*
+docs/build
+docs/build/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -9,6 +21,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 build/
+build/*
 develop-eggs/
 dist/
 downloads/
@@ -85,7 +98,7 @@ ipython_config.py
 .python-version
 
 # pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version.json control.
 #   However, in case of collaboration, if having platform-specific dependencies or dependencies
 #   having no cross-platform support, pipenv may install dependencies that don't work, or not
 #   install all needed dependencies.
