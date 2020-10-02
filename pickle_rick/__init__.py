@@ -5,7 +5,17 @@ from typing import Union
 from io import TextIOWrapper
 
 class BasePickleRick:
+    """
+        A base class that creates internal structures from embedded structures.
 
+        Args:
+            base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict.
+            deep (bool): Internalize dictionary structures in lists.
+            args (dict): Intended for extended classes to handle over-riden _internalize customisation.
+
+        Raises:
+            ValueError: If the given base object can not be handled.
+    """
     def _iternalize(self, dictionary : dict, deep : bool, args : dict = None):
         for k, v in dictionary.items():
             if isinstance(v, dict):
@@ -24,15 +34,6 @@ class BasePickleRick:
             self.__dict__.update({k:v})
 
     def __init__(self, base : Union[dict,str,TextIOWrapper], deep : bool = False, args : dict = None):
-        """
-        A base class that creates internal structures from embedded structures.
-        Args:
-            base: string (YAML or JSON, file path to YAML/JSON file), text IO stream, dict
-            deep: Internalize dictionary structures in lists
-            args: Intended for extended classes to handle overriden _internalize customisation.
-        Raises:
-            ValueError: If the given base object can not be handled
-        """
         if isinstance(base, dict):
             self._iternalize(base, deep, args)
             return
@@ -132,11 +133,13 @@ class BasePickleRick:
         """
         Employs a recursive search of structure and returns the first found key-value pair.
         Searches with normal, upper, and lower case.
+
         Args:
-            key: key string being searched
-            default: Return value if nothing is found
+            key (str): key string being searched.
+            default (any): Return value if nothing is found.
+
         Returns:
-            value found, or None for nothing found
+            obj: value found, or None for nothing found.
         """
         value = self._recursive_search(self.__dict__, key)
         if not value:
@@ -149,9 +152,10 @@ class BasePickleRick:
 
     def keys(self):
         """
-        Gets the higher level keys of the object
+        Gets the higher level keys of the object.
+
         Returns:
-            list of keys
+            list: of keys.
         """
         keys = list(self.__dict__.keys())
         keys = [k for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__n')]
@@ -160,9 +164,10 @@ class BasePickleRick:
 
     def dict(self):
         """
-        Deconstructs the whole object into a Python dictionary
+        Deconstructs the whole object into a Python dictionary.
+
         Returns:
-            dict of object
+            dict: of object.
         """
         d = dict()
         for key, value in self.__dict__.items():
@@ -174,12 +179,14 @@ class BasePickleRick:
 
     def has(self, key : str, deep=False) -> bool:
         """
-        Checks whether the key exists in the object
+        Checks whether the key exists in the object.
+
         Args:
-            key: key string being searched
-            deep: whether to search deeply
+            key (str): key string being searched.
+            deep (bool): whether to search deeply.
+
         Returns:
-            boolean if found
+            bool: if found.
         """
         if key in self.__dict__:
             return True
@@ -192,6 +199,14 @@ class BasePickleRick:
 
 
 class ExtendedPickleRick(BasePickleRick):
+    """
+        An extended version of the BasePickleRick that can load OS environ variables and Python Lambda functions.
+
+        Args:
+            base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict.
+            deep (bool): Internalize dictionary structures in lists.
+            load_lambda (bool): Load lambda as code or strings.
+    """
 
     def _iternalize(self, dictionary : dict, deep : bool, args : dict = None):
         for k, v in dictionary.items():
@@ -222,12 +237,4 @@ class ExtendedPickleRick(BasePickleRick):
             self.__dict__.update({k: v})
 
     def __init__(self, base: Union[dict, str] , deep : bool = False, load_lambda : bool = False):
-        """
-        An extended version of the BaseConfig that can load OS environ variables and Python Lambda functions.
-        Args:
-            base: string (YAML or JSON, file path to YAML/JSON file), text IO stream, dict
-            deep: Internalize dictionary structures in lists
-            load_lambda: Load lambda as code or strings
-        """
-        # self._load_lambda = load_lambda
         super().__init__(base, deep, {'load_lambda' : load_lambda})
