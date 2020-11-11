@@ -84,7 +84,7 @@ class BasicRick:
 
     def __repr__(self):
         keys = self.__dict__
-        items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
+        items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__meta_info') )
         return "{}({})".format(type(self).__name__, ", ".join(items))
 
     def __eq__(self, other):
@@ -138,6 +138,8 @@ class BasicRick:
             tuple: str, object.
         """
         for key in self.__dict__.keys():
+            if str(key).__contains__(self.__class__.__name__) or str(key).endswith('__n'):
+                continue
             yield key, self.__dict__[key]
 
     def get(self, key : str, default=None):
@@ -285,11 +287,7 @@ class PickleRick(BasicRick):
         for k, v in dictionary.items():
             if isinstance(v, dict):
                 if 'type' in v.keys() and v['type'] == 'env':
-                    self.__meta_info[k] = v
-                    if 'default' in v.keys():
-                        self.__dict__.update({k: os.getenv(v['load'], v['default'])})
-                    else:
-                        self.__dict__.update({k: os.getenv(v['load'])})
+                    self.add_env_variable(k, v['load'], v.get('default', None))
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
@@ -391,3 +389,10 @@ class PickleRick(BasicRick):
                     exec('import {}'.format(i), globals())
         self.__dict__.update({name: eval(load)})
         self.__meta_info[name] = {'type' : 'lambda', 'import' : imports, 'load' : load}
+
+    def add_env_variable(self, name, load, default = None):
+        self.__dict__.update({name: os.getenv(load, default)})
+        self.__meta_info[name] = {'type' : 'env', 'load' : load, 'default' : default}
+
+    def add_variable(self, name, value):
+        self.__dict__.update({name: value})
