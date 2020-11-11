@@ -3,6 +3,7 @@ import os
 import json
 from typing import Union
 from io import TextIOWrapper
+import importlib
 
 class BasicRick:
     """
@@ -40,41 +41,41 @@ class BasicRick:
 
         if isinstance(base, TextIOWrapper):
             try:
-                config_data = yaml.load(base, Loader=yaml.SafeLoader)
-                self._iternalize(config_data, deep, args)
+                dict_data = yaml.load(base, Loader=yaml.SafeLoader)
+                self._iternalize(dict_data, deep, args)
                 return
             except Exception as exc:
                 print("Tried: {}".format(exc))
             try:
-                config_data = json.load(base)
-                self._iternalize(config_data, deep, args)
+                dict_data = json.load(base)
+                self._iternalize(dict_data, deep, args)
                 return
             except Exception as exc:
                 print("Tried: {}".format(exc))
 
         if os.path.isfile(base):
             try:
-                config_data = yaml.load(open(base, 'r'), Loader=yaml.SafeLoader)
-                self._iternalize(config_data, deep, args)
+                dict_data = yaml.load(open(base, 'r'), Loader=yaml.SafeLoader)
+                self._iternalize(dict_data, deep, args)
                 return
             except Exception as exc:
                 print("Tried: {}".format(exc))
             try:
-                config_data = json.load(open(base, 'r'),)
-                self._iternalize(config_data, deep, args)
+                dict_data = json.load(open(base, 'r'))
+                self._iternalize(dict_data, deep, args)
                 return
             except Exception as exc:
                 print("Tried: {}".format(exc))
         if isinstance(base, str):
             try:
-                config_data = yaml.safe_load(base)
-                self._iternalize(config_data, deep, args)
+                dict_data = yaml.safe_load(base)
+                self._iternalize(dict_data, deep, args)
                 return
             except Exception as exc:
                 print("Tried: {}".format(exc))
             try:
-                config_data = json.loads(base)
-                self._iternalize(config_data, deep, args)
+                dict_data = json.loads(base)
+                self._iternalize(dict_data, deep, args)
                 return
             except Exception as exc:
                 print("Tried: {}".format(exc))
@@ -193,8 +194,18 @@ class BasicRick:
         """
         d = dict()
         for key, value in self.__dict__.items():
-            if isinstance(value, BasicRick):
+            if str(key).__contains__(self.__class__.__name__) or str(key).endswith('__meta_info'):
+                continue
+            if isinstance(value, BasicRick) or isinstance(value, PickleRick):
                 d[key] = value.dict()
+            elif isinstance(value, list):
+                new_list = list()
+                for element in value:
+                    if isinstance(element, BasicRick):
+                        new_list.append(element.dict())
+                    else:
+                        new_list.append(element)
+                d[key] = new_list
             else:
                 d[key] = value
         return d
@@ -260,7 +271,7 @@ class BasicRick:
         self_as_dict = self.dict()
         return json.dumps(self_as_dict)
 
-class ExtendedPickleRick(BasicRick):
+class PickleRick(BasicRick):
     """
         An extended version of the BasePickleRick that can load OS environ variables and Python Lambda functions.
 
@@ -274,24 +285,38 @@ class ExtendedPickleRick(BasicRick):
         for k, v in dictionary.items():
             if isinstance(v, dict):
                 if 'type' in v.keys() and v['type'] == 'env':
+                    self.__meta_info[k] = v
                     if 'default' in v.keys():
                         self.__dict__.update({k: os.getenv(v['load'], v['default'])})
                     else:
                         self.__dict__.update({k: os.getenv(v['load'])})
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
+                    load = v['load']
+                    imports = v.get('import', None)
                     if args and args['load_lambda']:
-                        self.__dict__.update({k: eval(v['load'])})
+                        self.add_lambda(k, load, imports)
                     else:
-                        self.__dict__.update({k: v['load']})
+                        self.__dict__.update({k: v})
                     continue
-                self.__dict__.update({k:ExtendedPickleRick(v, deep, args['load_lambda'])})
+                if 'type' in v.keys() and v['type'] == 'function':
+                    name = v.get('name', k)
+                    load = v['load']
+                    args_dict = v.get('args', None)
+                    imports = v.get('import', None)
+
+                    if args and args['load_lambda']:
+                        self.add_function(name, load, args_dict, imports)
+                    else:
+                        self.__dict__.update({k: v})
+                    continue
+                self.__dict__.update({k:PickleRick(v, deep, args['load_lambda'])})
                 continue
             if isinstance(v, list) and deep:
                 new_list = list()
                 for i in v:
                     if isinstance(i, dict):
-                        new_list.append(ExtendedPickleRick(i, deep, args['load_lambda']))
+                        new_list.append(PickleRick(i, deep, args['load_lambda']))
                     else:
                         new_list.append(i)
                 self.__dict__.update({k: new_list})
@@ -299,4 +324,70 @@ class ExtendedPickleRick(BasicRick):
             self.__dict__.update({k: v})
 
     def __init__(self, base: Union[dict, str] , deep : bool = False, load_lambda : bool = False):
+        self.__meta_info = dict()
         super().__init__(base, deep, {'load_lambda' : load_lambda})
+
+    def dict(self):
+        """
+        Deconstructs the whole object into a Python dictionary.
+
+        Returns:
+            dict: of object.
+        """
+        d = dict()
+        for key, value in self.__dict__.items():
+            if str(key).__contains__(self.__class__.__name__):
+                continue
+            if key in self.__meta_info.keys():
+                d[key] = self.__meta_info[key]
+            elif isinstance(value, BasicRick):
+                d[key] = value.dict()
+            elif isinstance(value, list):
+                new_list = list()
+                for element in value:
+                    if isinstance(element, BasicRick):
+                        new_list.append(element.dict())
+                    else:
+                        new_list.append(element)
+                d[key] = new_list
+            else:
+                d[key] = value
+        return d
+
+    def add_function(self, name, load, args : dict = None, imports : list = None ):
+        if imports and isinstance(imports, list):
+            for i in imports:
+                if 'import' in i:
+                    exec(i, globals())
+                else:
+                    exec('import {}'.format(i), globals())
+        exec(load, globals())
+        if args and isinstance(args, dict):
+            arg_list = list()
+            arg_list_defaults = list()
+            for arg in args.keys():
+                default_value = args[arg]
+                if isinstance(default_value, str):
+                    arg_list_defaults.append("{a}='{d}'".format(a=arg, d=default_value))
+                else:
+                    arg_list_defaults.append("{a}={d}".format(a=arg, d=default_value))
+                arg_list.append('{a}={a}'.format(a=arg))
+
+            func_string = 'lambda {args_default}: {name}({args})'.format(
+                args_default=','.join(arg_list_defaults),
+                args=','.join(arg_list),
+                name=name)
+        else:
+            func_string = 'lambda: {name}()'.format(name=name)
+        self.__dict__.update({name: eval(func_string)})
+        self.__meta_info[name] = {'type' : 'function', 'name' : name, 'args' : args, 'import' : imports, 'load' : load}
+
+    def add_lambda(self, name, load, imports : list = None ):
+        if imports and isinstance(imports, list):
+            for i in imports:
+                if 'import' in i:
+                    exec(i, globals())
+                else:
+                    exec('import {}'.format(i), globals())
+        self.__dict__.update({name: eval(load)})
+        self.__meta_info[name] = {'type' : 'lambda', 'import' : imports, 'load' : load}

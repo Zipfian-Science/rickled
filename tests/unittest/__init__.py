@@ -1,6 +1,6 @@
 import unittest
 import os
-from pickle_rick import BasicRick, ExtendedPickleRick
+from pickle_rick import BasicRick, PickleRick
 
 class TestPickles(unittest.TestCase):
 
@@ -54,14 +54,14 @@ class TestPickles(unittest.TestCase):
     def test_extended_config(self):
         # Test normal dict
         test_dict = {'A' : 1, 'l' : [1, { 'deep' : 'hole'}], 'B' : { 'k' : 'v'}}
-        test_conf = ExtendedPickleRick(test_dict)
+        test_conf = PickleRick(test_dict)
 
         self.assertEquals(test_conf.A, 1)
         self.assertListEqual(test_conf.l, [1,{ 'deep' : 'hole'}])
         self.assertEquals(test_conf.B.k, 'v')
 
         # Test deep dict
-        test_conf = ExtendedPickleRick(test_dict, deep=True)
+        test_conf = PickleRick(test_dict, deep=True)
 
         self.assertEquals(test_conf.l[-1].deep, 'hole')
 
@@ -76,7 +76,7 @@ class TestPickles(unittest.TestCase):
                      }
         }
 
-        test_conf = ExtendedPickleRick(test_dict, load_lambda=True)
+        test_conf = PickleRick(test_dict, load_lambda=True)
 
         expected_username = os.getenv('USERNAME')
 
@@ -125,7 +125,7 @@ class TestPickles(unittest.TestCase):
             }
         }
 
-        test_conf = ExtendedPickleRick(test_dict)
+        test_conf = PickleRick(test_dict)
 
         for k in test_conf.keys():
             self.assertIn(k, ['user', 'func'])
@@ -139,7 +139,7 @@ class TestPickles(unittest.TestCase):
             }
         }
 
-        test_conf = ExtendedPickleRick(test_dict)
+        test_conf = PickleRick(test_dict)
 
         for k in test_conf:
             self.assertEquals(k.hello, 'world')
@@ -153,7 +153,7 @@ class TestPickles(unittest.TestCase):
             }
         }
 
-        test_conf = ExtendedPickleRick(test_dict)
+        test_conf = PickleRick(test_dict)
 
         self.assertTrue(test_conf.has('user'))
         self.assertFalse(test_conf.has('hello'))
@@ -241,3 +241,11 @@ class TestPickles(unittest.TestCase):
         self.assertTrue(os.path.isfile(filename))
 
         os.remove(filename)
+
+
+    def test_pickle_rick_dict_decon(self):
+        test_conf_yaml = PickleRick('./tests/placebos/test_config.yaml', deep=True, load_lambda=True)
+
+        d = test_conf_yaml.dict()
+
+        s = test_conf_yaml.to_yaml_string()

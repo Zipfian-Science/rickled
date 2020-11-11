@@ -1,4 +1,4 @@
-# Natural Selection
+# Pickle Rick
 ```
                                       ....                                      
                                 &((((((((((((((%,                               
@@ -50,7 +50,7 @@
                                         
 by Zipfian Science                               
 ```
-Python tools for creating and running Evolutionary Algorithm (EA) experiments by [Zipfian Science](https://zipfian.science/).
+Python tools for creating a different type of pickling by [Zipfian Science](https://zipfian.science/).
 
 For documentation, see [docs](http://docs.zipfian.science/pickle-rick/index.html).
 
@@ -64,7 +64,7 @@ $ pip install pickle-rick
 ## And use
 
 ```python
-from pickle_rick import ExtendedPickleRick
+from pickle_rick import PickleRick
 ```
 
 ## Release

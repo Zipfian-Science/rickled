@@ -20,8 +20,32 @@ BASICS:
   callable:
     type: lambda
     load: "lambda: print('hell world!')"
-  brightfield:
-    type: secret
-    project_id: 'rsg-dna2b-dev-2c64'
-    secret_id: 'BRIGHTFIELD_AUTH_URL'
-    version_id: 'latest'
+  datenow:
+    type: lambda
+    import:
+      - "from datetime import datetime as dd"
+    load: "lambda: print(dd.utcnow().strftime('%Y-%m-%d'))"
+  math_e:
+    type: function
+    name: test
+    args:
+      x: 7
+      y: null
+      s: hello world
+      any:
+        - 1
+        - hello
+    import:
+      - "math"
+    load: >
+      def test(x, y, s, any):
+        print(math.e)
+        iii = 111
+        print(iii)
+        print(x,s)
+        if y:
+          print(type(y))
+        else:
+          print(y)
+        for i in any:
+          print(i)
