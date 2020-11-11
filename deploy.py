@@ -50,7 +50,10 @@ def upload_to_pypi(release_name):
 def build_documentation():
     print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Change dir and make HTML docs{bcolors.ENDC}')
     os.chdir('./docs')
-    os.system('make html')
+    if sys.platform == "win32":
+        os.system('make.bat html')
+    else:
+        os.system('make.bat html')
     os.chdir('..')
     print(f'{bcolors.UNDERLINE}-- Made docs, change dir{bcolors.ENDC}')
 

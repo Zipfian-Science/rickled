@@ -4,7 +4,7 @@ import json
 from typing import Union
 from io import TextIOWrapper
 
-class BasePickleRick:
+class BasicRick:
     """
         A base class that creates internal structures from embedded structures.
 
@@ -19,13 +19,13 @@ class BasePickleRick:
     def _iternalize(self, dictionary : dict, deep : bool, args : dict = None):
         for k, v in dictionary.items():
             if isinstance(v, dict):
-                self.__dict__.update({k:BasePickleRick(v, deep)})
+                self.__dict__.update({k:BasicRick(v, deep)})
                 continue
             if isinstance(v, list) and deep:
                 new_list = list()
                 for i in v:
                     if isinstance(i, dict):
-                        new_list.append(BasePickleRick(i, deep))
+                        new_list.append(BasicRick(i, deep))
                     else:
                         new_list.append(i)
                 self.__dict__.update({k: new_list})
@@ -120,7 +120,7 @@ class BasePickleRick:
         if key in dictionary:
             return dictionary[key]
         for k, v in dictionary.items():
-            if isinstance(v, BasePickleRick):
+            if isinstance(v, BasicRick):
                 value = self._recursive_search(v.__dict__, key)
                 if value:
                     return value
@@ -128,6 +128,16 @@ class BasePickleRick:
                 value = self._recursive_search(v, key)
                 if value:
                     return value
+
+    def items(self):
+        """
+        Iterate through all key value pairs.
+
+        Yields:
+            tuple: str, object.
+        """
+        for key in self.__dict__.keys():
+            yield key, self.__dict__[key]
 
     def get(self, key : str, default=None):
         """
@@ -150,9 +160,21 @@ class BasePickleRick:
             return default
         return value
 
+    def values(self):
+        """
+        Gets the higher level values of the current Rick object.
+
+        Returns:
+            list: of objects.
+        """
+        keys = list(self.__dict__.keys())
+        objects = [self.__dict__[k] for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__n')]
+
+        return objects
+
     def keys(self):
         """
-        Gets the higher level keys of the object.
+        Gets the higher level keys of the current Rick object.
 
         Returns:
             list: of keys.
@@ -171,7 +193,7 @@ class BasePickleRick:
         """
         d = dict()
         for key, value in self.__dict__.items():
-            if isinstance(value, BasePickleRick):
+            if isinstance(value, BasicRick):
                 d[key] = value.dict()
             else:
                 d[key] = value
@@ -196,9 +218,49 @@ class BasePickleRick:
                 return True
         return False
 
+    def to_yaml_file(self, file_path : str):
+        """
+        Does a self dump to a YAML file.
 
+        Args:
+            file_path (str): File path.
+        """
+        self_as_dict = self.dict()
+        with open(file_path, 'w', encoding='utf-8') as fs:
+            yaml.safe_dump(self_as_dict, fs)
 
-class ExtendedPickleRick(BasePickleRick):
+    def to_yaml_string(self):
+        """
+        Dumps self to YAML string.
+
+        Returns:
+            str: YAML representation.
+        """
+        self_as_dict = self.dict()
+        return yaml.safe_dump(self_as_dict, None)
+
+    def to_json_file(self, file_path: str):
+        """
+        Does a self dump to a JSON file.
+
+        Args:
+            file_path (str): File path.
+        """
+        self_as_dict = self.dict()
+        with open(file_path, 'w', encoding='utf-8') as fs:
+            json.dump(self_as_dict, fs)
+
+    def to_json_string(self):
+        """
+        Dumps self to YAML string.
+
+        Returns:
+            str: JSON representation.
+        """
+        self_as_dict = self.dict()
+        return json.dumps(self_as_dict)
+
+class ExtendedPickleRick(BasicRick):
     """
         An extended version of the BasePickleRick that can load OS environ variables and Python Lambda functions.
 

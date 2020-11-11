@@ -9,7 +9,7 @@ Pickle Ricking
 
 Simple classes for encapsulating Python Objects.
 
-Genetic Algorithms tools
+Basic Rick
 ========================
 .. automodule:: pickle_rick.__init__
    :members:
