@@ -13,7 +13,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 # Get the long description from the README file
 with open(os.path.join(here, 'pip_description.md'), encoding='utf-8') as f:
     long_description = f.read()
-    long_description = long_description.format(release_date=datetime.today().strftime('%Y-%m-%d'), version_number=version_name)
+    long_description = long_description.format(pypi_metdata_release_date=datetime.today().strftime('%Y-%m-%d'), pypi_metdata_version_number=version_name)
 
 if os.path.isfile(os.path.join(here, 'requirements.txt')):
     with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:

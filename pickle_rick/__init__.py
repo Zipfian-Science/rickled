@@ -12,7 +12,7 @@ class BasicRick:
         Args:
             base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict.
             deep (bool): Internalize dictionary structures in lists.
-            args (dict): Intended for extended classes to handle over-riden _internalize customisation.
+            args (dict): Intended for extended classes to handle overriden _internalize customisation.
 
         Raises:
             ValueError: If the given base object can not be handled.
@@ -273,6 +273,16 @@ class BasicRick:
         self_as_dict = self.dict()
         return json.dumps(self_as_dict)
 
+    def add_variable(self, name, value):
+        """
+        Add a new member to Rick.
+
+        Args:
+            name (str): Property name.
+            value (any): Value of new member.
+        """
+        self.__dict__.update({name: value})
+
 class PickleRick(BasicRick):
     """
         An extended version of the BasePickleRick that can load OS environ variables and Python Lambda functions.
@@ -353,6 +363,15 @@ class PickleRick(BasicRick):
         return d
 
     def add_function(self, name, load, args : dict = None, imports : list = None ):
+        """
+        Add a new function to Rick.
+
+        Args:
+            name (str): Property name.
+            load (str): Python code containing the function.
+            args (dict): Key-value pairs of arguments with default values.
+            imports (list): Python modules to import.
+        """
         if imports and isinstance(imports, list):
             for i in imports:
                 if 'import' in i:
@@ -381,6 +400,14 @@ class PickleRick(BasicRick):
         self.__meta_info[name] = {'type' : 'function', 'name' : name, 'args' : args, 'import' : imports, 'load' : load}
 
     def add_lambda(self, name, load, imports : list = None ):
+        """
+        Add a Python lambda to Rick.
+
+        Args:
+            name (str): Property name.
+            load (str): Python code containing the lambda.
+            imports (list): Python modules to import.
+        """
         if imports and isinstance(imports, list):
             for i in imports:
                 if 'import' in i:
@@ -391,8 +418,13 @@ class PickleRick(BasicRick):
         self.__meta_info[name] = {'type' : 'lambda', 'import' : imports, 'load' : load}
 
     def add_env_variable(self, name, load, default = None):
+        """
+        Add a new OS ENVIRONMENT VARIABLE to Rick.
+
+        Args:
+            name (str): Property name.
+            load (str): ENV var name.
+            default (any): Default to value.
+        """
         self.__dict__.update({name: os.getenv(load, default)})
         self.__meta_info[name] = {'type' : 'env', 'load' : load, 'default' : default}
-
-    def add_variable(self, name, value):
-        self.__dict__.update({name: value})

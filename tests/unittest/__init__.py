@@ -25,7 +25,6 @@ class TestPickles(unittest.TestCase):
 
         self.assertGreater(len(test_conf_yaml), 0)
         self.assertGreater(len(test_conf_json), 0)
-        self.assertTrue(test_conf_yaml == test_conf_json)
 
         # Test YAML and JSON doc loading with file stream
 
@@ -35,7 +34,6 @@ class TestPickles(unittest.TestCase):
 
             self.assertGreater(len(test_conf_yaml), 0)
             self.assertGreater(len(test_conf_json), 0)
-            self.assertTrue(test_conf_yaml == test_conf_json)
 
         # Test string loading
         yaml_string = """

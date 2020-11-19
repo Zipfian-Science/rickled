@@ -82,7 +82,7 @@ $ python deploy.py -h
 Once deployed, the package can be installed via pip.
 
 ```shell script
-$ pip install natural-selection
+$ pip install pickle-rick
 ```
 
 ## Branching dev repos 

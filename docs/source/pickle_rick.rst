@@ -7,9 +7,18 @@ Pickle Ricking
 **************************
 .. contents:: Table of Contents
 
-Simple classes for encapsulating Python Objects.
+Simple classes for encapsulating Python objects, with functions to write these simple objects to YAML or JSON.
 
 Basic Rick
 ========================
-.. automodule:: pickle_rick.__init__
+.. autoclass:: pickle_rick.__init__.BasicRick
+   :members:
+
+Pickle Rick
+========================
+
+An extended version of BasicRick that allows extra easy loading, including Python functions, lambdas, and OS environmental variables.
+Contains all the same methods in BasicRick.
+
+.. autoclass:: pickle_rick.__init__.PickleRick
    :members:
