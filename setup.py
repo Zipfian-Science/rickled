@@ -2,18 +2,26 @@ from setuptools import setup, find_packages
 import os
 import json
 from datetime import datetime
-
-with open("version.json", "r") as f:
-    version = json.load(f)
-
-version_name = '{major}.{minor}.{patch}'.format(**version)
+from pickle_rick import __version__ as ver
 
 here = os.path.abspath(os.path.dirname(__file__))
 
+version_file = os.path.join(here, 'version.json')
+if os.path.isfile(version_file):
+    with open(version_file, "r") as f:
+        version = json.load(f)
+        version_name = '{major}.{minor}.{patch}'.format(**version)
+else:
+    version_name = ver
+
 # Get the long description from the README file
-with open(os.path.join(here, 'pip_description.md'), encoding='utf-8') as f:
-    long_description = f.read()
-    long_description = long_description.format(pypi_metdata_release_date=datetime.today().strftime('%Y-%m-%d'), pypi_metdata_version_number=version_name)
+long_description_file = os.path.join(here, 'pip_description.md')
+if os.path.isfile(long_description_file):
+    with open(long_description_file, "r", encoding='utf-8') as f:
+        long_description = f.read()
+        long_description = long_description.format(pypi_metdata_release_date=datetime.today().strftime('%Y-%m-%d'), pypi_metdata_version_number=version_name)
+else:
+    long_description = "It's Pickle Rick!"
 
 if os.path.isfile(os.path.join(here, 'requirements.txt')):
     with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
@@ -22,7 +30,7 @@ if os.path.isfile(os.path.join(here, 'requirements.txt')):
         if '-i http' in pipreq[0]:
             pipreq.pop(0)
 else:
-    pipreq = []
+    pipreq = ['pyyaml']
 
 
 setup(

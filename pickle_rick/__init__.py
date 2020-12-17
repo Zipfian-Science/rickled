@@ -1,9 +1,12 @@
-import yaml
+__version__ = '0.1.10'
+try:
+    import yaml
+except ImportError as ex:
+    print('The following module needs to be imported: pyyaml')
 import os
 import json
 from typing import Union
 from io import TextIOWrapper
-import importlib
 
 class BasicRick:
     """
@@ -34,7 +37,7 @@ class BasicRick:
 
             self.__dict__.update({k:v})
 
-    def __init__(self, base : Union[dict,str,TextIOWrapper], deep : bool = False, args : dict = None):
+    def __init__(self, base : Union[dict,str,TextIOWrapper] = {}, deep : bool = False, args : dict = None):
         if isinstance(base, dict):
             self._iternalize(base, deep, args)
             return
