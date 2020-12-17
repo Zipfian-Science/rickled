@@ -1,4 +1,4 @@
-__version__ = '0.1.7'
+__version__ = '0.1.10'
 try:
     import yaml
 except ImportError as ex:

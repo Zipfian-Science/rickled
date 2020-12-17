@@ -14,9 +14,6 @@ if os.path.isfile(version_file):
 else:
     version_name = ver
 
-
-
-
 # Get the long description from the README file
 long_description_file = os.path.join(here, 'pip_description.md')
 if os.path.isfile(long_description_file):

@@ -41,10 +41,6 @@ def upload_to_pypi(release_name):
 
     upload.main(['deploy/*', '-u', os.getenv('TWINE_USERNAME'), '-p', os.getenv('TWINE_PASSWORD')])
 
-    version['patch'] += 1
-    with open("version.json", "w") as f:
-        json.dump(version, f)
-
     print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Deployed!{bcolors.ENDC}")
 
 def build_documentation():
@@ -123,6 +119,23 @@ def main(args):
     if args.remove:
         delete_build()
         delete_dist()
+
+    # All went well!
+    with open("version.json", "r") as f:
+        version = json.load(f)
+
+    version['patch'] += 1
+    with open("version.json", "w") as f:
+        json.dump(version, f)
+
+    with open("pickle_rick/__init__.py", "r") as f:
+        lines = f.readlines()
+        lines[0] = "__version__ = '{major}.{minor}.{patch}'\n".format(**version)
+    if lines:
+        with open("pickle_rick/__init__.py", "w") as f:
+            f.writelines(lines)
+
+
 
 
 if __name__ == "__main__":
