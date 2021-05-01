@@ -13,9 +13,9 @@ class BasicRick:
         A base class that creates internal structures from embedded structures.
 
         Args:
-            base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict.
-            deep (bool): Internalize dictionary structures in lists.
-            args (dict): Intended for extended classes to handle overriden _internalize customisation.
+            base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict (default = None).
+            deep (bool): Internalize dictionary structures in lists (default = False).
+            args (dict): Intended for extended classes to handle overriden _internalize customisation (default = None).
 
         Raises:
             ValueError: If the given base object can not be handled.
@@ -37,7 +37,9 @@ class BasicRick:
 
             self.__dict__.update({k:v})
 
-    def __init__(self, base : Union[dict,str,TextIOWrapper] = {}, deep : bool = False, args : dict = None):
+    def __init__(self, base : Union[dict,str,TextIOWrapper] = None, deep : bool = False, args : dict = None):
+        if base is None:
+            return
         if isinstance(base, dict):
             self._iternalize(base, deep, args)
             return
@@ -221,7 +223,7 @@ class BasicRick:
 
         Args:
             key (str): key string being searched.
-            deep (bool): whether to search deeply.
+            deep (bool): whether to search deeply (default = False).
 
         Returns:
             bool: if found.
@@ -276,9 +278,9 @@ class BasicRick:
         self_as_dict = self.dict()
         return json.dumps(self_as_dict)
 
-    def add_variable(self, name, value):
+    def add_attr(self, name, value):
         """
-        Add a new member to Rick.
+        Add a new attribute member to Rick.
 
         Args:
             name (str): Property name.
@@ -288,7 +290,7 @@ class BasicRick:
 
 class PickleRick(BasicRick):
     """
-        An extended version of the BasePickleRick that can load OS environ variables and Python Lambda functions.
+        An extended version of the BasicRick that can load OS environ variables and Python Lambda functions.
 
         Args:
             base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict.
@@ -334,7 +336,7 @@ class PickleRick(BasicRick):
                 continue
             self.__dict__.update({k: v})
 
-    def __init__(self, base: Union[dict, str] , deep : bool = False, load_lambda : bool = False):
+    def __init__(self, base: Union[dict, str] = None, deep : bool = False, load_lambda : bool = False):
         self.__meta_info = dict()
         super().__init__(base, deep, {'load_lambda' : load_lambda})
 
@@ -372,8 +374,27 @@ class PickleRick(BasicRick):
         Args:
             name (str): Property name.
             load (str): Python code containing the function.
-            args (dict): Key-value pairs of arguments with default values.
-            imports (list): Python modules to import.
+            args (dict): Key-value pairs of arguments with default values (default = None).
+            imports (list): Python modules to import (default = None).
+
+        Examples:
+            Basic example for adding to a PickleRick:
+                >> test_rick = PickleRick()
+
+                >> load = '''
+                        def tester(x, c):
+                            y = x * 2 + c
+                            return math.cos(y)
+                        '''
+
+                >> args = { 'x' : 0.42, 'c' : 1.7 }
+
+                >> imports = ['math']
+
+                >> test_rick.add_function('tester',load, args, imports)
+
+                >> y = test_rick.tester(x=0.66, c=1.6)
+
         """
         if imports and isinstance(imports, list):
             for i in imports:
@@ -409,7 +430,19 @@ class PickleRick(BasicRick):
         Args:
             name (str): Property name.
             load (str): Python code containing the lambda.
-            imports (list): Python modules to import.
+            imports (list): Python modules to import (default = None).
+
+        Examples:
+            Basic example for adding to a PickleRick:
+                >> test_rick = PickleRick()
+
+                >> load = "lambda: dd.utcnow().strftime('%Y-%m-%d')"
+
+                >> imports = ['from datetime import datetime as dd']
+
+                >> test_rick.add_lambda('date_str', load, imports)
+
+                >> date_string = test_rick.date_str()
         """
         if imports and isinstance(imports, list):
             for i in imports:
@@ -427,7 +460,7 @@ class PickleRick(BasicRick):
         Args:
             name (str): Property name.
             load (str): ENV var name.
-            default (any): Default to value.
+            default (any): Default to value (default = None).
         """
         self.__dict__.update({name: os.getenv(load, default)})
         self.__meta_info[name] = {'type' : 'env', 'load' : load, 'default' : default}
