@@ -49,6 +49,17 @@ class TestPickles(unittest.TestCase):
         self.assertEquals(test_conf_yaml.ONE, "value")
         self.assertEquals(test_conf_json.ONE, "value")
 
+    def test_base_config_add_attr(self):
+        test_conf = BasicRick()
+
+        test_conf.add_attr('new_var', 42)
+
+        self.assertEquals(test_conf.new_var, 42)
+
+        test_conf.new_var += 1
+
+        self.assertEquals(test_conf.new_var, 43)
+
     def test_extended_config(self):
         # Test normal dict
         test_dict = {'A' : 1, 'l' : [1, { 'deep' : 'hole'}], 'B' : { 'k' : 'v'}}
@@ -213,7 +224,6 @@ class TestPickles(unittest.TestCase):
 
         os.remove(filename)
 
-
     def test_dump_json(self):
         test_dict = {'user': {
             'type': 'env',
@@ -239,6 +249,47 @@ class TestPickles(unittest.TestCase):
         self.assertTrue(os.path.isfile(filename))
 
         os.remove(filename)
+
+    def test_extended_config_add_function(self):
+        import math
+        test_conf = PickleRick()
+
+        load = """
+def tester(x, c):
+    y = x * 2 + c
+    return math.cos(y)
+        """
+
+        args = {
+            'x' : 0.42,
+            'c' : 1.7
+        }
+
+        imports = ['math']
+
+        test_conf.add_function('tester',load, args, imports)
+
+        y = test_conf.tester(x=0.66, c=1.6)
+
+        y_true = math.cos(0.66 * 2 + 1.6)
+
+        self.assertEquals(y, y_true)
+
+    def test_extended_config_add_lambda(self):
+            from datetime import datetime as dd
+            test_conf = PickleRick()
+
+            load = "lambda: dd.utcnow().strftime('%Y-%m-%d')"
+
+            imports = ['from datetime import datetime as dd']
+
+            test_conf.add_lambda('date_str', load, imports)
+
+            y = test_conf.date_str()
+
+            y_true = dd.utcnow().strftime('%Y-%m-%d')
+
+            self.assertEquals(y, y_true)
 
 
     def test_pickle_rick_dict_decon(self):
