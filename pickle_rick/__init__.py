@@ -1,9 +1,12 @@
-import yaml
+__version__ = '0.1.10'
+try:
+    import yaml
+except ImportError as ex:
+    print('The following module needs to be imported: pyyaml')
 import os
 import json
 from typing import Union
 from io import TextIOWrapper
-import importlib
 
 class BasicRick:
     """
