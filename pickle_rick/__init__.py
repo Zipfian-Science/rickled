@@ -189,9 +189,15 @@ class BasicRick:
 
         return keys
 
-    def dict(self):
+    def dict(self, serialised : bool = False):
         """
         Deconstructs the whole object into a Python dictionary.
+
+        Args:
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
 
         Returns:
             dict: of object.
@@ -201,12 +207,12 @@ class BasicRick:
             if str(key).__contains__(self.__class__.__name__) or str(key).endswith('__meta_info'):
                 continue
             if isinstance(value, BasicRick) or isinstance(value, PickleRick):
-                d[key] = value.dict()
+                d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
                     if isinstance(element, BasicRick):
-                        new_list.append(element.dict())
+                        new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
                 d[key] = new_list
@@ -233,46 +239,66 @@ class BasicRick:
                 return True
         return False
 
-    def to_yaml_file(self, file_path : str):
+    def to_yaml_file(self, file_path : str, serialised : bool = True):
         """
         Does a self dump to a YAML file.
 
         Args:
             file_path (str): File path.
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
         """
-        self_as_dict = self.dict()
+        self_as_dict = self.dict(serialised=serialised)
         with open(file_path, 'w', encoding='utf-8') as fs:
             yaml.safe_dump(self_as_dict, fs)
 
-    def to_yaml_string(self):
+    def to_yaml_string(self, serialised : bool = True):
         """
         Dumps self to YAML string.
+
+        Args:
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
 
         Returns:
             str: YAML representation.
         """
-        self_as_dict = self.dict()
+        self_as_dict = self.dict(serialised=serialised)
         return yaml.safe_dump(self_as_dict, None)
 
-    def to_json_file(self, file_path: str):
+    def to_json_file(self, file_path: str, serialised : bool = True):
         """
         Does a self dump to a JSON file.
 
         Args:
             file_path (str): File path.
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
         """
-        self_as_dict = self.dict()
+        self_as_dict = self.dict(serialised=serialised)
         with open(file_path, 'w', encoding='utf-8') as fs:
             json.dump(self_as_dict, fs)
 
-    def to_json_string(self):
+    def to_json_string(self, serialised : bool = True):
         """
         Dumps self to YAML string.
+
+        Args:
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
 
         Returns:
             str: JSON representation.
         """
-        self_as_dict = self.dict()
+        self_as_dict = self.dict(serialised=serialised)
         return json.dumps(self_as_dict)
 
     def add_attr(self, name, value):
@@ -337,9 +363,15 @@ class PickleRick(BasicRick):
         self.__meta_info = dict()
         super().__init__(base, deep, {'load_lambda' : load_lambda})
 
-    def dict(self):
+    def dict(self, serialised : bool = False):
         """
         Deconstructs the whole object into a Python dictionary.
+
+        Args:
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
 
         Returns:
             dict: of object.
@@ -348,15 +380,17 @@ class PickleRick(BasicRick):
         for key, value in self.__dict__.items():
             if str(key).__contains__(self.__class__.__name__):
                 continue
-            if key in self.__meta_info.keys():
+            if serialised and key in self.__meta_info.keys():
+                d[key] = self.__meta_info[key]
+            elif key in self.__meta_info.keys() and self.__meta_info[key]['type'] in ['function', 'lambda']:
                 d[key] = self.__meta_info[key]
             elif isinstance(value, BasicRick):
-                d[key] = value.dict()
+                d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
                     if isinstance(element, BasicRick):
-                        new_list.append(element.dict())
+                        new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
                 d[key] = new_list
