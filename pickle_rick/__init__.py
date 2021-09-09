@@ -1,4 +1,4 @@
-import yaml
+__version__ = '0.1.12'
 import os
 import json
 from typing import Union
@@ -124,13 +124,17 @@ class BasicRick:
             return dictionary[key]
         for k, v in dictionary.items():
             if isinstance(v, BasicRick):
-                value = self._recursive_search(v.__dict__, key)
-                if value:
+                try:
+                    value = self._recursive_search(v.__dict__, key)
                     return value
+                except StopIteration:
+                    continue
             if isinstance(v, dict):
-                value = self._recursive_search(v, key)
-                if value:
+                try:
+                    value = self._recursive_search(v, key)
                     return value
+                except StopIteration:
+                    continue
         raise StopIteration
 
     def items(self):

@@ -7,6 +7,7 @@ Pickle Rick
 **************************
 .. toctree::
    :maxdepth: 2
+   :numbered:
    :caption: Contents:
 
    pickle_rick
@@ -94,3 +95,12 @@ About
 =====================
 
 Pickle Rick is quick to use tool mainly meant to easily encapsulate config YAML files in other Zipfian Science tools.
+
+Changes and history
+---------------------
+
+See :ref:`changelog-page` for version history.
+
+Version 0.1.11 (2021-09-09):
+
+* Fixed bug in ``get`` for finding values.

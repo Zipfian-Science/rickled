@@ -101,9 +101,9 @@ class TestPickles(unittest.TestCase):
 
         value = test_conf_yaml.get('ONE')
 
-        self.assertEquals(value, 'value')
+        self.assertEquals(value, None)
 
-        value = test_conf_yaml.get('username')
+        value = test_conf_yaml.get('USERNAME')
 
         self.assertIsInstance(value, BasicRick)
         self.assertEquals(value.type, 'env')
