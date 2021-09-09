@@ -131,6 +131,7 @@ class BasicRick:
                 value = self._recursive_search(v, key)
                 if value:
                     return value
+        raise StopIteration
 
     def items(self):
         """
@@ -147,7 +148,6 @@ class BasicRick:
     def get(self, key : str, default=None):
         """
         Employs a recursive search of structure and returns the first found key-value pair.
-        Searches with normal, upper, and lower case.
 
         Args:
             key (str): key string being searched.
@@ -156,14 +156,11 @@ class BasicRick:
         Returns:
             obj: value found, or None for nothing found.
         """
-        value = self._recursive_search(self.__dict__, key)
-        if not value:
-            value = self._recursive_search(self.__dict__, key.lower())
-            if not value:
-                value = self._recursive_search(self.__dict__, key.upper())
-        if not value:
+        try:
+            value = self._recursive_search(self.__dict__, key)
+            return value
+        except StopIteration:
             return default
-        return value
 
     def values(self):
         """
@@ -234,9 +231,11 @@ class BasicRick:
         if key in self.__dict__:
             return True
         if deep:
-            value = self._recursive_search(self.__dict__, key)
-            if value:
+            try:
+                self._recursive_search(self.__dict__, key)
                 return True
+            except StopIteration:
+                return False
         return False
 
     def to_yaml_file(self, file_path : str, serialised : bool = True):
