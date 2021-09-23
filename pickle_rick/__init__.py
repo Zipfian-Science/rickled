@@ -1,9 +1,12 @@
-__version__ = '0.1.12'
+__version__ = '0.1.13'
 import os
 import json
+import copy
 from typing import Union
 from io import TextIOWrapper
-import importlib
+import yaml
+import requests
+import base64
 
 class BasicRick:
     """
@@ -12,21 +15,20 @@ class BasicRick:
         Args:
             base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict (default = None).
             deep (bool): Internalize dictionary structures in lists (default = False).
-            args (dict): Intended for extended classes to handle overriden _internalize customisation (default = None).
 
         Raises:
             ValueError: If the given base object can not be handled.
     """
-    def _iternalize(self, dictionary : dict, deep : bool, args : dict = None):
+    def _iternalize(self, dictionary : dict, deep : bool, **init_args):
         for k, v in dictionary.items():
             if isinstance(v, dict):
-                self.__dict__.update({k:BasicRick(v, deep)})
+                self.__dict__.update({k:BasicRick(v, deep, **init_args)})
                 continue
             if isinstance(v, list) and deep:
                 new_list = list()
                 for i in v:
                     if isinstance(i, dict):
-                        new_list.append(BasicRick(i, deep))
+                        new_list.append(BasicRick(i, deep, **init_args))
                     else:
                         new_list.append(i)
                 self.__dict__.update({k: new_list})
@@ -34,53 +36,39 @@ class BasicRick:
 
             self.__dict__.update({k:v})
 
-    def __init__(self, base : Union[dict,str,TextIOWrapper] = None, deep : bool = False, args : dict = None):
+    def __init__(self, base : Union[dict,str,TextIOWrapper] = None, deep : bool = False, **init_args):
+        stringed = ''
         if base is None:
             return
         if isinstance(base, dict):
-            self._iternalize(base, deep, args)
+            self._iternalize(base, deep, **init_args)
             return
 
         if isinstance(base, TextIOWrapper):
-            try:
-                dict_data = yaml.load(base, Loader=yaml.SafeLoader)
-                self._iternalize(dict_data, deep, args)
-                return
-            except Exception as exc:
-                print("Tried: {}".format(exc))
-            try:
-                dict_data = json.load(base)
-                self._iternalize(dict_data, deep, args)
-                return
-            except Exception as exc:
-                print("Tried: {}".format(exc))
+            stringed = base.read()
+        elif os.path.isfile(base):
+            with open(base, 'r') as f:
+                stringed = f.read()
+        elif isinstance(base, str):
+            stringed = base
 
-        if os.path.isfile(base):
-            try:
-                dict_data = yaml.load(open(base, 'r'), Loader=yaml.SafeLoader)
-                self._iternalize(dict_data, deep, args)
-                return
-            except Exception as exc:
-                print("Tried: {}".format(exc))
-            try:
-                dict_data = json.load(open(base, 'r'))
-                self._iternalize(dict_data, deep, args)
-                return
-            except Exception as exc:
-                print("Tried: {}".format(exc))
-        if isinstance(base, str):
-            try:
-                dict_data = yaml.safe_load(base)
-                self._iternalize(dict_data, deep, args)
-                return
-            except Exception as exc:
-                print("Tried: {}".format(exc))
-            try:
-                dict_data = json.loads(base)
-                self._iternalize(dict_data, deep, args)
-                return
-            except Exception as exc:
-                print("Tried: {}".format(exc))
+        if not init_args is None:
+            for k, v in init_args.items():
+                _k = f'_|{k}|_'
+                stringed = stringed.replace(_k,json.dumps(v))
+
+        try:
+            dict_data = yaml.safe_load(stringed)
+            self._iternalize(dict_data, deep, **init_args)
+            return
+        except Exception as exc:
+            print("Tried YAML: {}".format(exc))
+        try:
+            dict_data = json.loads(base)
+            self._iternalize(dict_data, deep, **init_args)
+            return
+        except Exception as exc:
+            print("Tried JSON: {}".format(exc))
 
         raise ValueError('Base object could not be internalized, type {} not handled'.format(type(base)))
 
@@ -106,10 +94,16 @@ class BasicRick:
         return self
 
     def __next__(self):
+        current_loop = 0
         if self.__n < len(self.__dict__):
             name = list(self.__dict__.keys())[self.__n]
-            if str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n'):
+            while (str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n')) and (current_loop < 9):
                 self.__n += 1
+                current_loop += 1
+                if self.__n < len(self.__dict__):
+                    name = list(self.__dict__.keys())[self.__n]
+                else:
+                    raise StopIteration
             if self.__n < len(self.__dict__):
                 obj = self.__dict__[list(self.__dict__.keys())[self.__n]]
                 self.__n += 1
@@ -324,17 +318,45 @@ class PickleRick(BasicRick):
             load_lambda (bool): Load lambda as code or strings.
     """
 
-    def _iternalize(self, dictionary : dict, deep : bool, args : dict = None):
+    def _iternalize(self, dictionary : dict, deep : bool, **init_args):
         for k, v in dictionary.items():
             if isinstance(v, dict):
                 if 'type' in v.keys() and v['type'] == 'env':
-                    self.add_env_variable(k, v['load'], v.get('default', None))
+                    self.add_env_variable(name=k,
+                                          load=v['load'],
+                                          default=v.get('default', None))
+                    continue
+                if 'type' in v.keys() and v['type'] == 'base64':
+                    self.add_base64(name=k,
+                                          load=v['load'])
+                    continue
+                if 'type' in v.keys() and v['type'] == 'from_file':
+                    self.add_from_file(name=k,
+                                       file_path=v['file_path'],
+                                       load_as_rick=v.get('load_as_rick', False),
+                                       deep=v.get('deep', False),
+                                       load_lambda=v.get('load_lambda', False),
+                                       is_binary=v.get('is_binary', False),
+                                       encoding=v.get('encoding', 'utf-8'))
+                    continue
+                if 'type' in v.keys() and v['type'] == 'api_json':
+                    self.add_api_json_call(name=k,
+                                           url=v['url'],
+                                           http_verb=v.get('http_verb', 'GET'),
+                                           headers=v.get('headers', None),
+                                           params=v.get('params', None),
+                                           body=v.get('body', None),
+                                           load_lambda=v.get('load_lambda', False),
+                                           deep=v.get('deep', False),
+                                           expected_http_status=v.get('expected_http_status', 200))
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
                     imports = v.get('import', None)
-                    if args and args['load_lambda']:
-                        self.add_lambda(k, load, imports)
+                    if init_args and init_args['load_lambda']:
+                        self.add_lambda(name=k,
+                                        load=load,
+                                        imports=imports)
                     else:
                         self.__dict__.update({k: v})
                     continue
@@ -344,27 +366,33 @@ class PickleRick(BasicRick):
                     args_dict = v.get('args', None)
                     imports = v.get('import', None)
 
-                    if args and args['load_lambda']:
-                        self.add_function(name, load, args_dict, imports)
+                    if init_args and init_args['load_lambda']:
+                        self.add_function(name=name,
+                                          load=load,
+                                          args=args_dict,
+                                          imports=imports)
                     else:
                         self.__dict__.update({k: v})
                     continue
-                self.__dict__.update({k:PickleRick(v, deep, args['load_lambda'])})
+                self.__dict__.update({k:PickleRick(v, deep, **init_args)})
                 continue
             if isinstance(v, list) and deep:
                 new_list = list()
                 for i in v:
                     if isinstance(i, dict):
-                        new_list.append(PickleRick(i, deep, args['load_lambda']))
+                        new_list.append(PickleRick(i, deep, **init_args))
                     else:
                         new_list.append(i)
                 self.__dict__.update({k: new_list})
                 continue
             self.__dict__.update({k: v})
 
-    def __init__(self, base: Union[dict, str] = None, deep : bool = False, load_lambda : bool = False):
+    def __init__(self, base: Union[dict, str] = None, deep : bool = False, load_lambda : bool = False, **init_args):
         self.__meta_info = dict()
-        super().__init__(base, deep, {'load_lambda' : load_lambda})
+        init_args['load_lambda'] = load_lambda
+        init_args['deep'] = deep
+        self.__init_args = init_args
+        super().__init__(base, **init_args)
 
     def dict(self, serialised : bool = False):
         """
@@ -498,3 +526,114 @@ class PickleRick(BasicRick):
         """
         self.__dict__.update({name: os.getenv(load, default)})
         self.__meta_info[name] = {'type' : 'env', 'load' : load, 'default' : default}
+
+    def add_base64(self, name, load):
+        """
+        Add Base 64 encoded binary data.
+
+        Args:
+            name (str): Property name.
+            load (str): Base 64 encoded data.
+        """
+        b = base64.b64decode(load)
+        self.__dict__.update({name: b})
+        self.__meta_info[name] = {'type': 'base64',
+                                  'load' : load
+                                  }
+
+    def add_from_file(self, name,
+                      file_path : str,
+                      load_as_rick : bool = False,
+                      deep : bool = False,
+                      load_lambda : bool = False,
+                      is_binary : bool = False,
+                      encoding : str = 'utf-8'):
+        """
+        Adds the ability to further load Ricks from other YAML or JSON files, or alternatively load a text file.
+        This opens up dynamic possibility, but with that it also opens up extreme security vulnerabilities.
+        Only ever load files from trusted sources.
+        **Important note: Even with ``deep`` and ``load_lambda`` set to False, further file or API calls could be found within the source that loads lambda functions.**
+        **Important note: Be careful to never self-reference a file, i.e. don't load the same file from within itself to avoid infinte looping.**
+
+        Args:
+            name (str): Property name.
+            file_path (str): File path to load from.
+            load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as text (default = False).
+            deep (bool): Internalize dictionary structures in lists (default = False).
+            load_lambda (bool): Load lambda as code or strings (default = False).
+            is_binary (bool): If the file is a binary file (default = False).
+            encoding (str): If text, encoding can be specified (default = 'utf-8').
+        """
+
+        if load_as_rick and not is_binary:
+            args = copy.copy(self.__init_args)
+            args['load_lambda'] = load_lambda
+            args['deep'] = deep
+            self.__dict__.update({name: PickleRick(file_path, **args)})
+        else:
+            if is_binary:
+                with open(file_path, 'rb') as fn:
+                    self.__dict__.update({name: fn.read()})
+            else:
+                with open(file_path, 'r', encoding=encoding) as fn:
+                    self.__dict__.update({name: fn.read()})
+
+        self.__meta_info[name] = {'type': 'from_file',
+                                  'file_path' : file_path,
+                                  'load_as_rick' : load_as_rick,
+                                  'deep' : deep,
+                                  'load_lambda' : load_lambda,
+                                  'is_binary' : is_binary,
+                                  'encoding' : encoding
+                                  }
+
+    def add_api_json_call(self, name,
+                          url : str,
+                          http_verb : str = 'GET',
+                          headers : dict = None,
+                          params : dict = None,
+                          body : dict = None,
+                          deep : bool = False,
+                          load_lambda : bool = False,
+                          expected_http_status : int = 200):
+        """
+        Load a JSON response from a URL and create a Rick from it. This opens up dynamic possibility,
+        but with that it also opens up extreme security vulnerabilities. Only ever load JSON objects from trusted sources.
+        **Important note: Even with ``deep`` and ``load_lambda`` set to False, further API calls could be found within the source that loads lambda functions.**
+        **Important note: Be careful to never self-reference an API call, i.e. don't load the same API from within itself to avoid infinte looping.**
+
+        Args:
+            name (str): Property name.
+            url (str): URL to load from.
+            http_verb (str): Either 'POST' or 'GET' allowed (default = 'GET').
+            headers (dict): Key-value pair for headers (default = None).
+            params (dict): Key-value pair for parameters (default = None).
+            body (dict): Key-value pair for data (default = None).
+            deep (bool): Internalize dictionary structures in lists (default = False).
+            load_lambda (bool): Load lambda as code or strings (default = False).
+            expected_http_status (int): Should a none 200 code be expected (default = 200).
+
+        """
+        if http_verb.lower() == 'post':
+            r = requests.post(url=url, data=body, headers=headers)
+        else:
+            r = requests.get(url=url, params=params, headers=headers)
+
+        if r.status_code == expected_http_status:
+            json_dict = r.json()
+            args = copy.copy(self.__init_args)
+            args['load_lambda'] = load_lambda
+            args['deep'] = deep
+            self.__dict__.update({name: PickleRick(json_dict, **args)})
+        else:
+            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+        self.__meta_info[name] = {'type': 'api_json',
+                                  'url': url,
+                                  'http_verb': http_verb,
+                                  'headers' : headers,
+                                  'params' : params,
+                                  'body' : body,
+                                  'deep' : deep,
+                                  'load_lambda' : load_lambda,
+                                  'expected_http_status' : expected_http_status
+                                  }

@@ -2,6 +2,28 @@ MYSQL:
   conn: 127.0.0.1
   usr: test
 
+skilltax:
+  type: api_json
+  url: https://skilltax-api-nl-rrlwpuonnq-ew.a.run.app/
+  expected_http_status: 500
+
+some_field: _|arg_name|_
+
+encoded:
+  type: base64
+  load: dG9vIG1hbnkgc2VjcmV0cw==
+
+another_rick:
+  type: from_file
+  file_path: './tests/placebos/test_config.json'
+  load_as_rick: true
+  deep: true
+  load_lambda: true
+
+another_text:
+  type: from_file
+  file_path: './tests/placebos/test_config.json'
+
 BASICS:
   text: test
   dictionary:
