@@ -101,9 +101,9 @@ class TestPickles(unittest.TestCase):
 
         value = test_conf_yaml.get('ONE')
 
-        self.assertEquals(value, 'value')
+        self.assertEquals(value, None)
 
-        value = test_conf_yaml.get('username')
+        value = test_conf_yaml.get('USERNAME')
 
         self.assertIsInstance(value, BasicRick)
         self.assertEquals(value.type, 'env')
@@ -291,10 +291,38 @@ def tester(x, c):
 
             self.assertEquals(y, y_true)
 
-
     def test_pickle_rick_dict_decon(self):
         test_conf_yaml = PickleRick('./tests/placebos/test_config.yaml', deep=True, load_lambda=True)
 
         d = test_conf_yaml.dict()
 
         s = test_conf_yaml.to_yaml_string()
+
+    def test_pickle_rick_load_param(self):
+        test_conf_yaml = PickleRick('./tests/placebos/test_config.yaml', deep=True, arg_name='hallo_wereld', load_lambda=True)
+
+        d = test_conf_yaml.dict()
+
+        s = test_conf_yaml.to_yaml_string()
+
+        s = test_conf_yaml.to_yaml_string(serialised=False)
+
+        test_conf_yaml = PickleRick('./tests/placebos/test_config.yaml', deep=True,
+                                    load_lambda=True)
+
+        d = test_conf_yaml.dict()
+
+        s = test_conf_yaml.to_yaml_string()
+
+    def test_pickle_rick_dict_decon_deserialised_vs_serialised(self):
+        test_conf_yaml = PickleRick('./tests/placebos/test_config.yaml', deep=True, load_lambda=True)
+
+        d = test_conf_yaml.dict()
+
+        s = test_conf_yaml.to_yaml_string()
+
+        d_ = test_conf_yaml.dict(serialised=True)
+
+        s_ = test_conf_yaml.to_yaml_string(serialised=False)
+
+        self.assertTrue(True)

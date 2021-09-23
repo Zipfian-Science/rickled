@@ -5,6 +5,11 @@ import run_tests as tests
 import sys
 from twine.commands import upload
 import json
+import ftplib
+import glob
+from pathlib import Path
+
+_project_name = 'pickle_rick'
 
 class bcolors:
     HEADER = '\033[95m'
@@ -31,8 +36,8 @@ def upload_to_pypi(release_name):
         release_name = version_name
 
     release_name = release_name.replace("-", "_")
-    local_file = f"dist/pickle_rick-{version_name}.tar.gz"
-    remote_file = f"pickle_rick-{release_name}.tar.gz"
+    local_file = f"dist/{_project_name}-{version_name}.tar.gz"
+    remote_file = f"{_project_name}-{release_name}.tar.gz"
 
     os.mkdir('deploy')
     shutil.copy(local_file, f"deploy/{remote_file}")
@@ -49,7 +54,7 @@ def build_documentation():
     if sys.platform == "win32":
         os.system('make.bat html')
     else:
-        os.system('make.bat html')
+        os.system('make html')
     os.chdir('..')
     print(f'{bcolors.UNDERLINE}-- Made docs, change dir{bcolors.ENDC}')
 
@@ -57,6 +62,26 @@ def lock_and_gen_pipreq():
     print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Locking Pipfile.lock and generating requirements.txt{bcolors.ENDC}')
     os.system("pipenv lock -r > requirements.txt")
 
+def upload_docs_via_ftp():
+    print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Upload documentation to FTP server! {bcolors.ENDC}')
+    try:
+        with ftplib.FTP(os.getenv('FTP_HOST'), os.getenv('FTP_USERNAME'), os.getenv('FTP_PASSWORD')) as ftp:
+            ftp.cwd(os.getenv('FTP_DIRECTORY'))
+
+            for f in glob.glob('./docs/build/html/*'):
+                if os.path.isfile(f):
+                    with open(f, 'rb') as _f:
+                        file_path = Path(f)
+                        try:
+                            ftp.storlines(f'STOR {file_path.name}', _f)
+                            print(f"{bcolors.OKBLUE}Uploaded: {file_path.name}{bcolors.ENDC}")
+                        except Exception as exc:
+                            print(f"{bcolors.FAIL}{bcolors.BOLD}-- ERROR: {f} {str(exc)}!{bcolors.ENDC}")
+    except Exception as exc:
+        print(f"{bcolors.FAIL}{bcolors.BOLD}-- ERROR: {f} {str(exc)}!{bcolors.ENDC}")
+        return
+
+    print(f'{bcolors.UNDERLINE}-- Docs uploaded! {bcolors.ENDC}')
 
 def build_wheel():
     print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Deleting artefacts and building wheel{bcolors.ENDC}')
@@ -67,11 +92,11 @@ def build_wheel():
 def delete_build():
     if sys.platform == "win32":
         os.system("RMDIR build /s /q")
-        os.system("RMDIR pickle_rick.egg-info /s /q")
+        os.system(f"RMDIR {_project_name}.egg-info /s /q")
 
     else:
         os.system("rm -rf build")
-        os.system("rm -rf pickle_rick.egg-info" )
+        os.system(f"rm -rf {_project_name}.egg-info" )
 
 
 def delete_dist():
@@ -108,7 +133,8 @@ def main(args):
     if args.pipreq:
         lock_and_gen_pipreq()
 
-    build_wheel()
+    if args.build or args.deploy:
+        build_wheel()
 
     if args.deploy:
         upload_to_pypi(args.remotename)
@@ -116,41 +142,52 @@ def main(args):
     if args.sphinx:
         build_documentation()
 
+    if args.ftp:
+        upload_docs_via_ftp()
+
     if args.remove:
         delete_build()
         delete_dist()
 
-    # All went well!
-    with open("version.json", "r") as f:
-        version = json.load(f)
+    if args.deploy:
+        # All went well!
+        with open("version.json", "r") as f:
+            version = json.load(f)
 
-    version['patch'] += 1
-    with open("version.json", "w") as f:
-        json.dump(version, f)
+        version['patch'] += 1
+        with open("version.json", "w") as f:
+            json.dump(version, f)
 
-    with open("pickle_rick/__init__.py", "r") as f:
-        lines = f.readlines()
-        lines[0] = "__version__ = '{major}.{minor}.{patch}'\n".format(**version)
-    if lines:
-        with open("pickle_rick/__init__.py", "w") as f:
-            f.writelines(lines)
+        with open(f"{_project_name}/__init__.py", "r") as f:
+            lines = f.readlines()
+            lines[0] = "__version__ = '{major}.{minor}.{patch}'\n".format(**version)
+        if lines:
+            with open(f"{_project_name}/__init__.py", "w") as f:
+                f.writelines(lines)
 
-
+        print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {version}!{bcolors.ENDC}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        description="""
-        Builds Pickle Rick package, runs tests, builds docs, and deploys to PyPi.
+        description=f"""
+        Builds {_project_name} libs package, runs tests, builds docs, and deploys to PyPi.
         """,
+    )
+    parser.add_argument(
+        "--build",
+        "-b",
+        help="Build wheel, not required if -d is used",
+        action="store_true",
+        default=False
     )
     parser.add_argument(
         "--remove",
         "-r",
         help="Removes build artifacts",
         action="store_true",
-        default=False
+        default=True
     )
     parser.add_argument(
         "--unit",
@@ -193,4 +230,11 @@ if __name__ == "__main__":
         help="Builds the sphinx documentation",
         action="store_true",
     )
+    parser.add_argument(
+        "--ftp",
+        "-f",
+        help="Uploads the generated documentation via FTP",
+        action="store_true",
+    )
+
     main(parser.parse_args())

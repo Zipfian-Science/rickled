@@ -24,7 +24,7 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'Pickle Rick'
-copyright = '2020, Zipfian Science'
+copyright = '2021, Zipfian Science'
 author = 'Zipfian Science'
 
 # The full version, including alpha/beta/rc tags
@@ -43,6 +43,7 @@ release = '{major}.{minor}.{patch}'.format(**release_version)
 extensions = ['sphinxcontrib.napoleon',
               'sphinx.ext.todo',
               'sphinx.ext.githubpages',
+              'sphinx.ext.autosectionlabel'
               ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -59,7 +60,7 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'python_docs_theme'
+html_theme = 'sphinx_rtd_theme'
 # html_theme ='alabaster'
 
 # Add any paths that contain custom static files (such as style sheets) here,
