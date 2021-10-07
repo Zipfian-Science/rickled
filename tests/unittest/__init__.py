@@ -314,6 +314,12 @@ def tester(x, c):
 
         s = test_conf_yaml.to_yaml_string()
 
+    def test_multi_file_load(self):
+        files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
+        test_conf_yaml = PickleRick(files, deep=True, load_lambda=True)
+
+        self.assertTrue(True)
+
     def test_pickle_rick_dict_decon_deserialised_vs_serialised(self):
         test_conf_yaml = PickleRick('./tests/placebos/test_config.yaml', deep=True, load_lambda=True)
 

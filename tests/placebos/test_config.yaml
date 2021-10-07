@@ -13,6 +13,10 @@ encoded:
   type: base64
   load: dG9vIG1hbnkgc2VjcmV0cw==
 
+some_reference: &some_reference_ref
+  first: 3.14
+  second: 42
+
 another_rick:
   type: from_file
   file_path: './tests/placebos/test_config.json'
