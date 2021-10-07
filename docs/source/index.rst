@@ -101,10 +101,6 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.1.12 (2021-09-23)
+Version 0.1.13 (2021-10-07)
 
-* Fixed major bug, YAML was not loaded!
-* Adding preload arguments for load and replace values within YAML files using ``_|PARAM|_``
-* Added new API JSON call method, to load and create a Rick from an API response ``add_api_json_call``.
-* Added new ability to load other YAML, JSON, or text files from within, using ``add_from_file``.
-* Added ``add_base64`` to load base 64 encoded data.
+* Added ability to load from multiple YAML files or JSON files from start up.

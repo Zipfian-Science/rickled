@@ -1,4 +1,4 @@
-__version__ = '0.1.13'
+__version__ = '0.1.14'
 import os
 import json
 import copy
@@ -36,7 +36,7 @@ class BasicRick:
 
             self.__dict__.update({k:v})
 
-    def __init__(self, base : Union[dict,str,TextIOWrapper] = None, deep : bool = False, **init_args):
+    def __init__(self, base : Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, **init_args):
         stringed = ''
         if base is None:
             return
@@ -46,6 +46,10 @@ class BasicRick:
 
         if isinstance(base, TextIOWrapper):
             stringed = base.read()
+        elif isinstance(base, list):
+            for file in base:
+                with open(file, 'r') as f:
+                    stringed = f'{stringed}\n{f.read()}'
         elif os.path.isfile(base):
             with open(base, 'r') as f:
                 stringed = f.read()
@@ -313,7 +317,7 @@ class PickleRick(BasicRick):
         An extended version of the BasicRick that can load OS environ variables and Python Lambda functions.
 
         Args:
-            base (str): String (YAML or JSON, file path to YAML/JSON file), text IO stream, dict.
+            base (str, list): String (YAML or JSON, file path to YAML/JSON file) or list of file paths, text IO stream, dict.
             deep (bool): Internalize dictionary structures in lists.
             load_lambda (bool): Load lambda as code or strings.
     """
@@ -387,7 +391,7 @@ class PickleRick(BasicRick):
                 continue
             self.__dict__.update({k: v})
 
-    def __init__(self, base: Union[dict, str] = None, deep : bool = False, load_lambda : bool = False, **init_args):
+    def __init__(self, base: Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, load_lambda : bool = False, **init_args):
         self.__meta_info = dict()
         init_args['load_lambda'] = load_lambda
         init_args['deep'] = deep

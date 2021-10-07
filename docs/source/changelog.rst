@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 0.1.13 (2021-10-07)
+--------------------------
+
+* Added ability to load from multiple YAML files or JSON files from start up.
+
 Version 0.1.12 (2021-09-23)
 --------------------------
 
