@@ -10,6 +10,11 @@ import glob
 from pathlib import Path
 
 _project_name = 'pickle_rick'
+_git_files_for_add = [
+    "./docs/source/*.rst",
+    f"./{_project_name}/__init__.py",
+    "version.json"
+]
 
 class bcolors:
     HEADER = '\033[95m'
@@ -120,6 +125,9 @@ def do_integration_tests(args):
         return tests.all_integration_tests(args.coverage)
     return True
 
+def add_files_for_commit():
+    for f in _git_files_for_add:
+        os.system(f"git add {f}")
 
 def main(args):
     if not do_unit_tests(args):
@@ -166,6 +174,9 @@ def main(args):
                 f.writelines(lines)
 
         print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {version}!{bcolors.ENDC}")
+
+    if args.git:
+        add_files_for_commit()
 
 
 if __name__ == "__main__":
@@ -234,6 +245,13 @@ if __name__ == "__main__":
         "--ftp",
         "-f",
         help="Uploads the generated documentation via FTP",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--git",
+        "-g",
+        help="Add usual files for commit",
         action="store_true",
     )
 
