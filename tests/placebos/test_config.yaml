@@ -24,6 +24,12 @@ another_rick:
   deep: true
   load_lambda: true
 
+a_csv:
+  type: from_csv
+  file_path: './tests/placebos/test.csv'
+  load_as_rick: true
+  fieldnames: null
+
 another_text:
   type: from_file
   file_path: './tests/placebos/test_config.json'
