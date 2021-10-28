@@ -101,6 +101,7 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.1.13 (2021-10-07)
+Version 0.1.14 (2021-10-28):
 
-* Added ability to load from multiple YAML files or JSON files from start up.
+* Added new ``add_html_page`` to load HTML text.
+* Added new ``add_csv_file`` to load CSV files as either a list of lists, or list of PickleRicks.
