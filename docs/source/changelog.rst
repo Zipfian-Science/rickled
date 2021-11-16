@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.1.14 (2021-10-28)
+--------------------------
+
+* Added new ``add_html_page`` to load HTML text.
+* Added new ``add_csv_file`` to load CSV files as either a list of lists, or list of PickleRicks.
+
 Version 0.1.13 (2021-10-07)
 --------------------------
 
