@@ -1,4 +1,4 @@
-__version__ = '0.1.14'
+__version__ = '0.1.15'
 import os
 import json
 import copy
@@ -80,6 +80,9 @@ class BasicRick:
         keys = self.__dict__
         items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__meta_info') )
         return "{}({})".format(type(self).__name__, ", ".join(items))
+
+    def __str__(self):
+        return self.to_yaml_string()
 
     def __eq__(self, other):
         return repr(self) == repr(other)
@@ -343,6 +346,13 @@ class PickleRick(BasicRick):
                                        is_binary=v.get('is_binary', False),
                                        encoding=v.get('encoding', 'utf-8'))
                     continue
+                if 'type' in v.keys() and v['type'] == 'from_csv':
+                    self.add_csv_file(name=k,
+                                      file_path=v['file_path'],
+                                      fieldnames=v.get('fieldnames', None),
+                                      load_as_rick=v.get('load_as_rick', False),
+                                      encoding=v.get('encoding', 'utf-8'))
+                    continue
                 if 'type' in v.keys() and v['type'] == 'api_json':
                     self.add_api_json_call(name=k,
                                            url=v['url'],
@@ -353,6 +363,13 @@ class PickleRick(BasicRick):
                                            load_lambda=v.get('load_lambda', False),
                                            deep=v.get('deep', False),
                                            expected_http_status=v.get('expected_http_status', 200))
+                    continue
+                if 'type' in v.keys() and v['type'] == 'html_page':
+                    self.add_html_page(name=k,
+                                       url=v['url'],
+                                       headers=v.get('headers', None),
+                                       params=v.get('params', None),
+                                       expected_http_status=v.get('expected_http_status', 200))
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
@@ -545,6 +562,52 @@ class PickleRick(BasicRick):
                                   'load' : load
                                   }
 
+    def add_csv_file(self,
+                     name,
+                     file_path : str,
+                     fieldnames : list = None,
+                     load_as_rick  : bool = False,
+                     encoding : str = 'utf-8'
+                     ):
+        """
+        Adds the ability to load CSV data as lists or even a list of Ricks where the column names are the properties.
+
+        Args:
+            name (str): Property name.
+            file_path (str): File path to load from.
+            fieldnames (list): Column headers (default = None).
+            load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as text (default = False).
+            encoding (str): If text, encoding can be specified (default = 'utf-8').
+
+        """
+        import csv
+        with open(file_path, 'r', encoding=encoding) as file:
+            dialect = csv.Sniffer().sniff(file.read(1024))
+            file.seek(0)
+            l = list()
+
+            if load_as_rick:
+                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+
+                for row in csv_file:
+                    l.append(dict(row))
+
+                self._iternalize({name: l}, deep=True)
+            else:
+                csv_file = csv.reader(file, dialect=dialect)
+
+                for row in csv_file:
+                    l.append(row)
+
+                self.__dict__.update({name: l})
+
+        self.__meta_info[name] = {'type': 'from_csv',
+                                  'file_path': file_path,
+                                  'load_as_rick': load_as_rick,
+                                  'fieldnames' : fieldnames,
+                                  'encoding': encoding
+                                  }
+
     def add_from_file(self, name,
                       file_path : str,
                       load_as_rick : bool = False,
@@ -589,6 +652,37 @@ class PickleRick(BasicRick):
                                   'load_lambda' : load_lambda,
                                   'is_binary' : is_binary,
                                   'encoding' : encoding
+                                  }
+
+    def add_html_page(self,
+                      name,
+                      url : str,
+                      headers : dict = None,
+                      params : dict = None,
+                      expected_http_status : int = 200):
+        """
+        Loads HTML page as property.
+
+        Args:
+            name (str): Property name.
+            url (str): URL to load from.
+            headers (dict): Key-value pair for headers (default = None).
+            params (dict): Key-value pair for parameters (default = None).
+            expected_http_status (int): Should a none 200 code be expected (default = 200).
+
+        """
+        r = requests.get(url=url, params=params, headers=headers)
+
+        if r.status_code == expected_http_status:
+            self.__dict__.update({name: r.text})
+        else:
+            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+
+        self.__meta_info[name] = {'type': 'html_page',
+                                  'url': url,
+                                  'headers': headers,
+                                  'params': params,
+                                  'expected_http_status': expected_http_status
                                   }
 
     def add_api_json_call(self, name,
