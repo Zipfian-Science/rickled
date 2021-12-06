@@ -23,7 +23,7 @@ sys.setrecursionlimit(1500)
 
 # -- Project information -----------------------------------------------------
 
-project = 'Rickle'
+project = 'Rickled'
 copyright = '2021, Zipfian Science'
 author = 'Zipfian Science'
 

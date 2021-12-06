@@ -1,6 +1,6 @@
 import unittest
 import os
-from rickle import BaseRickle, Rickle
+from rickled import BaseRickle, Rickle
 
 class TestPickles(unittest.TestCase):
 
