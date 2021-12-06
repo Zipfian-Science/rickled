@@ -9,7 +9,7 @@ import ftplib
 import glob
 from pathlib import Path
 
-_project_name = 'pickle_rick'
+_project_name = 'rickle'
 _git_files_for_add = [
     "./docs/source/*.rst",
     f"./{_project_name}/__init__.py",

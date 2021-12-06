@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import os
 import json
 from datetime import datetime
-from pickle_rick import __version__ as ver
+from rickle import __version__ as ver
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -21,7 +21,7 @@ if os.path.isfile(long_description_file):
         long_description = f.read()
         long_description = long_description.format(pypi_metdata_release_date=datetime.today().strftime('%Y-%m-%d'), pypi_metdata_version_number=version_name)
 else:
-    long_description = "It's Pickle Rick!"
+    long_description = "It's Rickle Pick!"
 
 if os.path.isfile(os.path.join(here, 'requirements.txt')):
     with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
@@ -34,7 +34,7 @@ else:
 
 
 setup(
-    name="pickle_rick",
+    name="rickle",
     version=version_name,
     description='Tools for pickling Python objects in completely different way',
     long_description_content_type='text/markdown',
@@ -49,7 +49,7 @@ setup(
     packages=find_packages(".", exclude=("tests", "dist", "deploy", "egg-info")),
     include_package_data=True,
     install_requires=pipreq,
-    package_dir={'.': 'pickle_rick'},
+    package_dir={'.': 'rickle'},
     package_data={
         "": ["*.yaml",],
     },
