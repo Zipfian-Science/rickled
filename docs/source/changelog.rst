@@ -14,7 +14,7 @@ History
 Version 0.2.0 (2021-12-06)
 --------------------------
 
-* Renamed project to ``Rickle`` to avoid any possible lawsuits from money hungry media execs.
+* Renamed project to ``Rickled`` to avoid any possible lawsuits from money hungry media execs.
 * Pickle Rick was a great name, possibly even considered a parody which is protected under copyright law.
 * But rather safe than sued..
 

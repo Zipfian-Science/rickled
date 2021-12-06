@@ -11,7 +11,7 @@ Simple classes for encapsulating Python objects, with functions to write these s
 
 Basic Rickle
 ========================
-.. autoclass:: rickle.__init__.BaseRickle
+.. autoclass:: rickled.__init__.BaseRickle
    :members:
 
 Rickle Pick
@@ -20,5 +20,5 @@ Rickle Pick
 An extended version of BasicRick that allows extra easy loading, including Python functions, lambdas, and OS environmental variables.
 Contains all the same methods in BasicRick.
 
-.. autoclass:: rickle.__init__.Rickle
+.. autoclass:: rickled.__init__.Rickle
    :members:
