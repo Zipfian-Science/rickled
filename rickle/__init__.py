@@ -1,4 +1,4 @@
-__version__ = '0.1.15'
+__version__ = '0.2.0'
 import os
 import json
 import copy
@@ -8,7 +8,7 @@ import yaml
 import requests
 import base64
 
-class BasicRick:
+class BaseRickle:
     """
         A base class that creates internal structures from embedded structures.
 
@@ -22,13 +22,13 @@ class BasicRick:
     def _iternalize(self, dictionary : dict, deep : bool, **init_args):
         for k, v in dictionary.items():
             if isinstance(v, dict):
-                self.__dict__.update({k:BasicRick(v, deep, **init_args)})
+                self.__dict__.update({k:BaseRickle(v, deep, **init_args)})
                 continue
             if isinstance(v, list) and deep:
                 new_list = list()
                 for i in v:
                     if isinstance(i, dict):
-                        new_list.append(BasicRick(i, deep, **init_args))
+                        new_list.append(BaseRickle(i, deep, **init_args))
                     else:
                         new_list.append(i)
                 self.__dict__.update({k: new_list})
@@ -124,7 +124,7 @@ class BasicRick:
         if key in dictionary:
             return dictionary[key]
         for k, v in dictionary.items():
-            if isinstance(v, BasicRick):
+            if isinstance(v, BaseRickle):
                 try:
                     value = self._recursive_search(v.__dict__, key)
                     return value
@@ -208,12 +208,12 @@ class BasicRick:
         for key, value in self.__dict__.items():
             if str(key).__contains__(self.__class__.__name__) or str(key).endswith('__meta_info'):
                 continue
-            if isinstance(value, BasicRick) or isinstance(value, PickleRick):
+            if isinstance(value, BaseRickle) or isinstance(value, Rickle):
                 d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
-                    if isinstance(element, BasicRick):
+                    if isinstance(element, BaseRickle):
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
@@ -315,7 +315,7 @@ class BasicRick:
         """
         self.__dict__.update({name: value})
 
-class PickleRick(BasicRick):
+class Rickle(BaseRickle):
     """
         An extended version of the BasicRick that can load OS environ variables and Python Lambda functions.
 
@@ -395,13 +395,13 @@ class PickleRick(BasicRick):
                     else:
                         self.__dict__.update({k: v})
                     continue
-                self.__dict__.update({k:PickleRick(v, deep, **init_args)})
+                self.__dict__.update({k:Rickle(v, deep, **init_args)})
                 continue
             if isinstance(v, list) and deep:
                 new_list = list()
                 for i in v:
                     if isinstance(i, dict):
-                        new_list.append(PickleRick(i, deep, **init_args))
+                        new_list.append(Rickle(i, deep, **init_args))
                     else:
                         new_list.append(i)
                 self.__dict__.update({k: new_list})
@@ -436,12 +436,12 @@ class PickleRick(BasicRick):
                 d[key] = self.__meta_info[key]
             elif key in self.__meta_info.keys() and self.__meta_info[key]['type'] in ['function', 'lambda']:
                 d[key] = self.__meta_info[key]
-            elif isinstance(value, BasicRick):
+            elif isinstance(value, BaseRickle):
                 d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
-                    if isinstance(element, BasicRick):
+                    if isinstance(element, BaseRickle):
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
@@ -636,7 +636,7 @@ class PickleRick(BasicRick):
             args = copy.copy(self.__init_args)
             args['load_lambda'] = load_lambda
             args['deep'] = deep
-            self.__dict__.update({name: PickleRick(file_path, **args)})
+            self.__dict__.update({name: Rickle(file_path, **args)})
         else:
             if is_binary:
                 with open(file_path, 'rb') as fn:
@@ -722,7 +722,7 @@ class PickleRick(BasicRick):
             args = copy.copy(self.__init_args)
             args['load_lambda'] = load_lambda
             args['deep'] = deep
-            self.__dict__.update({name: PickleRick(json_dict, **args)})
+            self.__dict__.update({name: Rickle(json_dict, **args)})
         else:
             raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
         self.__meta_info[name] = {'type': 'api_json',

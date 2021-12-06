@@ -1,4 +1,4 @@
-# Pickle Rick
+# Rickle
 ```
                                       ....                                      
                                 &((((((((((((((%,                               
@@ -42,12 +42,7 @@
                       &(//##(//(//((//((((((((((#                               
                        *///(//////////(((((///#                                 
                          *#//////////(///(#/                                     
-.---.  _       .-.   .-.          .---.  _       .-.   
-: .; ::_;      : :.-.: :          : .; ::_;      : :.-.
-:  _.'.-. .--. : `'.': :   .--.   :   .'.-. .--. : `'.'
-: :   : :'  ..': . `.: :_ ' '_.'  : :.`.: :'  ..': . `.
-:_;   :_;`.__.':_;:_;`.__;`.__.'  :_;:_;:_;`.__.':_;:_;
-                                        
+
 by Zipfian Science                               
 ```
 Python tools for creating pickles in a different way.
@@ -55,7 +50,7 @@ Python tools for creating pickles in a different way.
 ## Sauce layout
 
 ```
-pickle_rick
+rickle
    |
    |- 
 ```
