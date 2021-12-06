@@ -3,18 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Pickle Rick
+Rickle
 **************************
 .. toctree::
    :maxdepth: 2
    :numbered:
    :caption: Contents:
 
-   pickle_rick
+   rickle
 
 Starting
 =====================
-Pickle Rick is a lightweight tool for loading and writing very small Python objects to YAML or JSON representations.
+Rickle is a lightweight tool for loading and writing very small Python objects to YAML or JSON representations.
 This is especially useful for creating YAML config files and serialising them as Python objects.
 Works great in interactive Python environments like notebooks.
 
@@ -22,7 +22,7 @@ To install:
 
 .. code-block:: bash
 
-   pip install pickle-rick
+   pip install rickle
 
 Create a YAML file, call it "config.yaml":
 
@@ -80,9 +80,9 @@ Then import the tools:
 
 .. code-block:: python
 
-   >> from pickle_rick import PickleRick
+   >> from rickle import Rickle
 
-   >> config = PickleRick('./config.yaml', deep=True, load_lambda=True)
+   >> config = Rickle('./config.yaml', deep=True, load_lambda=True)
 
    >> config.BASIC.dictionary
    {'one' : 1, 'two' : 2}
@@ -94,14 +94,15 @@ Then import the tools:
 About
 =====================
 
-Pickle Rick is quick to use tool mainly meant to easily encapsulate config YAML files in other Zipfian Science tools.
+Rickle is quick to use tool mainly meant to easily encapsulate config YAML files in other Zipfian Science tools.
 
 Changes and history
 ---------------------
 
 See :ref:`changelog-page` for version history.
 
-Version 0.1.14 (2021-10-28):
+Version 0.2.0 (2021-12-06):
 
-* Added new ``add_html_page`` to load HTML text.
-* Added new ``add_csv_file`` to load CSV files as either a list of lists, or list of PickleRicks.
+* Renamed project to ``Rickle`` to avoid any possible lawsuits from money hungry media execs.
+* Pickle Rick was a great name, possibly even considered a parody which is protected under copyright law.
+* But rather safe than sued..

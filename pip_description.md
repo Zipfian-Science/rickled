@@ -1,4 +1,4 @@
-# Pickle Rick
+# Rickle
 ```
                                       ....                                      
                                 &((((((((((((((%,                               
@@ -42,33 +42,28 @@
                       &(//##(//(//((//((((((((((#                               
                        *///(//////////(((((///#                                 
                          *#//////////(///(#/                                    
-.---.  _       .-.   .-.          .---.  _       .-.   
-: .; ::_;      : :.-.: :          : .; ::_;      : :.-.
-:  _.'.-. .--. : `'.': :   .--.   :   .'.-. .--. : `'.'
-: :   : :'  ..': . `.: :_ ' '_.'  : :.`.: :'  ..': . `.
-:_;   :_;`.__.':_;:_;`.__;`.__.'  :_;:_;:_;`.__.':_;:_;
                                         
 by Zipfian Science                               
 ```
 Python tools for creating a different type of pickling by [Zipfian Science](https://zipfian.science/).
 
-Pickle Rick is a lightweight tool for loading and writing very small Python objects to YAML or JSON representations.
+Rickle is a lightweight tool for loading and writing very small Python objects to YAML or JSON representations.
 This is especially useful for creating YAML config files and serialising them as Python objects.
 Works great in interactive Python environments like notebooks.
 
-For documentation, see [docs](http://docs.zipfian.science/pickle-rick/index.html).
+For documentation, see [docs](http://docs.zipfian.science/rickle/index.html).
 
-Source on [GitHub](https://github.com/Zipfian-Science/pickle-rick).
+Source on [GitHub](https://github.com/Zipfian-Science/rickle).
 ## Install
 
 ```shell script
-$ pip install pickle-rick
+$ pip install rickle
 ```
 
 ## And use
 
 ```python
-from pickle_rick import PickleRick
+from rickle import Rickle
 ```
 
 Using an example YAML file:
@@ -123,12 +118,12 @@ BASIC:
           print(i)
 ```
 
-Then use Rick:
+Then use Rickle:
 
 ```python
->> from pickle_rick import PickleRick
+>> from rickle import Rickle
 
->> config = PickleRick('./config.yaml', deep=True, load_lambda=True)
+>> config = Rickle('./config.yaml', deep=True, load_lambda=True)
 
 >> config.BASIC.callable_lambda()
 'hell world!'
