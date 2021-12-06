@@ -3,14 +3,14 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Rickle
+Rickled
 **************************
 .. toctree::
    :maxdepth: 2
    :numbered:
    :caption: Contents:
 
-   rickle
+   rickled
 
 Starting
 =====================
@@ -80,7 +80,7 @@ Then import the tools:
 
 .. code-block:: python
 
-   >> from rickle import Rickle
+   >> from rickled import Rickle
 
    >> config = Rickle('./config.yaml', deep=True, load_lambda=True)
 
@@ -103,6 +103,6 @@ See :ref:`changelog-page` for version history.
 
 Version 0.2.0 (2021-12-06):
 
-* Renamed project to ``Rickle`` to avoid any possible lawsuits from money hungry media execs.
+* Renamed project to ``Rickled`` to avoid any possible lawsuits from money hungry media execs.
 * Pickle Rick was a great name, possibly even considered a parody which is protected under copyright law.
 * But rather safe than sued..

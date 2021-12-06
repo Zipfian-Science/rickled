@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import os
 import json
 from datetime import datetime
-from rickle import __version__ as ver
+from rickled import __version__ as ver
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -34,7 +34,7 @@ else:
 
 
 setup(
-    name="rickle",
+    name="rickled",
     version=version_name,
     description='Tools for pickling Python objects in completely different way',
     long_description_content_type='text/markdown',
@@ -49,7 +49,7 @@ setup(
     packages=find_packages(".", exclude=("tests", "dist", "deploy", "egg-info")),
     include_package_data=True,
     install_requires=pipreq,
-    package_dir={'.': 'rickle'},
+    package_dir={'.': 'rickled'},
     package_data={
         "": ["*.yaml",],
     },

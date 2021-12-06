@@ -1,4 +1,4 @@
-# Rickle
+# Rickled
 ```
                                       ....                                      
                                 &((((((((((((((%,                               
@@ -42,6 +42,14 @@
                       &(//##(//(//((//((((((((((#                               
                        *///(//////////(((((///#                                 
                          *#//////////(///(#/                                    
+   
+ _______      _          __       __               __  
+|_   __ \    (_)        [  |  _  [  |             |  ] 
+  | |__) |   __   .---.  | | / ]  | | .---.   .--.| |  
+  |  __ /   [  | / /'`\] | '' <   | |/ /__\\/ /'`\' |  
+ _| |  \ \_  | | | \__.  | |`\ \  | || \__.,| \__/  |  
+|____| |___|[___]'.___.'[__|  \_][___]'.__.' '.__.;__] 
+                                                       
                                         
 by Zipfian Science                               
 ```
@@ -51,19 +59,19 @@ Rickle is a lightweight tool for loading and writing very small Python objects t
 This is especially useful for creating YAML config files and serialising them as Python objects.
 Works great in interactive Python environments like notebooks.
 
-For documentation, see [docs](http://docs.zipfian.science/rickle/index.html).
+For documentation, see [docs](http://docs.zipfian.science/rickled/index.html).
 
-Source on [GitHub](https://github.com/Zipfian-Science/rickle).
+Source on [GitHub](https://github.com/Zipfian-Science/rickled).
 ## Install
 
 ```shell script
-$ pip install rickle
+$ pip install rickled
 ```
 
 ## And use
 
 ```python
-from rickle import Rickle
+from rickled import Rickle
 ```
 
 Using an example YAML file:
@@ -121,7 +129,7 @@ BASIC:
 Then use Rickle:
 
 ```python
->> from rickle import Rickle
+>> from rickled import Rickle
 
 >> config = Rickle('./config.yaml', deep=True, load_lambda=True)
 
