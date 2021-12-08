@@ -166,11 +166,11 @@ def main(args):
         with open("version.json", "w") as f:
             json.dump(version, f)
 
-        with open(f"{_project_name}/test_rickle.py", "r") as f:
+        with open(f"{_project_name}/__init__.py", "r") as f:
             lines = f.readlines()
             lines[0] = "__version__ = '{major}.{minor}.{patch}'\n".format(**version)
         if lines:
-            with open(f"{_project_name}/test_rickle.py", "w") as f:
+            with open(f"{_project_name}/__init__.py", "w") as f:
                 f.writelines(lines)
 
         print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {version}!{bcolors.ENDC}")
