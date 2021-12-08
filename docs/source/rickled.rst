@@ -17,8 +17,14 @@ Basic Rickle
 Rickle Pick
 ========================
 
-An extended version of BasicRick that allows extra easy loading, including Python functions, lambdas, and OS environmental variables.
+An extended version of BaseRickle that allows extra easy loading, including Python functions, lambdas, and OS environmental variables.
 Contains all the same methods in BasicRick.
 
 .. autoclass:: rickled.__init__.Rickle
+   :members:
+
+Object Rickler
+========================
+
+.. autoclass:: rickled.__init__.ObjectRickler
    :members:

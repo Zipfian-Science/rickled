@@ -45,7 +45,7 @@ setup(
     author_email='about@zipfian.science',
     zip_safe=False,
     # url='https:/zipfian.science',
-    download_url='https://github.com/Zipfian-Science/pickle-rick/archive/v_01.tar.gz',
+    download_url='https://github.com/Zipfian-Science/rickled/archive/v_01.tar.gz',
     packages=find_packages(".", exclude=("tests", "dist", "deploy", "egg-info")),
     include_package_data=True,
     install_requires=pipreq,

@@ -1,4 +1,4 @@
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 import os
 import json
 import copy
@@ -7,6 +7,218 @@ from io import TextIOWrapper
 import yaml
 import requests
 import base64
+import types
+import re
+import inspect
+from functools import partial
+
+class ObjectRickler:
+    """
+    A class to convert Python objects to Rickle objects, deconstruct objects, create objects from Rickle objects.
+
+    Notes:
+        - `tuple` types are deconstructed as lists
+
+    """
+    def __init__(self):
+        self.pat = re.compile(r'^( )*')
+
+    def __destruct(self, value, name=None):
+        if type(value) in (int, float, bool, str):
+            return value
+
+        if isinstance(value, list) or isinstance(value, tuple):
+            new_list = list()
+            for v in value:
+                new_list.append(self.__destruct(v))
+            return new_list
+
+        if isinstance(value, dict):
+            new_dict = dict()
+            for k, v in value.items():
+                new_dict.update({k : self.__destruct(v)})
+            return new_dict
+
+        if type(value) in (bytes, bytearray):
+            return {
+                'type': 'base64',
+                'load': str(base64.b64encode(value))
+            }
+
+        if inspect.ismethod(value) or inspect.isfunction(value):
+            signature = inspect.signature(value)
+            args = dict()
+            for k, v in dict(signature.parameters).items():
+                if repr(v.default) == "<class 'inspect._empty'>":
+                    default = None
+                else:
+                    default = v.default
+                args.update({
+                    k: default
+                })
+
+            if len(args) == 0:
+                args = None
+
+            source_lines = inspect.getsourcelines(value)[0]
+            match = self.pat.match(source_lines[0])
+            s = match.group(0)
+            length = len(s)
+
+            source = source_lines[0][length:]
+            if inspect.ismethod(value):
+                source = source.replace('(self,', '(')
+
+            for s in source_lines[1:]:
+                source = f'{source}{s[length:]}'
+
+
+            return {
+                'type': 'function',
+                'name': name,
+                'load': source,
+                'args': args
+            }
+
+        return self.deconstruct(value)
+
+    def to_rickle(self, obj, deep : bool = False, load_lambda : bool = False):
+        """
+        Transforms a Python object into a Rickle.
+
+        Args:
+            obj: Any initialised Python object.
+            deep (bool): Internalize dictionary structures in lists (default = False).
+            load_lambda (bool): Load python code as code or strings (default = False).
+
+        Returns:
+            Rickle: A constructed Rickle object.
+        """
+        d = self.deconstruct(obj)
+        return Rickle(d, deep=deep, load_lambda=load_lambda)
+
+    def from_rickle(self, rickle, cls):
+        """
+        Takes a Rickle and initialises the class and updates attributes with the ones from the Rickle.
+
+        Args:
+            rickle (Rickle): Rickle to create from.
+            cls (type): The class to initialise from.
+
+        Returns:
+            object: Initiliased `cls`.
+        """
+        obj = cls()
+
+        for name, value in rickle.dict().items():
+            if isinstance(value, dict) and 'type' in value.keys():
+                if value['type'] == 'function':
+                    _name = value.get('name', name)
+                    _load = value['load']
+                    _args = value.get('args', None)
+                    _import = value.get('import', None)
+                    _includes_self_reference = value.get('includes_self_reference', False)
+                    f = rickle.add_function(name=_name, load=_load, args=_args, imports=_import,
+                                            return_function=True, is_method=True, includes_self_reference=_includes_self_reference)
+
+                    obj.__dict__.update({_name: partial(f, obj)})
+                continue
+            obj.__dict__.update({name:value})
+
+        return obj
+
+    def deconstruct(self, obj, include_imports : bool = False, include_class_source : bool = False):
+        """
+        Takes (almost) any Python object and deconstructs it into a dict.
+
+        Args:
+            obj: Any object.
+            include_imports (bool): Add a list of modules to import as is imported in current env (default = False).
+            include_class_source (bool): Add the source of the object's class (default = False).
+
+        Returns:
+            dict: Deconstructed object in typical Rickle dictionary format.
+        """
+        d = dict()
+
+        if include_class_source:
+            source_lines = inspect.getsource(obj.__class__)
+            d['class_source'] = {
+                'type': 'class_source',
+                'load' : source_lines
+            }
+
+        if include_imports:
+            imports = list()
+
+            for name, val in globals().items():
+                if isinstance(val, types.ModuleType):
+                    imports.append(val.__name__)
+
+            if len(imports) > 0:
+                d['python_modules'] = {
+                    'type' : 'module_import',
+                    'import' : imports
+                }
+
+        for name in dir(obj):
+            if name.startswith('__'):
+                continue
+            value = getattr(obj, name)
+
+            d[name] = self.__destruct(value, name)
+
+        return d
+
+    def to_yaml_string(self, obj):
+        """
+        Dumps the object to string.
+
+        Args:
+            obj: Any object.
+
+        Returns:
+            str: Dumped object.
+        """
+        d = self.deconstruct(obj)
+        return yaml.safe_dump(d, None)
+
+    def to_yaml_file(self, file_path, obj):
+        """
+        Dumps the object to file.
+
+        Args:
+            file_path: Filename.
+            obj: Any object.
+        """
+        d = self.deconstruct(obj)
+        with open(file_path, 'w', encoding='utf-8') as fs:
+            yaml.safe_dump(d, fs)
+
+    def to_json_string(self, obj):
+        """
+        Dumps the object to string.
+
+        Args:
+            obj: Any object.
+
+        Returns:
+            str: Dumped object.
+        """
+        d = self.deconstruct(obj)
+        return json.dumps(d)
+
+    def to_json_file(self, file_path, obj):
+        """
+        Dumps the object to file.
+
+        Args:
+            file_path: Filename.
+            obj: Any object.
+        """
+        d = self.deconstruct(obj)
+        with open(file_path, 'w', encoding='utf-8') as fs:
+            json.dump(d, fs)
 
 class BaseRickle:
     """
@@ -337,6 +549,10 @@ class Rickle(BaseRickle):
                     self.add_base64(name=k,
                                           load=v['load'])
                     continue
+                if 'type' in v.keys() and v['type'] == 'module_import':
+                    self.add_module_import(name=k,
+                                          imports=v['import'])
+                    continue
                 if 'type' in v.keys() and v['type'] == 'from_file':
                     self.add_from_file(name=k,
                                        file_path=v['file_path'],
@@ -381,17 +597,31 @@ class Rickle(BaseRickle):
                     else:
                         self.__dict__.update({k: v})
                     continue
+                if 'type' in v.keys() and v['type'] == 'class_definition':
+                    name = v.get('name', k)
+                    attributes = v['attributes']
+                    imports = v.get('import', None)
+
+                    if init_args and init_args['load_lambda']:
+                        self.add_class_definition(name=name,
+                                          attributes=attributes,
+                                          imports=imports)
+                    else:
+                        self.__dict__.update({k: v})
+                    continue
                 if 'type' in v.keys() and v['type'] == 'function':
                     name = v.get('name', k)
                     load = v['load']
                     args_dict = v.get('args', None)
                     imports = v.get('import', None)
+                    includes_self_reference = v.get('includes_self_reference', False)
 
                     if init_args and init_args['load_lambda']:
                         self.add_function(name=name,
                                           load=load,
                                           args=args_dict,
-                                          imports=imports)
+                                          imports=imports,
+                                          includes_self_reference=includes_self_reference)
                     else:
                         self.__dict__.update({k: v})
                     continue
@@ -434,7 +664,7 @@ class Rickle(BaseRickle):
                 continue
             if serialised and key in self.__meta_info.keys():
                 d[key] = self.__meta_info[key]
-            elif key in self.__meta_info.keys() and self.__meta_info[key]['type'] in ['function', 'lambda']:
+            elif key in self.__meta_info.keys() and self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition']:
                 d[key] = self.__meta_info[key]
             elif isinstance(value, BaseRickle):
                 d[key] = value.dict(serialised=serialised)
@@ -450,7 +680,27 @@ class Rickle(BaseRickle):
                 d[key] = value
         return d
 
-    def add_function(self, name, load, args : dict = None, imports : list = None ):
+    def add_module_import(self, name, imports : list):
+        """
+        Add global Python module imports.
+
+        Args:
+            name: Name of import list.
+            imports (list): List of strings of Python module names.
+
+        """
+        for i in imports:
+            if 'import' in i:
+                exec(i, globals())
+            else:
+                exec('import {}'.format(i), globals())
+
+        self.__meta_info[name] = {'type' : 'module_import', 'import' : imports}
+
+    def add_function(self, name, load, args : dict = None, imports : list = None,
+                     return_function : bool = False,
+                     is_method : bool = False,
+                     includes_self_reference : bool = False):
         """
         Add a new function to Rick.
 
@@ -459,6 +709,9 @@ class Rickle(BaseRickle):
             load (str): Python code containing the function.
             args (dict): Key-value pairs of arguments with default values (default = None).
             imports (list): Python modules to import (default = None).
+            return_function (bool): Add to rickle or return the function (default = False).
+            is_method (bool): Add `self` param (default = False).
+            includes_self_reference (bool): Indicates whether class method source includes `self` (default = False).
 
         Examples:
             Basic example for adding to a PickleRick:
@@ -485,10 +738,18 @@ class Rickle(BaseRickle):
                     exec(i, globals())
                 else:
                     exec('import {}'.format(i), globals())
-        exec(load, globals())
+        if is_method and not includes_self_reference:
+            _load = load.replace(f'def {name}(', f'def {name}(self,')
+            exec(_load, globals())
+        else:
+            exec(load, globals())
         if args and isinstance(args, dict):
-            arg_list = list()
-            arg_list_defaults = list()
+            if is_method:
+                arg_list = ['self=self']
+                arg_list_defaults = ['self=self']
+            else:
+                arg_list = list()
+                arg_list_defaults = list()
             for arg in args.keys():
                 default_value = args[arg]
                 if isinstance(default_value, str):
@@ -503,10 +764,15 @@ class Rickle(BaseRickle):
                 name=name)
         else:
             func_string = 'lambda: {name}()'.format(name=name)
-        self.__dict__.update({name: eval(func_string)})
-        self.__meta_info[name] = {'type' : 'function', 'name' : name, 'args' : args, 'import' : imports, 'load' : load}
 
-    def add_lambda(self, name, load, imports : list = None ):
+        if return_function:
+            return eval(func_string)
+
+        self.__dict__.update({name: eval(func_string)})
+        self.__meta_info[name] = {'type' : 'function', 'name' : name, 'args' : args, 'import' : imports,
+                                  'load' : load, 'includes_self_reference' : includes_self_reference}
+
+    def add_lambda(self, name, load, imports : list = None, return_lambda : bool = False, is_method : bool = False):
         """
         Add a Python lambda to Rick.
 
@@ -514,6 +780,8 @@ class Rickle(BaseRickle):
             name (str): Property name.
             load (str): Python code containing the lambda.
             imports (list): Python modules to import (default = None).
+            return_lambda (bool): Add to rickle or return the lambda (default = False).
+            is_method (bool): Add `self` param (default = False).
 
         Examples:
             Basic example for adding to a PickleRick:
@@ -533,7 +801,18 @@ class Rickle(BaseRickle):
                     exec(i, globals())
                 else:
                     exec('import {}'.format(i), globals())
-        self.__dict__.update({name: eval(load)})
+
+        if load.startswith('lambda'):
+            _load = load
+        elif is_method:
+                _load = f'lambda self: {load}'
+        else:
+            _load = f'lambda: {load}'
+
+        if return_lambda:
+            return eval(_load)
+
+        self.__dict__.update({name: eval(_load)})
         self.__meta_info[name] = {'type' : 'lambda', 'import' : imports, 'load' : load}
 
     def add_env_variable(self, name, load, default = None):
@@ -684,6 +963,47 @@ class Rickle(BaseRickle):
                                   'params': params,
                                   'expected_http_status': expected_http_status
                                   }
+
+    def add_class_definition(self, name, attributes, imports : list = None ):
+        """
+        Adds a class definition, with attributes such as functions and lambdas.
+
+        Args:
+            name (str): Property name.
+            attributes (dict): Standard items or Rickle function definitions.
+            imports (list): Python modules to import (default = None).
+
+        """
+        if imports and isinstance(imports, list):
+            for i in imports:
+                if 'import' in i:
+                    exec(i, globals())
+                else:
+                    exec('import {}'.format(i), globals())
+
+        _attributes = dict()
+        for k,v in attributes.items():
+            if isinstance(v, dict):
+                if 'type' in v.keys() and v['type'] == 'function':
+                    _name = v.get('name', k)
+                    load = v['load']
+                    args_dict = v.get('args', None)
+                    imports = v.get('import', None)
+                    includes_self_reference = v.get('includes_self_reference', False)
+                    _attributes[_name] = self.add_function(name=_name,load=load,args=args_dict,imports=imports,
+                                                           return_function=True, is_method=True, includes_self_reference=includes_self_reference)
+                    continue
+                if 'type' in v.keys() and v['type'] == 'lambda':
+                    load = v['load']
+                    imports = v.get('import', None)
+                    _attributes[k] = self.add_lambda(name=k, load=load, imports=imports, return_lambda=True, is_method=True)
+                    continue
+            _attributes[k] = v
+
+
+        self.__dict__.update({name: type(name,(), _attributes)})
+
+        self.__meta_info[name] = {'type' : 'class_definition', 'name' : name, 'import' : imports, 'attributes' : attributes}
 
     def add_api_json_call(self, name,
                           url : str,

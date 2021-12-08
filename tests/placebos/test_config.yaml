@@ -2,6 +2,46 @@ MYSQL:
   conn: 127.0.0.1
   usr: test
 
+some_modules:
+  type: module_import
+  import:
+    - "math"
+
+TesterClass:
+  name: TesterClass
+  type: class_definition
+  attributes:
+    dictionary:
+      a: a
+      b: b
+    list_type:
+      - 1
+      - 2
+      - 3
+      - 4
+    some_value: 3.14
+    math_e:
+      type: function
+      name: math_e
+      includes_self_reference: false
+      args:
+        x: 7
+        y: 2
+      import:
+        - "math"
+      load: >
+        def math_e(x, y):
+          print('CLASS START >>')
+          print('x, y:', x,y)
+          print(self.__class__.__name__)
+    datenow:
+      type: lambda
+      import:
+        - "from datetime import datetime as dd"
+      load: "lambda self: print(dd.utcnow().strftime('%Y-%m-%d'))"
+
+
+
 skilltax:
   type: api_json
   url: https://skilltax-api-nl-rrlwpuonnq-ew.a.run.app/
@@ -56,28 +96,27 @@ BASICS:
     type: lambda
     import:
       - "from datetime import datetime as dd"
-    load: "lambda: print(dd.utcnow().strftime('%Y-%m-%d'))"
-  math_e:
+    load: "print(dd.utcnow().strftime('%Y-%m-%d'))"
+  outer_math_e:
     type: function
-    name: test
+    name: outer_math_e
     args:
-      x: 7
+      x: 42
       y: null
-      s: hello world
+      s: outer function
       any:
         - 1
-        - hello
+        - 2
     import:
       - "math"
     load: >
-      def test(x, y, s, any):
+      def outer_math_e(x, y, s, any):
+        print('START >>')
         print(math.e)
         iii = 111
         print(iii)
-        print(x,s)
+        print('x, y:', x,s)
         if y:
           print(type(y))
-        else:
-          print(y)
         for i in any:
           print(i)
