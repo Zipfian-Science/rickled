@@ -22,7 +22,7 @@ To install:
 
 .. code-block:: bash
 
-   pip install rickle
+   pip install rickled
 
 Create a YAML file, call it "config.yaml":
 
@@ -101,8 +101,8 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.2.0 (2021-12-06):
+Version 0.2.1 (2021-12-08):
 
-* Renamed project to ``Rickled`` to avoid any possible lawsuits from money hungry media execs.
-* Pickle Rick was a great name, possibly even considered a parody which is protected under copyright law.
-* But rather safe than sued..
+* Added ``add_class_definition`` to define classes.
+* Created a new class, ``ObjectRickler``, to dump (almost) any object or convert to Rickle.
+* Added ``add_module_import`` to Rickle, with functionality to add global Python module imports.

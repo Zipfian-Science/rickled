@@ -11,6 +11,13 @@ Changelog
 History
 ==========================
 
+Version 0.2.1 (2021-12-08)
+--------------------------
+
+* Added ``add_class_definition`` to define classes.
+* Created a new class, ``ObjectRickler``, to dump (almost) any object or convert to Rickle.
+* Added ``add_module_import`` to Rickle, with functionality to add global Python module imports.
+
 Version 0.2.0 (2021-12-06)
 --------------------------
 
