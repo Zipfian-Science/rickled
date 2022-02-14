@@ -1,4 +1,4 @@
-__version__ = '0.2.2'
+__version__ = '0.2.3'
 import os
 import json
 import copy
@@ -286,6 +286,7 @@ class BaseRickle:
         except Exception as exc:
             print("Tried JSON: {}".format(exc))
 
+
         raise ValueError('Base object could not be internalized, type {} not handled'.format(type(base)))
 
     def __repr__(self):
@@ -316,7 +317,7 @@ class BaseRickle:
         current_loop = 0
         if self.__n < len(self.__dict__):
             name = list(self.__dict__.keys())[self.__n]
-            while (str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n')) and (current_loop < 9):
+            while self.__eval_name(name) and current_loop < 9:
                 self.__n += 1
                 current_loop += 1
                 if self.__n < len(self.__dict__):
@@ -331,6 +332,12 @@ class BaseRickle:
                 raise StopIteration
         else:
             raise StopIteration
+
+    def __eval_name(self, name):
+        if str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n'):
+            return True
+        else:
+            return False
 
     def _recursive_search(self, dictionary, key):
         if key in dictionary:
@@ -358,23 +365,27 @@ class BaseRickle:
             tuple: str, object.
         """
         for key in self.__dict__.keys():
-            if str(key).__contains__(self.__class__.__name__) or str(key).endswith('__n'):
+            if self.__eval_name(key):
                 continue
             yield key, self.__dict__[key]
 
-    def get(self, key : str, default=None):
+    def get(self, key : str, default=None, do_recursive : bool = False):
         """
-        Employs a recursive search of structure and returns the first found key-value pair.
+        Acts as a regular get from a dictionary but can employ a recursive search of structure and returns the first found key-value pair.
 
         Args:
             key (str): key string being searched.
             default (any): Return value if nothing is found.
+            do_recursive (bool): Search recursively until first match is found (default = False).
 
         Returns:
             obj: value found, or None for nothing found.
         """
         try:
-            value = self._recursive_search(self.__dict__, key)
+            if do_recursive:
+                value = self._recursive_search(self.__dict__, key)
+            else:
+                value = self.__dict__.get(key, default)
             return value
         except StopIteration:
             return default
@@ -387,7 +398,7 @@ class BaseRickle:
             list: of objects.
         """
         keys = list(self.__dict__.keys())
-        objects = [self.__dict__[k] for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__n')]
+        objects = [self.__dict__[k] for k in keys if not self.__eval_name(k)]
 
         return objects
 
@@ -399,7 +410,7 @@ class BaseRickle:
             list: of keys.
         """
         keys = list(self.__dict__.keys())
-        keys = [k for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__n')]
+        keys = [k for k in keys if not self.__eval_name(k)]
 
         return keys
 
@@ -418,7 +429,7 @@ class BaseRickle:
         """
         d = dict()
         for key, value in self.__dict__.items():
-            if str(key).__contains__(self.__class__.__name__) or str(key).endswith('__meta_info'):
+            if self.__eval_name(key) or str(key).endswith('__meta_info'):
                 continue
             if isinstance(value, BaseRickle) or isinstance(value, Rickle):
                 d[key] = value.dict(serialised=serialised)
@@ -645,6 +656,12 @@ class Rickle(BaseRickle):
         self.__init_args = init_args
         super().__init__(base, **init_args)
 
+    def __eval_name(self, name):
+        if str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n'):
+            return True
+        else:
+            return False
+
     def dict(self, serialised : bool = False):
         """
         Deconstructs the whole object into a Python dictionary.
@@ -660,7 +677,7 @@ class Rickle(BaseRickle):
         """
         d = dict()
         for key, value in self.__dict__.items():
-            if str(key).__contains__(self.__class__.__name__):
+            if self.__eval_name(key):
                 continue
             if serialised and key in self.__meta_info.keys():
                 d[key] = self.__meta_info[key]

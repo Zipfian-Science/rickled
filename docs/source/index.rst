@@ -101,8 +101,6 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.2.1 (2021-12-08):
+Version 0.2.2 (2022-02-14):
 
-* Added ``add_class_definition`` to define classes.
-* Created a new class, ``ObjectRickler``, to dump (almost) any object or convert to Rickle.
-* Added ``add_module_import`` to Rickle, with functionality to add global Python module imports.
+* Added ``do_recursive`` param to ``.get`` to optionally do a deeper recursive search.
