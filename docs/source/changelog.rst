@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.2.2 (2022-02-14)
+--------------------------
+
+* Added ``do_recursive`` param to ``.get`` to optionally do a deeper recursive search.
+* Do you agree that valentine's day is bullshit? Because my gf doesn't.
+
 Version 0.2.1 (2021-12-08)
 --------------------------
 
