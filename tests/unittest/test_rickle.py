@@ -97,13 +97,25 @@ class TestPickles(unittest.TestCase):
 
         value = test_conf_yaml.get('one')
 
+        self.assertIsNone(value)
+
+        value = test_conf_yaml.get('one', 'VALUE')
+
+        self.assertEquals(value, 'VALUE')
+
+        value = test_conf_yaml.get('one', do_recursive=True)
+
         self.assertEquals(value, 'value')
 
         value = test_conf_yaml.get('ONE')
 
-        self.assertEquals(value, None)
+        self.assertIsNone(value)
 
-        value = test_conf_yaml.get('USERNAME')
+        value = test_conf_yaml.get('ONE', 'default_one', do_recursive=True)
+
+        self.assertEquals(value, 'default_one')
+
+        value = test_conf_yaml.get('USERNAME', do_recursive=True)
 
         self.assertIsInstance(value, BaseRickle)
         self.assertEquals(value.type, 'env')
