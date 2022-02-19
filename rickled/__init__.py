@@ -11,6 +11,7 @@ import types
 import re
 import inspect
 from functools import partial
+import uuid
 
 class ObjectRickler:
     """
@@ -755,11 +756,13 @@ class Rickle(BaseRickle):
                     exec(i, globals())
                 else:
                     exec('import {}'.format(i), globals())
+        suffix: str = uuid.uuid4().hex
         if is_method and not includes_self_reference:
-            _load = load.replace(f'def {name}(', f'def {name}(self,')
+            _load = load.replace(f'def {name}(', f'def {name}{suffix}(self,')
             exec(_load, globals())
         else:
-            exec(load, globals())
+            _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
+            exec(_load, globals())
         if args and isinstance(args, dict):
             if is_method:
                 arg_list = ['self=self']
@@ -778,7 +781,7 @@ class Rickle(BaseRickle):
             func_string = 'lambda {args_default}: {name}({args})'.format(
                 args_default=','.join(arg_list_defaults),
                 args=','.join(arg_list),
-                name=name)
+                name=name+suffix)
         else:
             func_string = 'lambda: {name}()'.format(name=name)
 
