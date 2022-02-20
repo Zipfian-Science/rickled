@@ -783,7 +783,10 @@ class Rickle(BaseRickle):
                 args=','.join(arg_list),
                 name=name+suffix)
         else:
-            func_string = 'lambda: {name}()'.format(name=name)
+            if is_method:
+                func_string = 'lambda self: {name}(self)'.format(name=name+suffix)
+            else:
+                func_string = 'lambda: {name}()'.format(name=name+suffix)
 
         if return_function:
             return eval(func_string)
