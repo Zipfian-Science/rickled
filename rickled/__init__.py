@@ -2,7 +2,7 @@ __version__ = '0.2.3'
 import os
 import json
 import copy
-from typing import Union
+from typing import Union, TypeVar
 from io import TextIOWrapper
 import yaml
 import requests
@@ -98,7 +98,9 @@ class ObjectRickler:
         d = self.deconstruct(obj)
         return Rickle(d, deep=deep, load_lambda=load_lambda)
 
-    def from_rickle(self, rickle, cls):
+    T = TypeVar('T')
+
+    def from_rickle(self, rickle, cls: T, **args) -> T:
         """
         Takes a Rickle and initialises the class and updates attributes with the ones from the Rickle.
 
@@ -109,10 +111,17 @@ class ObjectRickler:
         Returns:
             object: Initiliased `cls`.
         """
-        obj = cls()
+        if len(args) > 0:
+            obj = cls(**args)
+        else:
+            obj = cls()
+
+        # print('the rickle', rickle)
+        # print('the rickle dict', rickle.dict())
 
         for name, value in rickle.dict().items():
             if isinstance(value, dict) and 'type' in value.keys():
+                # print(name, value)
                 if value['type'] == 'function':
                     _name = value.get('name', name)
                     _load = value['load']
@@ -123,6 +132,13 @@ class ObjectRickler:
                                             return_function=True, is_method=True, includes_self_reference=_includes_self_reference)
 
                     obj.__dict__.update({_name: partial(f, obj)})
+                if value['type'] == 'action':
+                    # print('loading action', value)
+                    from guidance_strategies.action import ConditionalGuidanceAction
+                    rick = Rickle(value)
+                    # print('action rick', rick)
+                    action = self.from_rickle(rick, ConditionalGuidanceAction, strategy=obj, condition=None)
+                    obj.__dict__.update({name: action})
                 continue
             obj.__dict__.update({name:value})
 
@@ -234,6 +250,7 @@ class BaseRickle:
     """
     def _iternalize(self, dictionary : dict, deep : bool, **init_args):
         for k, v in dictionary.items():
+            print(k,v)
             if isinstance(v, dict):
                 self.__dict__.update({k:BaseRickle(v, deep, **init_args)})
                 continue
@@ -248,6 +265,7 @@ class BaseRickle:
                 continue
 
             self.__dict__.update({k:v})
+        # print('internal dict complete', self.__dict__)
 
     def __init__(self, base : Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, **init_args):
         stringed = ''
@@ -263,7 +281,12 @@ class BaseRickle:
             for file in base:
                 with open(file, 'r') as f:
                     stringed = f'{stringed}\n{f.read()}'
+        elif os.path.isfile(init_args['path'] + base):
+            # print('loading file', init_args['path'] + base)
+            with open(init_args['path'] + base, 'r') as f:
+                stringed = f.read()
         elif os.path.isfile(base):
+            # print('loading file', base)
             with open(base, 'r') as f:
                 stringed = f.read()
         elif isinstance(base, str):
@@ -274,9 +297,12 @@ class BaseRickle:
                 _k = f'_|{k}|_'
                 stringed = stringed.replace(_k,json.dumps(v))
 
+        # print('read the following string: ', stringed)
         try:
             dict_data = yaml.safe_load(stringed)
+            # print('got dict', dict_data)
             self._iternalize(dict_data, deep, **init_args)
+            # print('done rickling!\n---------------------------')
             return
         except Exception as exc:
             print("Tried YAML: {}".format(exc))
@@ -651,6 +677,7 @@ class Rickle(BaseRickle):
             self.__dict__.update({k: v})
 
     def __init__(self, base: Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, load_lambda : bool = False, **init_args):
+        # print('starting rickle for base', base)
         self.__meta_info = dict()
         init_args['load_lambda'] = load_lambda
         init_args['deep'] = deep
@@ -934,10 +961,14 @@ class Rickle(BaseRickle):
             encoding (str): If text, encoding can be specified (default = 'utf-8').
         """
 
+        # print('adding from file')
+
         if load_as_rick and not is_binary:
+            # print('correct condition')
             args = copy.copy(self.__init_args)
             args['load_lambda'] = load_lambda
             args['deep'] = deep
+            # print(args)
             self.__dict__.update({name: Rickle(file_path, **args)})
         else:
             if is_binary:
