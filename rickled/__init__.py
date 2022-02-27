@@ -281,7 +281,7 @@ class BaseRickle:
             for file in base:
                 with open(file, 'r') as f:
                     stringed = f'{stringed}\n{f.read()}'
-        elif os.path.isfile(os.path.join(init_args['path'], base)):
+        elif 'path' in init_args and os.path.isfile(os.path.join(init_args['path'], base)):
             with open(os.path.join(init_args['path'], base), 'r') as f:
                 stringed = f.read()
         elif os.path.isfile(base):
