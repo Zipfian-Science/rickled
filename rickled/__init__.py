@@ -1,8 +1,8 @@
-__version__ = '0.2.3'
+__version__ = '0.2.4'
 import os
 import json
 import copy
-from typing import Union
+from typing import Union, TypeVar
 from io import TextIOWrapper
 import yaml
 import requests
@@ -11,6 +11,7 @@ import types
 import re
 import inspect
 from functools import partial
+import uuid
 
 class ObjectRickler:
     """
@@ -97,7 +98,9 @@ class ObjectRickler:
         d = self.deconstruct(obj)
         return Rickle(d, deep=deep, load_lambda=load_lambda)
 
-    def from_rickle(self, rickle, cls):
+    T = TypeVar('T')
+
+    def from_rickle(self, rickle, cls: T, **args) -> T:
         """
         Takes a Rickle and initialises the class and updates attributes with the ones from the Rickle.
 
@@ -108,7 +111,10 @@ class ObjectRickler:
         Returns:
             object: Initiliased `cls`.
         """
-        obj = cls()
+        if len(args) > 0:
+            obj = cls(**args)
+        else:
+            obj = cls()
 
         for name, value in rickle.dict().items():
             if isinstance(value, dict) and 'type' in value.keys():
@@ -263,6 +269,7 @@ class BaseRickle:
                 with open(file, 'r') as f:
                     stringed = f'{stringed}\n{f.read()}'
         elif os.path.isfile(base):
+            # print('loading file', base)
             with open(base, 'r') as f:
                 stringed = f.read()
         elif isinstance(base, str):
@@ -755,11 +762,13 @@ class Rickle(BaseRickle):
                     exec(i, globals())
                 else:
                     exec('import {}'.format(i), globals())
+        suffix: str = uuid.uuid4().hex
         if is_method and not includes_self_reference:
-            _load = load.replace(f'def {name}(', f'def {name}(self,')
+            _load = load.replace(f'def {name}(', f'def {name}{suffix}(self,')
             exec(_load, globals())
         else:
-            exec(load, globals())
+            _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
+            exec(_load, globals())
         if args and isinstance(args, dict):
             if is_method:
                 arg_list = ['self=self']
@@ -778,9 +787,12 @@ class Rickle(BaseRickle):
             func_string = 'lambda {args_default}: {name}({args})'.format(
                 args_default=','.join(arg_list_defaults),
                 args=','.join(arg_list),
-                name=name)
+                name=name+suffix)
         else:
-            func_string = 'lambda: {name}()'.format(name=name)
+            if is_method:
+                func_string = 'lambda self: {name}(self)'.format(name=name+suffix)
+            else:
+                func_string = 'lambda: {name}()'.format(name=name+suffix)
 
         if return_function:
             return eval(func_string)

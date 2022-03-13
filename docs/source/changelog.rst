@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 0.2.3 (2022-03-13)
+--------------------------
+
+* Merged but cleaned up contributions by Fabian.
+
 Version 0.2.2 (2022-02-14)
 --------------------------
 
