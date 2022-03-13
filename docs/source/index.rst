@@ -101,6 +101,12 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.2.2 (2022-02-14):
+Version 0.2.3 (2022-03-13):
 
-* Added ``do_recursive`` param to ``.get`` to optionally do a deeper recursive search.
+* Merged but cleaned up contributions by Fabian.
+
+
+Contributors
+---------------------
+
+* Fabian Sperrle
