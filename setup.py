@@ -23,15 +23,6 @@ if os.path.isfile(long_description_file):
 else:
     long_description = "It's Rickle Pick!"
 
-if os.path.isfile(os.path.join(here, 'requirements.txt')):
-    with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
-        pipreq = f.readlines()
-        # remove pip flag
-        if '-i http' in pipreq[0]:
-            pipreq.pop(0)
-else:
-    pipreq = ['pyyaml']
-
 
 setup(
     name="rickled",
@@ -48,7 +39,10 @@ setup(
     download_url='https://github.com/Zipfian-Science/rickled/archive/v_01.tar.gz',
     packages=find_packages(".", exclude=("tests", "dist", "deploy", "egg-info")),
     include_package_data=True,
-    install_requires=pipreq,
+    install_requires=[
+        'pyyaml',
+        'requests'
+    ],
     package_dir={'.': 'rickled'},
     package_data={
         "": ["*.yaml",],
