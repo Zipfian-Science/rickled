@@ -340,6 +340,55 @@ class BaseRickle:
         else:
             raise StopIteration
 
+    def __call__(self, path : str):
+        """
+        Rickle objects can be queried via a path string.
+
+        Notes:
+            '/' => root
+            '/name' => member
+            '/path/to/name?param=1' => lambda/function
+
+        Args:
+            path (str): The path as a string, down to the last mentioned node.
+
+        Returns:
+            Any: Value of node of function.
+        """
+
+        if not path.startswith('/'):
+            raise ValueError('Missing root path /')
+
+        path_list = path.split('/')
+
+        current_node = self
+
+        for node_name in path_list[1:]:
+            if '?' in node_name:
+                node_name = node_name.split('?')[0]
+            current_node = current_node.get(node_name)
+            if current_node is None:
+                raise NameError(f'The path {path} could not be traversed')
+
+        if '?' in path_list[-1]:
+            args_string = path_list[-1].split('?')[-1]
+            args = {a.split('=')[0] : a.split('=')[1] for a in args_string.split('&')}
+
+            try:
+                return current_node(**args)
+            except:
+                raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
+
+        if callable(current_node):
+            try:
+                return current_node()
+            except:
+                raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
+
+        else:
+            return current_node
+
+
     def __eval_name(self, name):
         if str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n'):
             return True

@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 0.2.4 (2022-08-15)
+--------------------------
+
+* Added ability to get nodes by using Unix style paths to get to nodes.
+
 Version 0.2.3 (2022-03-13)
 --------------------------
 
