@@ -11,10 +11,12 @@ Changelog
 History
 ==========================
 
-Version 0.2.4 (2022-08-15)
+Version 0.2.4 (2022-08-20)
 --------------------------
 
 * Added ability to get nodes by using Unix style paths to get to nodes.
+* Added a safe load environment variable "RICKLE_SAFE_LOAD" to override all lambda loads (as a safety measure).
+* Added ``search_path`` to search for a key in the Rickle.
 
 Version 0.2.3 (2022-03-13)
 --------------------------

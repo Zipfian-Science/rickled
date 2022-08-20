@@ -11,6 +11,7 @@ Rickled
    :caption: Contents:
 
    rickled
+   examples
 
 Starting
 =====================

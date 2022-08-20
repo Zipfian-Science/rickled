@@ -4,6 +4,69 @@ from rickled import BaseRickle, Rickle
 
 class TestAdvanced(unittest.TestCase):
 
+    def test_load_lambda_overload(self):
+        yaml = """
+main:
+    file:
+        type: from_file
+        file_path: './tests/placebos/test_security.yaml'
+        load_as_rick: true
+        deep: true
+        load_lambda: false
+        """
+
+        # Unsafe loading
+        test_conf_yaml_unsafe = Rickle(yaml, load_lambda=False)
+
+        self.assertTrue(callable(test_conf_yaml_unsafe.main.file.root.link_to_file.bad_function))
+
+        # Set env var and safe load
+        os.environ["RICKLE_SAFE_LOAD"] = "1"
+
+        test_conf_yaml_safe = Rickle(yaml, load_lambda=False)
+
+        self.assertIsInstance(test_conf_yaml_safe.main.file.root.link_to_file.bad_function, dict)
+
+        # Still safe due to env
+        test_conf_yaml = Rickle('./tests/placebos/test_malicious.yaml', load_lambda=True)
+
+        self.assertIsInstance(test_conf_yaml.bad_function, dict)
+
+        # Set unsafe again
+        del os.environ['RICKLE_SAFE_LOAD']
+
+        test_conf_yaml = Rickle('./tests/placebos/test_malicious.yaml', load_lambda=True)
+
+        self.assertTrue(callable(test_conf_yaml.bad_function))
+
+    def test_search_path(self):
+        yaml = """
+path:
+    to:
+        second: 1
+    and:
+        second: 1
+    another: 0
+route:
+    second: 1
+        """
+
+        test_rickle = BaseRickle(yaml)
+
+        list_of_paths = test_rickle.search_path(key='second')
+        expected = ['/path/to/second', '/path/and/second', '/route/second']
+
+        self.assertIsInstance(list_of_paths, list)
+        self.assertListEqual(list_of_paths, expected)
+
+        list_of_paths = test_rickle.search_path(key='third')
+
+        self.assertIsInstance(list_of_paths, list)
+        self.assertEqual(len(list_of_paths), 0)
+
+        for path in expected:
+            self.assertEqual(test_rickle(path=path), 1)
+
     def test_path_string(self):
 
         yaml = """

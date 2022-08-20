@@ -26,5 +26,7 @@ Contains all the same methods in BasicRick.
 Object Rickler
 ========================
 
+The ObjectRickler attempts to convert Python objects to Rickle objects for YAML/JSON export, and then reconstructing the YAML/JSON files to the Python objects.
+
 .. autoclass:: rickled.__init__.ObjectRickler
    :members:

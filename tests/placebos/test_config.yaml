@@ -42,10 +42,10 @@ TesterClass:
 
 
 
-skilltax:
+crypt_exchanges:
   type: api_json
-  url: https://skilltax-api-nl-rrlwpuonnq-ew.a.run.app/
-  expected_http_status: 500
+  url: https://cryptingup.com/api/exchanges
+  expected_http_status: 200
 
 some_field: _|arg_name|_
 

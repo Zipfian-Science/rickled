@@ -340,6 +340,47 @@ class BaseRickle:
         else:
             raise StopIteration
 
+    def __search_path(self, key, dictionary=None, parent_path=None):
+        if dictionary is None:
+            dictionary = self.__dict__
+        if parent_path is None:
+            parent_path = ''
+        if key in dictionary:
+            return [f'{parent_path}/{key}']
+        values = list()
+        for k, v in dictionary.items():
+            if isinstance(v, BaseRickle):
+                try:
+                    value = self.__search_path(key=key, dictionary=v.__dict__,  parent_path=f'{parent_path}/{k}')
+                    values.extend(value)
+                except StopIteration:
+                    continue
+            if isinstance(v, dict):
+                try:
+                    value = self.__search_path(key=key, dictionary=v,  parent_path=f'{parent_path}/{k}')
+                    values.extend(value)
+                except StopIteration:
+                    continue
+        if len(values) > 0:
+            return values
+        raise StopIteration
+
+    def search_path(self, key : str) -> list:
+        """
+        Search the current Rickle for all paths that match the search key. Returns empty list if nothing is found.
+
+        Args:
+            key (str): The key to search.
+
+        Returns:
+            list: all paths found.
+        """
+        try:
+            return self.__search_path(key=key)
+        except StopIteration:
+            return list()
+
+
     def __call__(self, path : str):
         """
         Rickle objects can be queried via a path string.
@@ -358,6 +399,8 @@ class BaseRickle:
 
         if not path.startswith('/'):
             raise ValueError('Missing root path /')
+        if path == '/':
+            return self
 
         path_list = path.split('/')
 
@@ -657,7 +700,8 @@ class Rickle(BaseRickle):
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
                     imports = v.get('import', None)
-                    if init_args and init_args['load_lambda']:
+                    safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
+                    if init_args and init_args['load_lambda'] and safe_load is None:
                         self.add_lambda(name=k,
                                         load=load,
                                         imports=imports)
@@ -668,8 +712,8 @@ class Rickle(BaseRickle):
                     name = v.get('name', k)
                     attributes = v['attributes']
                     imports = v.get('import', None)
-
-                    if init_args and init_args['load_lambda']:
+                    safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
+                    if init_args and init_args['load_lambda'] and safe_load is None:
                         self.add_class_definition(name=name,
                                           attributes=attributes,
                                           imports=imports)
@@ -683,7 +727,8 @@ class Rickle(BaseRickle):
                     imports = v.get('import', None)
                     includes_self_reference = v.get('includes_self_reference', False)
 
-                    if init_args and init_args['load_lambda']:
+                    safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
+                    if init_args and init_args['load_lambda'] and safe_load is None:
                         self.add_function(name=name,
                                           load=load,
                                           args=args_dict,
