@@ -224,34 +224,97 @@ If we had a lot of duplication, we can simply reference the same values.
 
 .. code-block:: yaml
 
-APP:
-   details:
-       name: user_api
-       doc_page: '/doc'
-       version: '1.0.0'
-   database:
-       host: 127.0.0.1
-       user: local
-       passw: ken-s3nt_me
-   default_params:
-      db_version: &db_version '1.1.0'
-      language: &language 'en-US'
-   endpoints:
-      status:
-         description: Gets the status for a region in the country.
-         params:
-            region: US
-            language: *language
-            db_version: *db_version
-      users:
-         description: Gets the users for a given city.
-         params:
-            city: Seattle
-            language: *language
-            db_version: *db_version
+   APP:
+      details:
+          name: user_api
+          doc_page: '/doc'
+          version: '1.0.0'
+      database:
+          host: 127.0.0.1
+          user: local
+          passw: ken-s3nt_me
+      default_params:
+         db_version: &db_version '1.1.0'
+         language: &language 'en-US'
+      endpoints:
+         status:
+            description: Gets the status for a region in the country.
+            params:
+               region: US
+               language: *language
+               db_version: *db_version
+         users:
+            description: Gets the users for a given city.
+            params:
+               city: Seattle
+               language: *language
+               db_version: *db_version
+
+Strings, Repr
+---------------------
+
+A Rickle can have a string representation, which will be in YAML format.
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   print(str(rick))
+   >> database:
+        host: 127.0.0.1
+        user: local
+        passw: ken-s3nt_me
+
+Str will give the serialised version where repr will give a raw view.
+
+Dict, Items, Values
+---------------------
+
+A Rickle can act like a Python dictionary, like the following examples:
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.items()
+   >> [(k, v)]
+
+   rick.values()
+   >> [v, v]
+
+   rick.keys()
+   >> [k, k]
+
+   rick.get('k', default=0.42)
+   >> 72
+
+   rick['new'] = 0.99
+   rick['new']
+   >> 0.99
+
+A Rickle can also be converted to a Python dictionary:
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.dict()
+   >> {'k' : 'v'}
 
 
+To YAML, JSON
+---------------------
 
+A rickle can also be dumped to YAML or JSON.
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.to_yaml_file('other.yaml')
+   rick.to_json_file('other.json')
+   rick.to_yaml_string()
+   rick.to_json_string()
 
 Extended usage
 ========================
@@ -259,32 +322,482 @@ Extended usage
 Add environment var
 ---------------------
 
+Using the Rickle class, instead of the BasicRickle, we can add a lot more extended types. One being the environment variable.
+
+Here we have a file ``db_conf.yaml`` again, but this time we are loading the values from OS env:
+
+.. code-block:: yaml
+
+   database:
+      host:
+         type: env
+         load: DB_HOST
+         default: 127.0.0.1
+      user:
+         type: env
+         load: DB_USERNAME
+      passw:
+         type: env
+         load: DB_PASSWORD
+
+Note that we can define a default value. The default is always None, so no exception is raised if the env var does not exist.
+
 Add lambdas
 ---------------------
+
+Another extension that could potentially be very useful is adding lambdas to a Rickle. This is not without security risks.
+If lambdas are loaded that you did not author yourself and do not know what they do, they can do anything.
+
+A Rickle can be loaded without lambdas or functions by passing the ``load_lambda`` argument at creation.
+But this is not a foolproof safety measure. Even with ``load_lambda=False``, if you load other sources such as API results or other files, they can reference other calls that do execute the lambda functions.
+
+The safest way to load unknown sources is to not load them. However, you can always define the following ENV variable:
+
+``RICKLE_SAFE_LOAD=1``
+
+Again, the best way to load lambdas is to load what you trust.
+
+Example of a lambda:
+
+.. code-block:: yaml
+
+   datenow:
+      type: lambda
+      import:
+         - "from datetime import datetime as dd"
+      load: "print(dd.utcnow().strftime('%Y-%m-%d'))"
+
+The lambda can be used by calling ``datenow()``. Lambdas can also have arguments:
+
+.. code-block:: yaml
+
+   datenow:
+      type: lambda
+      args:
+         message: Hello World
+      import:
+         - "from datetime import datetime as dd"
+      load: "print(dd.utcnow().strftime('%Y-%m-%d'), message)"
+
+And can be used as ``datenow(message='Hello friend')``.
 
 Add functions
 ---------------------
 
+Functions are a further extension to lambdas. They allow self referencing to the Rickle, and are multi line blocks.
+
+.. code-block:: yaml
+
+   get_area:
+      type: function
+      name: get_area
+      args:
+         x: 10
+         y: 10
+         z: null
+         f: 0.7
+      import:
+         - math
+      load: >
+         def get_area(x, y, z, f):
+            if not z is None:
+               area = (x * y) + (x * z) + (y * z)
+               area = 2 * area
+            else:
+               area = x * y
+            return math.floor(area * f)
+
+And then the function can be called as follows.
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml', load_lambda=True)
+
+   rick.get_area(x=52, y=34.9, z=10, f=0.8)
+
+A self reference to the Rickle can also be added.
+
+.. code-block:: yaml
+
+   const:
+      f: 0.7
+   get_area:
+      type: function
+      name: get_area
+      includes_self_reference: true
+      args:
+         x: 10
+         y: 10
+         z: null
+      import:
+         - math
+      load: >
+         def get_area(self, x, y, z):
+            if not z is None:
+               area = (x * y) + (x * z) + (y * z)
+               area = 2 * area
+            else:
+               area = x * y
+            return math.floor(area * self.const.f)
+
+In this example ``rickle.const.f`` is used in the function.
+
+This will only work if the attribute referred to is found on the same level. The following example won't work.
+
+.. code-block:: yaml
+
+   const:
+      f: 0.7
+   one_higher:
+      get_area:
+         type: function
+         name: get_area
+         includes_self_reference: true
+         args:
+            x: 10
+            y: 10
+            z: null
+         import:
+            - math
+         load: >
+            def get_area(self, x, y, z):
+               if not z is None:
+                  area = (x * y) + (x * z) + (y * z)
+                  area = 2 * area
+               else:
+                  area = x * y
+               return math.floor(area * self.const.f)
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml', load_lambda=True)
+
+   rick.one_higher.get_area(x=52, y=34.9, z=10, f=0.8)
+
+This will result in an AttributeError:
+
+.. code-block:: python
+
+   >> Traceback (most recent call last):
+   >>   File "C:\source\Zipfian Science\rickled\tests\unittest\test_advanced.py", line 183, in test_self_reference
+   >>     area = r.functions.get_area(x=10, y=10, z=10)
+   >>   File "<string>", line 1, in <lambda>
+   >>   File "<string>", line 7, in get_area3ee93073e2f441af9f6a9acac3e21635
+   >> AttributeError: 'Rickle' object has no attribute 'const'
+
+
 Add CSV
 ---------------------
+
+A local CSV file can be loaded as a list of lists, or as a list of Rickles.
+
+If we have a CSV file with the following contents:
+
+.. code-block:: text
+
+   A,B,C,D
+   j,1,0.2,o
+   h,2,0.9,o
+   p,1,1.0,c
+
+Where ``A,B,C,D`` are the columns, the following will load a list of three Rickle objects.
+
+.. code-block:: yaml
+
+   csv:
+      type: from_csv
+      file_path: './tests/placebos/test.csv'
+      load_as_rick: true
+      fieldnames: null
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.csv[0].A == 'j'
+   >> True
+
+   rick.csv[0].C == 0.2
+   >> True
+
+   rick.csv[-1].D == 'c'
+   >> True
+
+If ``fieldnames`` is null, the first row in the file is assumed to be the names.
+
+If the file is not loaded as a Rickle, lists of lists are loaded, and this assumes that the first row is not the field names.
+
+.. code-block:: yaml
+
+   csv:
+      type: from_csv
+      file_path: './tests/placebos/test.csv'
+      load_as_rick: false
+      fieldnames: null
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.csv[0]
+   >> ['A','B','C','D']
+
+   rick.csv[-1]
+   >> ['p',1,1.0,'c']
+
+A third way to load the CSV is to load the columns as lists.
+
+.. code-block:: text
+
+   j,1,0.2,o
+   h,2,0.9,o
+   p,1,1.0,c
+
+.. code-block:: yaml
+
+   csv:
+      type: from_csv
+      file_path: './tests/placebos/test.csv'
+      load_as_rick: false
+      fieldnames: [A, B, C, D]
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.csv.A
+   >> ['j','h','p']
+
+   rick.csv.C
+   >> [0.2,0.9,1.0]
 
 Add from file
 ---------------------
 
+Other files can also be loaded, either as another Rickle, a binary file, or a plain text file.
+
+.. code-block:: yaml
+
+   another_rick:
+      type: from_file
+      file_path: './tests/placebos/test_config.json'
+      load_as_rick: true
+      deep: true
+      load_lambda: true
+
+This will load the contents of the file as a Rickle object.
+
+.. code-block:: yaml
+
+   another_rick:
+      type: from_file
+      file_path: './tests/placebos/test.txt'
+      load_as_rick: false
+      encoding: UTF-16
+
+This will load the contents as plain text.
+
+.. code-block:: yaml
+
+   another_rick:
+      type: from_file
+      file_path: './tests/placebos/out.bin'
+      is_binary: true
+
+This will load the data as binary.
+
 Add from REST API
 ---------------------
 
-Add base 64 bin
+Data can also be loaded from an API, expecting a JSON response.
+
+.. code-block:: yaml
+
+   crypt_exchanges:
+      type: api_json
+      url: https://cryptingup.com/api/exchanges
+      expected_http_status: 200
+
+This will load the JSON response as a dictionary. But the contents can also be loaded as a Rickle.
+Note, this can be dangerous, therefore a ``load_lambda`` property is defined. However, this response can point to another API call with ``load_lambda`` set as true.
+Only load API responses as Rickles when you trust the contents, or set the ENV ``RICKLE_SAFE_LOAD=1``.
+
+.. code-block:: yaml
+
+   crypt_exchanges:
+      type: api_json
+      url: https://cryptingup.com/api/exchanges
+      expected_http_status: 200
+      load_as_rick: true
+      deep: true
+      load_lambda: false
+
+Other properties that can be defined:
+
+.. code-block:: text
+
+   url
+   http_verb: 'GET' or 'POST'
+   headers: dictionary type
+   params: dictionary type
+   body: dictionary type
+   load_as_rick: bool
+   deep: bool
+   load_lambda: bool
+   expected_http_status: int
+
+Add base 64 encoded
 ---------------------
+
+A base 64 string can be loaded as bytes.
+
+.. code-block:: yaml
+
+   encoded:
+      type: base64
+      load: dG9vIG1hbnkgc2VjcmV0cw==
+
+
+Add HTML page
+---------------------
+
+Useful when loading up a documentation page.
+
+.. code-block:: yaml
+
+   encoded:
+      type: html_page
+      url: https://cryptingup.com
+      expected_http_status: 200
+
+This will GET the HTML. ``params`` and ``headers`` can also be given, same as with the API call.
+
+Import Python modules
+---------------------
+
+Should you need specific Python modules loaded, you can define the following:
+
+.. code-block:: yaml
+
+   r_modules:
+      type: module_import
+      import:
+         - "math"
+
+Define a class
+---------------------
+
+Whole new classes can be defined. This will have a type and will be initialised with attributes and functions.
+
+.. code-block:: yaml
+
+   TesterClass:
+      name: TesterClass
+      type: class_definition
+      attributes:
+         dictionary:
+            a: a
+            b: b
+         list_type:
+            - 1
+            - 2
+            - 3
+            - 4
+    some_func:
+      type: function
+      name: some_func
+      includes_self_reference: false
+      args:
+        x: 7
+        y: 2
+      import:
+        - "math"
+      load: >
+        def some_func(x, y):
+          print(x , y)
+          print(self.__class__.__name__)
+   datenow:
+      type: lambda
+      import:
+        - "from datetime import datetime as dd"
+      load: "lambda self: print(dd.utcnow().strftime('%Y-%m-%d'))"
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.TesterClass.datenow()
+   >> '1991-02-20'
+
+   print(type(rick.TesterClass))
+   >> <class 'TesterClass'>
 
 Paths and searching
 ========================
 
+Another useful piece of functionality is the ability to use paths with Rickles.
+
 Search keys
 ---------------------
 
+We can search for paths by using the ``search_path`` method.
+
+.. code-block:: python
+
+   rickle.search_path('point')
+   >> ['/config/default/point', '/config/control/point', '/docs/controls/point']
+
+If we search for point, we found all the paths in the Rickle.
+
 Use paths
 ---------------------
+
+We can access the attributes by using the paths. If we have the following YAML:
+
+.. code-block:: yaml
+
+   path:
+      datenow:
+         type: lambda
+         import:
+            - "from datetime import datetime as dd"
+         load: "dd.utcnow().strftime('%Y-%m-%d')"
+   level_one:
+      level_two:
+         member: 42
+         list_member:
+            - 1
+            - 0
+            - 1
+            - 1
+            - 1
+   funcs:
+      type: function
+      name: funcs
+      args:
+         x: 42
+         y: worl
+      load: >
+          def funcs(x, y):
+              _x = int(x)
+              return f'Hello {y}, {_x / len(y)}!'
+
+And the we can use paths.
+
+.. code-block:: python
+
+   test_rickle = Rickle(yaml, load_lambda=True)
+
+   test_rickle('/path/level_one/level_two/member') == 42
+   >> True
+
+   test_rickle('/path/level_one/funcs?x=100&y=world') == 'Hello world, 20.0!'
+   >> True
+
+   test_rickle('/path/datenow')
+   >> '1991-08-06'
+
+We can even call functions like this, and pass the arguments as parameters.
 
 Object rickler
 ========================

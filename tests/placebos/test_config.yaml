@@ -46,6 +46,8 @@ crypt_exchanges:
   type: api_json
   url: https://cryptingup.com/api/exchanges
   expected_http_status: 200
+  load_as_rick: true
+  deep: true
 
 some_field: _|arg_name|_
 
@@ -67,8 +69,8 @@ another_rick:
 a_csv:
   type: from_csv
   file_path: './tests/placebos/test.csv'
-  load_as_rick: true
-  fieldnames: null
+  load_as_rick: false
+  fieldnames: [A, B, C, D]
 
 another_text:
   type: from_file

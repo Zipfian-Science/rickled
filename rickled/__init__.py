@@ -686,6 +686,7 @@ class Rickle(BaseRickle):
                                            headers=v.get('headers', None),
                                            params=v.get('params', None),
                                            body=v.get('body', None),
+                                           load_as_rick=v.get('load_as_rick', False),
                                            load_lambda=v.get('load_lambda', False),
                                            deep=v.get('deep', False),
                                            expected_http_status=v.get('expected_http_status', 200))
@@ -864,7 +865,7 @@ class Rickle(BaseRickle):
             _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
             exec(_load, globals())
         if args and isinstance(args, dict):
-            if is_method:
+            if is_method or includes_self_reference:
                 arg_list = ['self=self']
                 arg_list_defaults = ['self=self']
             else:
@@ -952,7 +953,7 @@ class Rickle(BaseRickle):
 
     def add_base64(self, name, load):
         """
-        Add Base 64 encoded binary data.
+        Add Base 64 encoded byte string data.
 
         Args:
             name (str): Property name.
@@ -995,6 +996,17 @@ class Rickle(BaseRickle):
                     l.append(dict(row))
 
                 self._iternalize({name: l}, deep=True)
+            elif not fieldnames is None:
+
+                columns = {c : list() for c in fieldnames}
+
+                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+
+                for row in csv_file:
+                    for k,v in row.items():
+                        columns[k].append(v)
+
+                self._iternalize({name: columns}, deep=False)
             else:
                 csv_file = csv.reader(file, dialect=dialect)
 
@@ -1009,6 +1021,9 @@ class Rickle(BaseRickle):
                                   'fieldnames' : fieldnames,
                                   'encoding': encoding
                                   }
+
+    def add_dataframe(self):
+        raise NotImplementedError()
 
     def add_from_file(self, name,
                       file_path : str,
@@ -1134,6 +1149,7 @@ class Rickle(BaseRickle):
                           headers : dict = None,
                           params : dict = None,
                           body : dict = None,
+                          load_as_rick: bool = False,
                           deep : bool = False,
                           load_lambda : bool = False,
                           expected_http_status : int = 200):
@@ -1150,6 +1166,7 @@ class Rickle(BaseRickle):
             headers (dict): Key-value pair for headers (default = None).
             params (dict): Key-value pair for parameters (default = None).
             body (dict): Key-value pair for data (default = None).
+            load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as dictionary (default = False).
             deep (bool): Internalize dictionary structures in lists (default = False).
             load_lambda (bool): Load lambda as code or strings (default = False).
             expected_http_status (int): Should a none 200 code be expected (default = 200).
@@ -1162,10 +1179,14 @@ class Rickle(BaseRickle):
 
         if r.status_code == expected_http_status:
             json_dict = r.json()
-            args = copy.copy(self.__init_args)
-            args['load_lambda'] = load_lambda
-            args['deep'] = deep
-            self.__dict__.update({name: Rickle(json_dict, **args)})
+            if load_as_rick:
+                args = copy.copy(self.__init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+
+                self.__dict__.update({name: Rickle(json_dict, **args)})
+            else:
+                self.__dict__.update({name: json_dict})
         else:
             raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
         self.__meta_info[name] = {'type': 'api_json',

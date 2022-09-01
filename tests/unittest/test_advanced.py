@@ -124,4 +124,62 @@ path:
 
         self.assertIsInstance(v, str)
 
+    def test_self_reference(self):
+        y = """
+const:
+  f: 0.5
+get_area:
+  type: function
+  name: get_area
+  includes_self_reference: true
+  args:
+     x: 10
+     y: 10
+     z: null
+  import:
+     - math
+  load: >
+     def get_area(self, x, y, z):
+        if not z is None:
+           area = (x * y) + (x * z) + (y * z)
+           area = 2 * area
+        else:
+           area = x * y
+        return math.floor(area * self.const.f)
+        """
+
+        r = Rickle(y, load_lambda=True)
+
+        area = r.get_area(x=10, y=10, z=10)
+
+        self.assertEqual(area, 300)
+
+        y = """
+        const:
+            f: 0.5
+        functions:
+            get_area:
+              type: function
+              name: get_area
+              includes_self_reference: true
+              args:
+                 x: 10
+                 y: 10
+                 z: null
+              import:
+                 - math
+              load: >
+                 def get_area(self, x, y, z):
+                    if not z is None:
+                       area = (x * y) + (x * z) + (y * z)
+                       area = 2 * area
+                    else:
+                       area = x * y
+                    return math.floor(area * self.const.f)
+                """
+
+        r = Rickle(y, load_lambda=True)
+
+        with self.assertRaises(AttributeError):
+            area = r.functions.get_area(x=10, y=10, z=10)
 
