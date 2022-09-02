@@ -424,7 +424,7 @@ A self reference to the Rickle can also be added.
    get_area:
       type: function
       name: get_area
-      includes_self_reference: true
+      is_method: true
       args:
          x: 10
          y: 10
@@ -452,7 +452,7 @@ This will only work if the attribute referred to is found on the same level. The
       get_area:
          type: function
          name: get_area
-         includes_self_reference: true
+         is_method: true
          args:
             x: 10
             y: 10
@@ -706,14 +706,14 @@ Whole new classes can be defined. This will have a type and will be initialised 
     some_func:
       type: function
       name: some_func
-      includes_self_reference: false
+      is_method: true
       args:
         x: 7
         y: 2
       import:
         - "math"
       load: >
-        def some_func(x, y):
+        def some_func(self, x, y):
           print(x , y)
           print(self.__class__.__name__)
    datenow:
@@ -799,12 +799,139 @@ And the we can use paths.
 
 We can even call functions like this, and pass the arguments as parameters.
 
-Object rickler
+Object Rickler
 ========================
+
+The ObjectRickler is a tool to convert basic Python objects to Rickles, or to create Python objects and merge Rickles into them.
+This is very experimental should be used as such.
 
 Object to Rickle
 ---------------------
 
+A Python object can be converted to a Rickle, taking the attributes visible and functions with as best it can.
+
+.. code-block:: python
+
+   class TestObject:
+
+      names = ['Phiber Optik', 'Dark Avenger']
+      deep = [
+         {'k' : 0.2},
+         {'k' : 0.9}
+      ]
+      __hidden = 'Value'
+
+      def print_names(self):
+         for name in self.names:
+            print(f'Hello, {name}')
+
+And then using the Rickler:
+
+.. code-block:: python
+
+   rickler = ObjectRickler()
+
+   test_object = TestObject()
+
+   rick = rickler.to_rickle(test_object, deep=True, load_lambda=True)
+
+   isinstance(rick, Rickle)
+   >> True
+
+   rick.names
+   >> ['Phiber Optik', 'Dark Avenger']
+
+   rick.deep[0].k
+   >> 0.2
+
+   rick.print_names()
+   >> Hello Phiber Optik
+      Hello Dark Avenger
+
+Note that ``__hidden`` will not be a part of the Rickle.
+
+The Python object can also be converted to a dictionary.
+
+.. code-block:: python
+
+   obj_dict = rickler.deconstruct(test_object, include_imports=True, include_class_source=True)
+
+   obj_dict['names']
+   >> ['Phiber Optik', 'Dark Avenger']
+
+   obj_dict['print_names']
+   >> {
+          "type": "function",
+          "name": "print_names",
+          "is_method" : True,
+          "load": "def print_names(self):\n         for name in self.names:\n            print(f'Hello, {name}')",
+          "args": {}
+      }
+
 Rickle to object
 ---------------------
+
+A Rickle can also be attached to a Python object.
+
+.. code-block:: python
+
+   class TestObject:
+
+      names = ['Phiber Optik', 'Dark Avenger']
+      deep = [
+         {'k' : 0.2},
+         {'k' : 0.9}
+      ]
+      __hidden = 'Value'
+
+      def print_names(self):
+         for name in self.names:
+            print(f'Hello, {name}')
+
+And then the following Rickle can be defined:
+
+.. code-block:: yaml
+
+   path:
+      datenow:
+         type: lambda
+         import:
+            - "from datetime import datetime as dd"
+         load: "dd.utcnow().strftime('%Y-%m-%d')"
+   level_one:
+      level_two:
+         member: 42
+         list_member:
+            - 1
+            - 0
+            - 1
+            - 1
+            - 1
+   funcs:
+      type: function
+      name: funcs
+      args:
+         x: 42
+         y: worl
+      load: >
+          def funcs(x, y):
+              _x = int(x)
+              return f'Hello {y}, {_x / len(y)}!'
+
+Then added to the object:
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml', load_lambda=True)
+
+   rickler = ObjectRickler()
+
+   obj = rickler.from_rickle(rick, TestObject)
+
+   obj.names
+   >> ['Phiber Optik', 'Dark Avenger']
+
+   obj.path.datenow()
+   >> '1988-11-02'
+
 

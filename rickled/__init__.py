@@ -67,8 +67,6 @@ class ObjectRickler:
             length = len(s)
 
             source = source_lines[0][length:]
-            if inspect.ismethod(value):
-                source = source.replace('(self,', '(')
 
             for s in source_lines[1:]:
                 source = f'{source}{s[length:]}'
@@ -78,7 +76,8 @@ class ObjectRickler:
                 'type': 'function',
                 'name': name,
                 'load': source,
-                'args': args
+                'args': args,
+                'is_method' : inspect.ismethod(value)
             }
 
         return self.deconstruct(value)
@@ -123,9 +122,8 @@ class ObjectRickler:
                     _load = value['load']
                     _args = value.get('args', None)
                     _import = value.get('import', None)
-                    _includes_self_reference = value.get('includes_self_reference', False)
                     f = rickle.add_function(name=_name, load=_load, args=_args, imports=_import,
-                                            return_function=True, is_method=True, includes_self_reference=_includes_self_reference)
+                                            return_function=True, is_method=True)
 
                     obj.__dict__.update({_name: partial(f, obj)})
                 continue
@@ -726,7 +724,7 @@ class Rickle(BaseRickle):
                     load = v['load']
                     args_dict = v.get('args', None)
                     imports = v.get('import', None)
-                    includes_self_reference = v.get('includes_self_reference', False)
+                    is_method = v.get('is_method', False)
 
                     safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
                     if init_args and init_args['load_lambda'] and safe_load is None:
@@ -734,7 +732,7 @@ class Rickle(BaseRickle):
                                           load=load,
                                           args=args_dict,
                                           imports=imports,
-                                          includes_self_reference=includes_self_reference)
+                                          is_method=is_method)
                     else:
                         self.__dict__.update({k: v})
                     continue
@@ -818,8 +816,7 @@ class Rickle(BaseRickle):
 
     def add_function(self, name, load, args : dict = None, imports : list = None,
                      return_function : bool = False,
-                     is_method : bool = False,
-                     includes_self_reference : bool = False):
+                     is_method : bool = False):
         """
         Add a new function to Rick.
 
@@ -829,8 +826,7 @@ class Rickle(BaseRickle):
             args (dict): Key-value pairs of arguments with default values (default = None).
             imports (list): Python modules to import (default = None).
             return_function (bool): Add to rickle or return the function (default = False).
-            is_method (bool): Add `self` param (default = False).
-            includes_self_reference (bool): Indicates whether class method source includes `self` (default = False).
+            is_method (bool): Indicates whether class method source includes `self` (default = False).
 
         Examples:
             Basic example for adding to a PickleRick:
@@ -857,15 +853,12 @@ class Rickle(BaseRickle):
                     exec(i, globals())
                 else:
                     exec('import {}'.format(i), globals())
-        suffix: str = uuid.uuid4().hex
-        if is_method and not includes_self_reference:
-            _load = load.replace(f'def {name}(', f'def {name}{suffix}(self,')
-            exec(_load, globals())
-        else:
-            _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
-            exec(_load, globals())
+        suffix  = str(uuid.uuid4().hex)
+
+        _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
+        exec(_load, globals())
         if args and isinstance(args, dict):
-            if is_method or includes_self_reference:
+            if is_method:
                 arg_list = ['self=self']
                 arg_list_defaults = ['self=self']
             else:
@@ -874,10 +867,10 @@ class Rickle(BaseRickle):
             for arg in args.keys():
                 default_value = args[arg]
                 if isinstance(default_value, str):
-                    arg_list_defaults.append("{a}='{d}'".format(a=arg, d=default_value))
+                    arg_list_defaults.append(f"{arg}='{default_value}'")
                 else:
-                    arg_list_defaults.append("{a}={d}".format(a=arg, d=default_value))
-                arg_list.append('{a}={a}'.format(a=arg))
+                    arg_list_defaults.append(f"{arg}={default_value}")
+                arg_list.append(f"{arg}={arg}")
 
             func_string = 'lambda {args_default}: {name}({args})'.format(
                 args_default=','.join(arg_list_defaults),
@@ -894,7 +887,7 @@ class Rickle(BaseRickle):
 
         self.__dict__.update({name: eval(func_string)})
         self.__meta_info[name] = {'type' : 'function', 'name' : name, 'args' : args, 'import' : imports,
-                                  'load' : load, 'includes_self_reference' : includes_self_reference}
+                                  'load' : load, 'is_method' : is_method}
 
     def add_lambda(self, name, load, imports : list = None, return_lambda : bool = False, is_method : bool = False):
         """
@@ -1127,9 +1120,9 @@ class Rickle(BaseRickle):
                     load = v['load']
                     args_dict = v.get('args', None)
                     imports = v.get('import', None)
-                    includes_self_reference = v.get('includes_self_reference', False)
+                    is_method = v.get('is_method', False)
                     _attributes[_name] = self.add_function(name=_name,load=load,args=args_dict,imports=imports,
-                                                           return_function=True, is_method=True, includes_self_reference=includes_self_reference)
+                                                           return_function=True, is_method=is_method)
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']

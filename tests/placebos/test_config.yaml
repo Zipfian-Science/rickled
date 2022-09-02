@@ -23,14 +23,14 @@ TesterClass:
     math_e:
       type: function
       name: math_e
-      includes_self_reference: false
+      is_method: true
       args:
         x: 7
         y: 2
       import:
         - "math"
       load: >
-        def math_e(x, y):
+        def math_e(self, x, y):
           print('CLASS START >>')
           print('x, y:', x,y)
           print(self.__class__.__name__)

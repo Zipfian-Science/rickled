@@ -131,7 +131,7 @@ const:
 get_area:
   type: function
   name: get_area
-  includes_self_reference: true
+  is_method: true
   args:
      x: 10
      y: 10
@@ -161,7 +161,7 @@ get_area:
             get_area:
               type: function
               name: get_area
-              includes_self_reference: true
+              is_method: true
               args:
                  x: 10
                  y: 10
