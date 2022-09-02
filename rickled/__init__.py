@@ -1,4 +1,4 @@
-__version__ = '0.2.4'
+__version__ = '0.2.5'
 import os
 import json
 import copy
@@ -67,8 +67,6 @@ class ObjectRickler:
             length = len(s)
 
             source = source_lines[0][length:]
-            if inspect.ismethod(value):
-                source = source.replace('(self,', '(')
 
             for s in source_lines[1:]:
                 source = f'{source}{s[length:]}'
@@ -78,7 +76,8 @@ class ObjectRickler:
                 'type': 'function',
                 'name': name,
                 'load': source,
-                'args': args
+                'args': args,
+                'is_method' : inspect.ismethod(value)
             }
 
         return self.deconstruct(value)
@@ -123,9 +122,8 @@ class ObjectRickler:
                     _load = value['load']
                     _args = value.get('args', None)
                     _import = value.get('import', None)
-                    _includes_self_reference = value.get('includes_self_reference', False)
                     f = rickle.add_function(name=_name, load=_load, args=_args, imports=_import,
-                                            return_function=True, is_method=True, includes_self_reference=_includes_self_reference)
+                                            return_function=True, is_method=True)
 
                     obj.__dict__.update({_name: partial(f, obj)})
                 continue
@@ -339,6 +337,98 @@ class BaseRickle:
                 raise StopIteration
         else:
             raise StopIteration
+
+    def __search_path(self, key, dictionary=None, parent_path=None):
+        if dictionary is None:
+            dictionary = self.__dict__
+        if parent_path is None:
+            parent_path = ''
+        if key in dictionary:
+            return [f'{parent_path}/{key}']
+        values = list()
+        for k, v in dictionary.items():
+            if isinstance(v, BaseRickle):
+                try:
+                    value = self.__search_path(key=key, dictionary=v.__dict__,  parent_path=f'{parent_path}/{k}')
+                    values.extend(value)
+                except StopIteration:
+                    continue
+            if isinstance(v, dict):
+                try:
+                    value = self.__search_path(key=key, dictionary=v,  parent_path=f'{parent_path}/{k}')
+                    values.extend(value)
+                except StopIteration:
+                    continue
+        if len(values) > 0:
+            return values
+        raise StopIteration
+
+    def search_path(self, key : str) -> list:
+        """
+        Search the current Rickle for all paths that match the search key. Returns empty list if nothing is found.
+
+        Args:
+            key (str): The key to search.
+
+        Returns:
+            list: all paths found.
+        """
+        try:
+            return self.__search_path(key=key)
+        except StopIteration:
+            return list()
+
+
+    def __call__(self, path : str):
+        """
+        Rickle objects can be queried via a path string.
+
+        Notes:
+            '/' => root
+            '/name' => member
+            '/path/to/name?param=1' => lambda/function
+
+        Args:
+            path (str): The path as a string, down to the last mentioned node.
+
+        Returns:
+            Any: Value of node of function.
+        """
+
+        if not path.startswith('/'):
+            raise ValueError('Missing root path /')
+        if path == '/':
+            return self
+
+        path_list = path.split('/')
+
+        current_node = self
+
+        for node_name in path_list[1:]:
+            if '?' in node_name:
+                node_name = node_name.split('?')[0]
+            current_node = current_node.get(node_name)
+            if current_node is None:
+                raise NameError(f'The path {path} could not be traversed')
+
+        if '?' in path_list[-1]:
+            args_string = path_list[-1].split('?')[-1]
+            args = {a.split('=')[0] : a.split('=')[1] for a in args_string.split('&')}
+
+            try:
+                return current_node(**args)
+            except:
+                raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
+
+        if callable(current_node):
+            try:
+                return current_node()
+            except:
+                raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
+
+        else:
+            return current_node
+
 
     def __eval_name(self, name):
         if str(name).__contains__(self.__class__.__name__) or str(name).endswith('__n'):
@@ -594,6 +684,7 @@ class Rickle(BaseRickle):
                                            headers=v.get('headers', None),
                                            params=v.get('params', None),
                                            body=v.get('body', None),
+                                           load_as_rick=v.get('load_as_rick', False),
                                            load_lambda=v.get('load_lambda', False),
                                            deep=v.get('deep', False),
                                            expected_http_status=v.get('expected_http_status', 200))
@@ -608,7 +699,8 @@ class Rickle(BaseRickle):
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
                     imports = v.get('import', None)
-                    if init_args and init_args['load_lambda']:
+                    safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
+                    if init_args and init_args['load_lambda'] and safe_load is None:
                         self.add_lambda(name=k,
                                         load=load,
                                         imports=imports)
@@ -619,8 +711,8 @@ class Rickle(BaseRickle):
                     name = v.get('name', k)
                     attributes = v['attributes']
                     imports = v.get('import', None)
-
-                    if init_args and init_args['load_lambda']:
+                    safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
+                    if init_args and init_args['load_lambda'] and safe_load is None:
                         self.add_class_definition(name=name,
                                           attributes=attributes,
                                           imports=imports)
@@ -632,14 +724,15 @@ class Rickle(BaseRickle):
                     load = v['load']
                     args_dict = v.get('args', None)
                     imports = v.get('import', None)
-                    includes_self_reference = v.get('includes_self_reference', False)
+                    is_method = v.get('is_method', False)
 
-                    if init_args and init_args['load_lambda']:
+                    safe_load = os.getenv("RICKLE_SAFE_LOAD", None)
+                    if init_args and init_args['load_lambda'] and safe_load is None:
                         self.add_function(name=name,
                                           load=load,
                                           args=args_dict,
                                           imports=imports,
-                                          includes_self_reference=includes_self_reference)
+                                          is_method=is_method)
                     else:
                         self.__dict__.update({k: v})
                     continue
@@ -723,8 +816,7 @@ class Rickle(BaseRickle):
 
     def add_function(self, name, load, args : dict = None, imports : list = None,
                      return_function : bool = False,
-                     is_method : bool = False,
-                     includes_self_reference : bool = False):
+                     is_method : bool = False):
         """
         Add a new function to Rick.
 
@@ -734,8 +826,7 @@ class Rickle(BaseRickle):
             args (dict): Key-value pairs of arguments with default values (default = None).
             imports (list): Python modules to import (default = None).
             return_function (bool): Add to rickle or return the function (default = False).
-            is_method (bool): Add `self` param (default = False).
-            includes_self_reference (bool): Indicates whether class method source includes `self` (default = False).
+            is_method (bool): Indicates whether class method source includes `self` (default = False).
 
         Examples:
             Basic example for adding to a PickleRick:
@@ -762,13 +853,10 @@ class Rickle(BaseRickle):
                     exec(i, globals())
                 else:
                     exec('import {}'.format(i), globals())
-        suffix: str = uuid.uuid4().hex
-        if is_method and not includes_self_reference:
-            _load = load.replace(f'def {name}(', f'def {name}{suffix}(self,')
-            exec(_load, globals())
-        else:
-            _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
-            exec(_load, globals())
+        suffix  = str(uuid.uuid4().hex)
+
+        _load = load.replace(f'def {name}(', f'def {name}{suffix}(')
+        exec(_load, globals())
         if args and isinstance(args, dict):
             if is_method:
                 arg_list = ['self=self']
@@ -779,10 +867,10 @@ class Rickle(BaseRickle):
             for arg in args.keys():
                 default_value = args[arg]
                 if isinstance(default_value, str):
-                    arg_list_defaults.append("{a}='{d}'".format(a=arg, d=default_value))
+                    arg_list_defaults.append(f"{arg}='{default_value}'")
                 else:
-                    arg_list_defaults.append("{a}={d}".format(a=arg, d=default_value))
-                arg_list.append('{a}={a}'.format(a=arg))
+                    arg_list_defaults.append(f"{arg}={default_value}")
+                arg_list.append(f"{arg}={arg}")
 
             func_string = 'lambda {args_default}: {name}({args})'.format(
                 args_default=','.join(arg_list_defaults),
@@ -799,7 +887,7 @@ class Rickle(BaseRickle):
 
         self.__dict__.update({name: eval(func_string)})
         self.__meta_info[name] = {'type' : 'function', 'name' : name, 'args' : args, 'import' : imports,
-                                  'load' : load, 'includes_self_reference' : includes_self_reference}
+                                  'load' : load, 'is_method' : is_method}
 
     def add_lambda(self, name, load, imports : list = None, return_lambda : bool = False, is_method : bool = False):
         """
@@ -858,7 +946,7 @@ class Rickle(BaseRickle):
 
     def add_base64(self, name, load):
         """
-        Add Base 64 encoded binary data.
+        Add Base 64 encoded byte string data.
 
         Args:
             name (str): Property name.
@@ -901,6 +989,17 @@ class Rickle(BaseRickle):
                     l.append(dict(row))
 
                 self._iternalize({name: l}, deep=True)
+            elif not fieldnames is None:
+
+                columns = {c : list() for c in fieldnames}
+
+                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+
+                for row in csv_file:
+                    for k,v in row.items():
+                        columns[k].append(v)
+
+                self._iternalize({name: columns}, deep=False)
             else:
                 csv_file = csv.reader(file, dialect=dialect)
 
@@ -915,6 +1014,9 @@ class Rickle(BaseRickle):
                                   'fieldnames' : fieldnames,
                                   'encoding': encoding
                                   }
+
+    def add_dataframe(self):
+        raise NotImplementedError()
 
     def add_from_file(self, name,
                       file_path : str,
@@ -1018,9 +1120,9 @@ class Rickle(BaseRickle):
                     load = v['load']
                     args_dict = v.get('args', None)
                     imports = v.get('import', None)
-                    includes_self_reference = v.get('includes_self_reference', False)
+                    is_method = v.get('is_method', False)
                     _attributes[_name] = self.add_function(name=_name,load=load,args=args_dict,imports=imports,
-                                                           return_function=True, is_method=True, includes_self_reference=includes_self_reference)
+                                                           return_function=True, is_method=is_method)
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
@@ -1040,6 +1142,7 @@ class Rickle(BaseRickle):
                           headers : dict = None,
                           params : dict = None,
                           body : dict = None,
+                          load_as_rick: bool = False,
                           deep : bool = False,
                           load_lambda : bool = False,
                           expected_http_status : int = 200):
@@ -1056,6 +1159,7 @@ class Rickle(BaseRickle):
             headers (dict): Key-value pair for headers (default = None).
             params (dict): Key-value pair for parameters (default = None).
             body (dict): Key-value pair for data (default = None).
+            load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as dictionary (default = False).
             deep (bool): Internalize dictionary structures in lists (default = False).
             load_lambda (bool): Load lambda as code or strings (default = False).
             expected_http_status (int): Should a none 200 code be expected (default = 200).
@@ -1068,10 +1172,14 @@ class Rickle(BaseRickle):
 
         if r.status_code == expected_http_status:
             json_dict = r.json()
-            args = copy.copy(self.__init_args)
-            args['load_lambda'] = load_lambda
-            args['deep'] = deep
-            self.__dict__.update({name: Rickle(json_dict, **args)})
+            if load_as_rick:
+                args = copy.copy(self.__init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+
+                self.__dict__.update({name: Rickle(json_dict, **args)})
+            else:
+                self.__dict__.update({name: json_dict})
         else:
             raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
         self.__meta_info[name] = {'type': 'api_json',

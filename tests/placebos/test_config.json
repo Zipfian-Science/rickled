@@ -26,12 +26,6 @@
     "callable": {
       "type" : "lambda",
       "load": "lambda: print('hell world!')"
-    },
-    "brightfield": {
-      "type": "secret",
-      "project_id": "rsg-dna2b-dev-2c64",
-      "secret_id": "BRIGHTFIELD_AUTH_URL",
-      "version_id": "latest"
     }
   }
 }

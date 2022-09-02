@@ -59,7 +59,7 @@ Rickle is a lightweight tool for loading and writing very small Python objects t
 This is especially useful for creating YAML config files and serialising them as Python objects.
 Works great in interactive Python environments like notebooks.
 
-For documentation, see [docs](http://docs.zipfian.science/rickled/index.html).
+For documentation, see [docs](https://docs.zipfian.science/rickled/index.html).
 
 Source on [GitHub](https://github.com/Zipfian-Science/rickled).
 ## Install

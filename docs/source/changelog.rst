@@ -11,6 +11,17 @@ Changelog
 History
 ==========================
 
+Version 0.2.4 (2022-09-02)
+--------------------------
+
+* Added ability to get nodes by using Unix style paths to get to nodes.
+* Added a safe load environment variable "RICKLE_SAFE_LOAD" to override all lambda loads (as a safety measure).
+* Added ``search_path`` to search for a key in the Rickle.
+* Removed ``includes_self_reference`` due to confusion.
+* Added a third way to load CSV files, see example documentation.
+* Added ``load_as_rick`` to ``add_api_json_call``.
+
+
 Version 0.2.3 (2022-03-13)
 --------------------------
 
