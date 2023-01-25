@@ -2,7 +2,6 @@ from setuptools import setup, find_packages
 import os
 import json
 from datetime import datetime
-from rickled import __version__ as ver
 
 here = os.path.abspath(os.path.dirname(__file__))
 
@@ -12,7 +11,8 @@ if os.path.isfile(version_file):
         version = json.load(f)
         version_name = '{major}.{minor}.{patch}'.format(**version)
 else:
-    version_name = ver
+    from rickled import __version__  as v
+    version_name = v
 
 # Get the long description from the README file
 long_description_file = os.path.join(here, 'pip_description.md')

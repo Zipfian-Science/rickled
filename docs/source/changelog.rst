@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.2.5 (2023-01-18)
+--------------------------
+
+* Fixed a bug where requests is not installed
+
+
 Version 0.2.4 (2022-09-02)
 --------------------------
 
