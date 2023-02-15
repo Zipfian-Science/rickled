@@ -198,7 +198,7 @@ if __name__ == "__main__":
         "-r",
         help="Removes build artifacts",
         action="store_true",
-        default=True
+        default=False
     )
     parser.add_argument(
         "--unit",

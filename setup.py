@@ -50,7 +50,7 @@ setup(
     install_requires=pipreq,
     package_dir={'.': 'rickled'},
     package_data={
-        "": ["*.yaml",],
+        "": [ os.path.join(here, 'version.json'),],
     },
     classifiers=[
             'Intended Audience :: Science/Research',

@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 0.2.6 (2023-02-15)
+--------------------------
+
+* Fixed the same bug, but the root cause. The fact that modules are imported before proper install.
+
 Version 0.2.5 (2023-01-18)
 --------------------------
 
