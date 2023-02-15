@@ -1,4 +1,4 @@
-__version__ = '0.2.7'
+from .__version__ import __version__, __date__
 import os
 import json
 import copy

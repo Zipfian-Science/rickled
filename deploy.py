@@ -4,16 +4,17 @@ import argparse
 import run_tests as tests
 import sys
 from twine.commands import upload
-import json
+from datetime import datetime
 import ftplib
 import glob
 from pathlib import Path
+from rickled import __version__ as version_name
 
 _project_name = 'rickled'
 _git_files_for_add = [
     "./docs/source/*.rst",
     f"./{_project_name}/__init__.py",
-    "version.json"
+    f"./{_project_name}/__version__.py"
 ]
 
 class bcolors:
@@ -27,10 +28,6 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def upload_to_pypi(release_name):
-    with open("version.json", "r") as f:
-        version = json.load(f)
-
-    version_name = '{major}.{minor}.{patch}'.format(**version)
 
     print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.WARNING}-- Using version {version_name}!{bcolors.ENDC}')
 
@@ -142,6 +139,13 @@ def main(args):
         lock_and_gen_pipreq()
 
     if args.build or args.deploy:
+        with open(f"{_project_name}/__version__.py", "r") as f:
+            lines = f.readlines()
+            lines[1] = f'__date__ = "{datetime.today().strftime("%Y-%m-%d")}"\n'
+        if lines:
+            with open(f"{_project_name}/__version__.py", "w") as f:
+                f.writelines(lines)
+
         build_wheel()
 
     if args.deploy:
@@ -159,21 +163,19 @@ def main(args):
 
     if args.deploy:
         # All went well!
-        with open("version.json", "r") as f:
-            version = json.load(f)
-
-        version['patch'] += 1
-        with open("version.json", "w") as f:
-            json.dump(version, f)
-
-        with open(f"{_project_name}/__init__.py", "r") as f:
+        with open(f"{_project_name}/__version__.py", "r") as f:
             lines = f.readlines()
-            lines[0] = "__version__ = '{major}.{minor}.{patch}'\n".format(**version)
+            v = version_name.split('.')
+            major = int(v[0])
+            minor = int(v[1])
+            patch = int(v[2]) + 1
+            lines[0] = f"__version__ = '{major}.{minor}.{patch}'\n"
         if lines:
-            with open(f"{_project_name}/__init__.py", "w") as f:
+            with open(f"{_project_name}/__version__.py", "w") as f:
                 f.writelines(lines)
 
-        print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {version}!{bcolors.ENDC}")
+
+        print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {major}.{minor}.{patch}!{bcolors.ENDC}")
 
     if args.git:
         add_files_for_commit()
