@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 0.2.7 (2023-02-15)
+--------------------------
+
+* Complete revamp of internal versioning.
+
 Version 0.2.6 (2023-02-15)
 --------------------------
 

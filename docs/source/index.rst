@@ -102,9 +102,10 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.2.6 (2023-02-15):
+Version 0.2.7 (2023-02-15):
 
-* Fixed the same bug, but the root cause. The fact that modules are imported before proper install.
+* Complete revamp of internal versioning.
+
 
 
 Contributors

@@ -24,16 +24,8 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'Rickled'
-copyright = '2021, Zipfian Science'
+copyright = '2023, Zipfian Science'
 author = 'Zipfian Science'
-
-# The full version, including alpha/beta/rc tags
-with open("../../version.json", "r") as f:
-    release_version = json.load(f)
-
-# Need to take deployment version bumping into account
-release_version['patch'] -= 1
-release = '{major}.{minor}.{patch}'.format(**release_version)
 
 # -- General configuration ---------------------------------------------------
 
