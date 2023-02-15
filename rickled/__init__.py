@@ -1,4 +1,4 @@
-__version__ = '0.2.6'
+__version__ = '0.2.7'
 import os
 import json
 import copy
@@ -16,7 +16,7 @@ import uuid
 try:
     import requests
 except ModuleNotFoundError as exc:
-    warnings.warn(f"the module requests is not installed. This will break API calls.")
+    warnings.warn(f"The module requests is not installed. This will break API calls.")
 
 class ObjectRickler:
     """
