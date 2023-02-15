@@ -11,6 +11,22 @@ Changelog
 History
 ==========================
 
+Version 0.2.7 (2023-02-15)
+--------------------------
+
+* Complete revamp of internal versioning.
+
+Version 0.2.6 (2023-02-15)
+--------------------------
+
+* Fixed the same bug, but the root cause. The fact that modules are imported before proper install.
+
+Version 0.2.5 (2023-01-18)
+--------------------------
+
+* Fixed a bug where requests is not installed
+
+
 Version 0.2.4 (2022-09-02)
 --------------------------
 

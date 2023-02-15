@@ -1,17 +1,22 @@
-__version__ = '0.2.5'
+from .__version__ import __version__, __date__
 import os
 import json
 import copy
+import warnings
 from typing import Union, TypeVar
 from io import TextIOWrapper
 import yaml
-import requests
 import base64
 import types
 import re
 import inspect
 from functools import partial
 import uuid
+
+try:
+    import requests
+except ModuleNotFoundError as exc:
+    warnings.warn(f"The module requests is not installed. This will break API calls.")
 
 class ObjectRickler:
     """
