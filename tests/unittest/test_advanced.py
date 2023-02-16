@@ -183,3 +183,84 @@ get_area:
         with self.assertRaises(AttributeError):
             area = r.functions.get_area(x=10, y=10, z=10)
 
+    def test_hot_load_api(self):
+
+        s = """
+crypt_exchanges:
+  type: api_json
+  url: https://cryptingup.com/api/exchanges
+  expected_http_status: 200
+  load_as_rick: true
+  deep: true
+  hot_load: true
+        """
+
+        r = Rickle(s)
+
+        observed = r.crypt_exchanges()
+
+        self.assertTrue(isinstance(observed, Rickle))
+
+        s = """
+crypt_exchanges:
+  type: api_json
+  url: https://cryptingup.com/api/exchanges
+  expected_http_status: 200
+  load_as_rick: true
+  deep: true
+        """
+
+        r = Rickle(s)
+
+        self.assertTrue(isinstance(r.crypt_exchanges, Rickle))
+
+    def test_hot_load_html(self):
+
+        s = """
+page:
+    type: html_page
+    url: https://cryptingup.com
+    expected_http_status: 200
+    hot_load: true
+        """
+
+        r = Rickle(s)
+
+        observed = r.page()
+
+        self.assertTrue(isinstance(observed, str))
+
+        s = """
+page:
+    type: html_page
+    url: https://cryptingup.com
+    expected_http_status: 200
+        """
+
+        r = Rickle(s)
+
+        self.assertTrue(isinstance(r.page, str))
+
+    def test_hot_load_file(self):
+        s = """
+another_rick:
+   type: from_file
+   file_path: './tests/placebos/test_config.json'
+   hot_load: true
+        """
+
+        r = Rickle(s)
+
+        observed = r.another_rick()
+
+        self.assertTrue(isinstance(observed, str))
+
+        s = """
+another_rick:
+   type: from_file
+   file_path: './tests/placebos/test_config.json'
+        """
+
+        r = Rickle(s)
+
+        self.assertTrue(isinstance(r.another_rick, str))

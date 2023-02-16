@@ -673,7 +673,8 @@ class Rickle(BaseRickle):
                                        deep=v.get('deep', False),
                                        load_lambda=v.get('load_lambda', False),
                                        is_binary=v.get('is_binary', False),
-                                       encoding=v.get('encoding', 'utf-8'))
+                                       encoding=v.get('encoding', 'utf-8'),
+                                       hot_load=v.get('hot_load', False))
                     continue
                 if 'type' in v.keys() and v['type'] == 'from_csv':
                     self.add_csv_file(name=k,
@@ -692,14 +693,16 @@ class Rickle(BaseRickle):
                                            load_as_rick=v.get('load_as_rick', False),
                                            load_lambda=v.get('load_lambda', False),
                                            deep=v.get('deep', False),
-                                           expected_http_status=v.get('expected_http_status', 200))
+                                           expected_http_status=v.get('expected_http_status', 200),
+                                           hot_load=v.get('hot_load', False))
                     continue
                 if 'type' in v.keys() and v['type'] == 'html_page':
                     self.add_html_page(name=k,
                                        url=v['url'],
                                        headers=v.get('headers', None),
                                        params=v.get('params', None),
-                                       expected_http_status=v.get('expected_http_status', 200))
+                                       expected_http_status=v.get('expected_http_status', 200),
+                                       hot_load=v.get('hot_load', False))
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
@@ -1023,13 +1026,34 @@ class Rickle(BaseRickle):
     def add_dataframe(self):
         raise NotImplementedError()
 
+    def _load_from_file(self,
+                      file_path: str,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      is_binary: bool = False,
+                      encoding: str = 'utf-8'):
+        if load_as_rick and not is_binary:
+            args = copy.copy(self.__init_args)
+            args['load_lambda'] = load_lambda
+            args['deep'] = deep
+            return Rickle(file_path, **args)
+        else:
+            if is_binary:
+                with open(file_path, 'rb') as fn:
+                    return fn.read()
+            else:
+                with open(file_path, 'r', encoding=encoding) as fn:
+                    return fn.read()
+
     def add_from_file(self, name,
                       file_path : str,
                       load_as_rick : bool = False,
                       deep : bool = False,
                       load_lambda : bool = False,
                       is_binary : bool = False,
-                      encoding : str = 'utf-8'):
+                      encoding : str = 'utf-8',
+                      hot_load : bool = False):
         """
         Adds the ability to further load Ricks from other YAML or JSON files, or alternatively load a text file.
         This opens up dynamic possibility, but with that it also opens up extreme security vulnerabilities.
@@ -1045,20 +1069,27 @@ class Rickle(BaseRickle):
             load_lambda (bool): Load lambda as code or strings (default = False).
             is_binary (bool): If the file is a binary file (default = False).
             encoding (str): If text, encoding can be specified (default = 'utf-8').
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
         """
 
-        if load_as_rick and not is_binary:
-            args = copy.copy(self.__init_args)
-            args['load_lambda'] = load_lambda
-            args['deep'] = deep
-            self.__dict__.update({name: Rickle(file_path, **args)})
+        if hot_load:
+            _load = f"""lambda self=self: self._load_from_file(file_path='{file_path}',
+                                          load_as_rick={load_as_rick},
+                                          deep={deep},
+                                          load_lambda={load_lambda},
+                                          is_binary={is_binary},
+                                          encoding='{encoding}')"""
+
+            self.__dict__.update({name: eval(_load)})
         else:
-            if is_binary:
-                with open(file_path, 'rb') as fn:
-                    self.__dict__.update({name: fn.read()})
-            else:
-                with open(file_path, 'r', encoding=encoding) as fn:
-                    self.__dict__.update({name: fn.read()})
+            result = self._load_from_file(file_path=file_path,
+                                          load_as_rick=load_as_rick,
+                                          deep=deep,
+                                          load_lambda=load_lambda,
+                                          is_binary=is_binary,
+                                          encoding=encoding)
+
+            self.__dict__.update({name: result})
 
         self.__meta_info[name] = {'type': 'from_file',
                                   'file_path' : file_path,
@@ -1066,15 +1097,29 @@ class Rickle(BaseRickle):
                                   'deep' : deep,
                                   'load_lambda' : load_lambda,
                                   'is_binary' : is_binary,
-                                  'encoding' : encoding
+                                  'encoding' : encoding,
+                                  'hot_load' : hot_load
                                   }
+
+    def _load_html_page(self,
+                      url : str,
+                      headers : dict = None,
+                      params : dict = None,
+                      expected_http_status : int = 200):
+        r = requests.get(url=url, params=params, headers=headers)
+
+        if r.status_code == expected_http_status:
+            return r.text
+        else:
+            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
 
     def add_html_page(self,
                       name,
                       url : str,
                       headers : dict = None,
                       params : dict = None,
-                      expected_http_status : int = 200):
+                      expected_http_status : int = 200,
+                      hot_load : bool = False):
         """
         Loads HTML page as property.
 
@@ -1084,20 +1129,31 @@ class Rickle(BaseRickle):
             headers (dict): Key-value pair for headers (default = None).
             params (dict): Key-value pair for parameters (default = None).
             expected_http_status (int): Should a none 200 code be expected (default = 200).
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
 
         """
-        r = requests.get(url=url, params=params, headers=headers)
 
-        if r.status_code == expected_http_status:
-            self.__dict__.update({name: r.text})
+        if hot_load:
+            _load = f"""lambda self=self: self._load_html_page(url='{url}',
+                                          headers={headers},
+                                          params={params},
+                                          expected_http_status={expected_http_status})"""
+
+            self.__dict__.update({name: eval(_load)})
         else:
-            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+            result = self._load_html_page(url=url,
+                                          headers=headers,
+                                          params=params,
+                                          expected_http_status=expected_http_status)
+
+            self.__dict__.update({name: result})
 
         self.__meta_info[name] = {'type': 'html_page',
                                   'url': url,
                                   'headers': headers,
                                   'params': params,
-                                  'expected_http_status': expected_http_status
+                                  'expected_http_status': expected_http_status,
+                                  'hot_load' : hot_load
                                   }
 
     def add_class_definition(self, name, attributes, imports : list = None ):
@@ -1141,6 +1197,35 @@ class Rickle(BaseRickle):
 
         self.__meta_info[name] = {'type' : 'class_definition', 'name' : name, 'import' : imports, 'attributes' : attributes}
 
+    def _load_api_json_call(self,
+                                url : str,
+                                http_verb : str = 'GET',
+                                headers : dict = None,
+                                params : dict = None,
+                                body : dict = None,
+                                load_as_rick: bool = False,
+                                deep : bool = False,
+                                load_lambda : bool = False,
+                                expected_http_status : int = 200):
+        if http_verb.lower() == 'post':
+            r = requests.post(url=url, data=body, headers=headers)
+        else:
+            r = requests.get(url=url, params=params, headers=headers)
+
+        if r.status_code == expected_http_status:
+            json_dict = r.json()
+            if load_as_rick:
+                args = copy.copy(self.__init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+
+                return Rickle(json_dict, **args)
+            else:
+                return json_dict
+        else:
+            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+
+
     def add_api_json_call(self, name,
                           url : str,
                           http_verb : str = 'GET',
@@ -1150,7 +1235,8 @@ class Rickle(BaseRickle):
                           load_as_rick: bool = False,
                           deep : bool = False,
                           load_lambda : bool = False,
-                          expected_http_status : int = 200):
+                          expected_http_status : int = 200,
+                          hot_load : bool = False):
         """
         Load a JSON response from a URL and create a Rick from it. This opens up dynamic possibility,
         but with that it also opens up extreme security vulnerabilities. Only ever load JSON objects from trusted sources.
@@ -1168,25 +1254,34 @@ class Rickle(BaseRickle):
             deep (bool): Internalize dictionary structures in lists (default = False).
             load_lambda (bool): Load lambda as code or strings (default = False).
             expected_http_status (int): Should a none 200 code be expected (default = 200).
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
 
         """
-        if http_verb.lower() == 'post':
-            r = requests.post(url=url, data=body, headers=headers)
-        else:
-            r = requests.get(url=url, params=params, headers=headers)
+        if hot_load:
+            _load = f"""lambda self=self: self._load_api_json_call(url='{url}', 
+                                http_verb='{http_verb}', 
+                                headers={headers}, 
+                                params={params}, 
+                                body={body},
+                                load_as_rick={load_as_rick},
+                                deep={deep},
+                                load_lambda={load_lambda},
+                                expected_http_status={expected_http_status})"""
 
-        if r.status_code == expected_http_status:
-            json_dict = r.json()
-            if load_as_rick:
-                args = copy.copy(self.__init_args)
-                args['load_lambda'] = load_lambda
-                args['deep'] = deep
-
-                self.__dict__.update({name: Rickle(json_dict, **args)})
-            else:
-                self.__dict__.update({name: json_dict})
+            self.__dict__.update({name: eval(_load)})
         else:
-            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+            result = self._load_api_json_call(url=url,
+                                               http_verb=http_verb,
+                                               headers=headers,
+                                               params=params,
+                                               body=body,
+                                               load_as_rick=load_as_rick,
+                                               deep=deep,
+                                               load_lambda=load_lambda,
+                                               expected_http_status=expected_http_status)
+
+            self.__dict__.update({name: result})
+
         self.__meta_info[name] = {'type': 'api_json',
                                   'url': url,
                                   'http_verb': http_verb,
@@ -1195,5 +1290,6 @@ class Rickle(BaseRickle):
                                   'body' : body,
                                   'deep' : deep,
                                   'load_lambda' : load_lambda,
-                                  'expected_http_status' : expected_http_status
+                                  'expected_http_status' : expected_http_status,
+                                  'hot_load' : hot_load
                                   }
