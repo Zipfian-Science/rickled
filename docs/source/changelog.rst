@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.2.8 (2023-02-15)
+--------------------------
+
+* Added the `hot_load` property to API calls, making it load on call instead of only on start.
+* Added the `hot_load` property to HTML page, making it load on call instead of only on start.
+
 Version 0.2.7 (2023-02-15)
 --------------------------
 

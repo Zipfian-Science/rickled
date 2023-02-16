@@ -645,6 +645,27 @@ Other properties that can be defined:
    deep: bool
    load_lambda: bool
    expected_http_status: int
+   hot_load: bool
+
+The property ``hot_load`` will turn this into a function that, when called, does the request with the params/headers.
+
+.. code-block:: yaml
+
+   crypt_exchanges:
+      type: api_json
+      url: https://cryptingup.com/api/exchanges
+      expected_http_status: 200
+      hot_load: true
+
+This example will load the results hot off the press.
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.crypt_exchanges()
+
+Notice how it is called with parentheses because it is now a function (``hot_load=true``).
 
 Add base 64 encoded
 ---------------------
@@ -671,6 +692,8 @@ Useful when loading up a documentation page.
       expected_http_status: 200
 
 This will GET the HTML. ``params`` and ``headers`` can also be given, same as with the API call.
+
+As with the API call, a ``hot_load`` property will load the page on call.
 
 Import Python modules
 ---------------------
