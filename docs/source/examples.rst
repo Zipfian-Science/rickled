@@ -606,6 +606,8 @@ This will load the contents as plain text.
 
 This will load the data as binary.
 
+The data in the file can also be loaded on function call, same as with the ``add_api_json_call``. This is done with the ``hot_load: true`` property.
+
 Add from REST API
 ---------------------
 
