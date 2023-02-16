@@ -183,3 +183,33 @@ get_area:
         with self.assertRaises(AttributeError):
             area = r.functions.get_area(x=10, y=10, z=10)
 
+    def test_hot_load_api(self):
+
+        s = """
+crypt_exchanges:
+  type: api_json
+  url: https://cryptingup.com/api/exchanges
+  expected_http_status: 200
+  load_as_rick: true
+  deep: true
+  hot_load: true
+        """
+
+        r = Rickle(s)
+
+        observed = r.crypt_exchanges()
+
+        self.assertTrue(isinstance(observed, Rickle))
+
+        s = """
+crypt_exchanges:
+  type: api_json
+  url: https://cryptingup.com/api/exchanges
+  expected_http_status: 200
+  load_as_rick: true
+  deep: true
+        """
+
+        r = Rickle(s)
+
+        self.assertTrue(isinstance(r.crypt_exchanges, Rickle))
