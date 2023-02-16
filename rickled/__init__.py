@@ -673,7 +673,8 @@ class Rickle(BaseRickle):
                                        deep=v.get('deep', False),
                                        load_lambda=v.get('load_lambda', False),
                                        is_binary=v.get('is_binary', False),
-                                       encoding=v.get('encoding', 'utf-8'))
+                                       encoding=v.get('encoding', 'utf-8'),
+                                       hot_load=v.get('hot_load', False))
                     continue
                 if 'type' in v.keys() and v['type'] == 'from_csv':
                     self.add_csv_file(name=k,
@@ -1025,13 +1026,34 @@ class Rickle(BaseRickle):
     def add_dataframe(self):
         raise NotImplementedError()
 
+    def _load_from_file(self,
+                      file_path: str,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      is_binary: bool = False,
+                      encoding: str = 'utf-8'):
+        if load_as_rick and not is_binary:
+            args = copy.copy(self.__init_args)
+            args['load_lambda'] = load_lambda
+            args['deep'] = deep
+            return Rickle(file_path, **args)
+        else:
+            if is_binary:
+                with open(file_path, 'rb') as fn:
+                    return fn.read()
+            else:
+                with open(file_path, 'r', encoding=encoding) as fn:
+                    return fn.read()
+
     def add_from_file(self, name,
                       file_path : str,
                       load_as_rick : bool = False,
                       deep : bool = False,
                       load_lambda : bool = False,
                       is_binary : bool = False,
-                      encoding : str = 'utf-8'):
+                      encoding : str = 'utf-8',
+                      hot_load : bool = False):
         """
         Adds the ability to further load Ricks from other YAML or JSON files, or alternatively load a text file.
         This opens up dynamic possibility, but with that it also opens up extreme security vulnerabilities.
@@ -1047,20 +1069,27 @@ class Rickle(BaseRickle):
             load_lambda (bool): Load lambda as code or strings (default = False).
             is_binary (bool): If the file is a binary file (default = False).
             encoding (str): If text, encoding can be specified (default = 'utf-8').
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
         """
 
-        if load_as_rick and not is_binary:
-            args = copy.copy(self.__init_args)
-            args['load_lambda'] = load_lambda
-            args['deep'] = deep
-            self.__dict__.update({name: Rickle(file_path, **args)})
+        if hot_load:
+            _load = f"""lambda self=self: self._load_from_file(file_path='{file_path}',
+                                          load_as_rick={load_as_rick},
+                                          deep={deep},
+                                          load_lambda={load_lambda},
+                                          is_binary={is_binary},
+                                          encoding='{encoding}')"""
+
+            self.__dict__.update({name: eval(_load)})
         else:
-            if is_binary:
-                with open(file_path, 'rb') as fn:
-                    self.__dict__.update({name: fn.read()})
-            else:
-                with open(file_path, 'r', encoding=encoding) as fn:
-                    self.__dict__.update({name: fn.read()})
+            result = self._load_from_file(file_path=file_path,
+                                          load_as_rick=load_as_rick,
+                                          deep=deep,
+                                          load_lambda=load_lambda,
+                                          is_binary=is_binary,
+                                          encoding=encoding)
+
+            self.__dict__.update({name: result})
 
         self.__meta_info[name] = {'type': 'from_file',
                                   'file_path' : file_path,
@@ -1068,7 +1097,8 @@ class Rickle(BaseRickle):
                                   'deep' : deep,
                                   'load_lambda' : load_lambda,
                                   'is_binary' : is_binary,
-                                  'encoding' : encoding
+                                  'encoding' : encoding,
+                                  'hot_load' : hot_load
                                   }
 
     def _load_html_page(self,

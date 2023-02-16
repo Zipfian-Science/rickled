@@ -240,3 +240,27 @@ page:
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.page, Rickle))
+
+    def test_hot_load_file(self):
+        s = """
+another_rick:
+   type: from_file
+   file_path: './tests/placebos/test_config.json'
+   hot_load: true
+        """
+
+        r = Rickle(s)
+
+        observed = r.another_rick()
+
+        self.assertTrue(isinstance(observed, str))
+
+        s = """
+another_rick:
+   type: from_file
+   file_path: './tests/placebos/test_config.json'
+        """
+
+        r = Rickle(s)
+
+        self.assertTrue(isinstance(r.another_rick, Rickle))
