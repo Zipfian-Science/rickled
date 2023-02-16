@@ -606,6 +606,8 @@ This will load the contents as plain text.
 
 This will load the data as binary.
 
+The data in the file can also be loaded on function call, same as with the ``add_api_json_call``. This is done with the ``hot_load: true`` property.
+
 Add from REST API
 ---------------------
 
@@ -645,6 +647,27 @@ Other properties that can be defined:
    deep: bool
    load_lambda: bool
    expected_http_status: int
+   hot_load: bool
+
+The property ``hot_load`` will turn this into a function that, when called, does the request with the params/headers.
+
+.. code-block:: yaml
+
+   crypt_exchanges:
+      type: api_json
+      url: https://cryptingup.com/api/exchanges
+      expected_http_status: 200
+      hot_load: true
+
+This example will load the results hot off the press.
+
+.. code-block:: python
+
+   rick = Rickle('test.yaml')
+
+   rick.crypt_exchanges()
+
+Notice how it is called with parentheses because it is now a function (``hot_load=true``).
 
 Add base 64 encoded
 ---------------------
@@ -671,6 +694,8 @@ Useful when loading up a documentation page.
       expected_http_status: 200
 
 This will GET the HTML. ``params`` and ``headers`` can also be given, same as with the API call.
+
+As with the API call, a ``hot_load`` property will load the page on call.
 
 Import Python modules
 ---------------------
@@ -762,25 +787,25 @@ We can access the attributes by using the paths. If we have the following YAML:
          import:
             - "from datetime import datetime as dd"
          load: "dd.utcnow().strftime('%Y-%m-%d')"
-   level_one:
-      level_two:
-         member: 42
-         list_member:
-            - 1
-            - 0
-            - 1
-            - 1
-            - 1
-   funcs:
-      type: function
-      name: funcs
-      args:
-         x: 42
-         y: worl
-      load: >
-          def funcs(x, y):
-              _x = int(x)
-              return f'Hello {y}, {_x / len(y)}!'
+      level_one:
+         level_two:
+            member: 42
+            list_member:
+               - 1
+               - 0
+               - 1
+               - 1
+               - 1
+      funcs:
+         type: function
+         name: funcs
+         args:
+            x: 42
+            y: worl
+         load: >
+             def funcs(x, y):
+                 _x = int(x)
+                 return f'Hello {y}, {_x / len(y)}!'
 
 And the we can use paths.
 
@@ -898,25 +923,25 @@ And then the following Rickle can be defined:
          import:
             - "from datetime import datetime as dd"
          load: "dd.utcnow().strftime('%Y-%m-%d')"
-   level_one:
-      level_two:
-         member: 42
-         list_member:
-            - 1
-            - 0
-            - 1
-            - 1
-            - 1
-   funcs:
-      type: function
-      name: funcs
-      args:
-         x: 42
-         y: worl
-      load: >
-          def funcs(x, y):
-              _x = int(x)
-              return f'Hello {y}, {_x / len(y)}!'
+      level_one:
+         level_two:
+            member: 42
+            list_member:
+               - 1
+               - 0
+               - 1
+               - 1
+               - 1
+      funcs:
+         type: function
+         name: funcs
+         args:
+            x: 42
+            y: worl
+         load: >
+             def funcs(x, y):
+                 _x = int(x)
+                 return f'Hello {y}, {_x / len(y)}!'
 
 Then added to the object:
 
