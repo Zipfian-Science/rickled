@@ -213,3 +213,30 @@ crypt_exchanges:
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.crypt_exchanges, Rickle))
+
+    def test_hot_load_html(self):
+
+        s = """
+page:
+    type: html_page
+    url: https://cryptingup.com
+    expected_http_status: 200
+    hot_load: true
+        """
+
+        r = Rickle(s)
+
+        observed = r.page()
+
+        self.assertTrue(isinstance(observed, str))
+
+        s = """
+page:
+    type: html_page
+    url: https://cryptingup.com
+    expected_http_status: 200
+        """
+
+        r = Rickle(s)
+
+        self.assertTrue(isinstance(r.page, Rickle))

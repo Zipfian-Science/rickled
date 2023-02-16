@@ -700,7 +700,8 @@ class Rickle(BaseRickle):
                                        url=v['url'],
                                        headers=v.get('headers', None),
                                        params=v.get('params', None),
-                                       expected_http_status=v.get('expected_http_status', 200))
+                                       expected_http_status=v.get('expected_http_status', 200),
+                                       hot_load=v.get('hot_load', False))
                     continue
                 if 'type' in v.keys() and v['type'] == 'lambda':
                     load = v['load']
@@ -1070,12 +1071,25 @@ class Rickle(BaseRickle):
                                   'encoding' : encoding
                                   }
 
+    def _load_html_page(self,
+                      url : str,
+                      headers : dict = None,
+                      params : dict = None,
+                      expected_http_status : int = 200):
+        r = requests.get(url=url, params=params, headers=headers)
+
+        if r.status_code == expected_http_status:
+            return r.text
+        else:
+            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+
     def add_html_page(self,
                       name,
                       url : str,
                       headers : dict = None,
                       params : dict = None,
-                      expected_http_status : int = 200):
+                      expected_http_status : int = 200,
+                      hot_load : bool = False):
         """
         Loads HTML page as property.
 
@@ -1085,20 +1099,31 @@ class Rickle(BaseRickle):
             headers (dict): Key-value pair for headers (default = None).
             params (dict): Key-value pair for parameters (default = None).
             expected_http_status (int): Should a none 200 code be expected (default = 200).
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
 
         """
-        r = requests.get(url=url, params=params, headers=headers)
 
-        if r.status_code == expected_http_status:
-            self.__dict__.update({name: r.text})
+        if hot_load:
+            _load = f"""lambda self=self: self._load_html_page(url='{url}',
+                                          headers={headers},
+                                          params={params},
+                                          expected_http_status={expected_http_status})"""
+
+            self.__dict__.update({name: eval(_load)})
         else:
-            raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
+            result = self._load_html_page(url=url,
+                                          headers=headers,
+                                          params=params,
+                                          expected_http_status=expected_http_status)
+
+            self.__dict__.update({name: result})
 
         self.__meta_info[name] = {'type': 'html_page',
                                   'url': url,
                                   'headers': headers,
                                   'params': params,
-                                  'expected_http_status': expected_http_status
+                                  'expected_http_status': expected_http_status,
+                                  'hot_load' : hot_load
                                   }
 
     def add_class_definition(self, name, attributes, imports : list = None ):
@@ -1235,5 +1260,6 @@ class Rickle(BaseRickle):
                                   'body' : body,
                                   'deep' : deep,
                                   'load_lambda' : load_lambda,
-                                  'expected_http_status' : expected_http_status
+                                  'expected_http_status' : expected_http_status,
+                                  'hot_load' : hot_load
                                   }
