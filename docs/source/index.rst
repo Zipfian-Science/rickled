@@ -102,9 +102,12 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.2.7 (2023-02-15):
+Version 0.3.0 (2023-02-16):
 
-* Complete revamp of internal versioning.
+* Bumped up to minor 3, close to releasing version 1.0 after http server is implemented.
+* Added the `hot_load` property to API calls, making it load on call instead of only on start.
+* Added the `hot_load` property to HTML page, making it load on call instead of only on start.
+* Added the `hot_load` property to add file, making it load on call instead of only on start.
 
 
 

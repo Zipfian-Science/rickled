@@ -787,25 +787,25 @@ We can access the attributes by using the paths. If we have the following YAML:
          import:
             - "from datetime import datetime as dd"
          load: "dd.utcnow().strftime('%Y-%m-%d')"
-   level_one:
-      level_two:
-         member: 42
-         list_member:
-            - 1
-            - 0
-            - 1
-            - 1
-            - 1
-   funcs:
-      type: function
-      name: funcs
-      args:
-         x: 42
-         y: worl
-      load: >
-          def funcs(x, y):
-              _x = int(x)
-              return f'Hello {y}, {_x / len(y)}!'
+      level_one:
+         level_two:
+            member: 42
+            list_member:
+               - 1
+               - 0
+               - 1
+               - 1
+               - 1
+      funcs:
+         type: function
+         name: funcs
+         args:
+            x: 42
+            y: worl
+         load: >
+             def funcs(x, y):
+                 _x = int(x)
+                 return f'Hello {y}, {_x / len(y)}!'
 
 And the we can use paths.
 
@@ -923,25 +923,25 @@ And then the following Rickle can be defined:
          import:
             - "from datetime import datetime as dd"
          load: "dd.utcnow().strftime('%Y-%m-%d')"
-   level_one:
-      level_two:
-         member: 42
-         list_member:
-            - 1
-            - 0
-            - 1
-            - 1
-            - 1
-   funcs:
-      type: function
-      name: funcs
-      args:
-         x: 42
-         y: worl
-      load: >
-          def funcs(x, y):
-              _x = int(x)
-              return f'Hello {y}, {_x / len(y)}!'
+      level_one:
+         level_two:
+            member: 42
+            list_member:
+               - 1
+               - 0
+               - 1
+               - 1
+               - 1
+      funcs:
+         type: function
+         name: funcs
+         args:
+            x: 42
+            y: worl
+         load: >
+             def funcs(x, y):
+                 _x = int(x)
+                 return f'Hello {y}, {_x / len(y)}!'
 
 Then added to the object:
 

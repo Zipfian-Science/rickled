@@ -239,7 +239,7 @@ page:
 
         r = Rickle(s)
 
-        self.assertTrue(isinstance(r.page, Rickle))
+        self.assertTrue(isinstance(r.page, str))
 
     def test_hot_load_file(self):
         s = """
@@ -263,4 +263,4 @@ another_rick:
 
         r = Rickle(s)
 
-        self.assertTrue(isinstance(r.another_rick, Rickle))
+        self.assertTrue(isinstance(r.another_rick, str))
