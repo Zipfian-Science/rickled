@@ -102,14 +102,11 @@ Changes and history
 
 See :ref:`changelog-page` for version history.
 
-Version 0.3.0 (2023-02-16):
+Version 0.3.1 (2023-03-28):
 
-* Bumped up to minor 3, close to releasing version 1.0 after http server is implemented.
-* Added the `hot_load` property to API calls, making it load on call instead of only on start.
-* Added the `hot_load` property to HTML page, making it load on call instead of only on start.
-* Added the `hot_load` property to add file, making it load on call instead of only on start.
-
-
+* Fixed issue for path based query, where Rickle objects are considered callable (rightfully).
+* Uses `inspect.isfunction` instead of `callable`.
+* Added `meta` to base class for getting metadata of a property.
 
 Contributors
 ---------------------

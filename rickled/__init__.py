@@ -258,6 +258,7 @@ class BaseRickle:
             self.__dict__.update({k:v})
 
     def __init__(self, base : Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, **init_args):
+        self.__meta_info = dict()
         stringed = ''
         if base is None:
             return
@@ -630,6 +631,18 @@ class BaseRickle:
         self_as_dict = self.dict(serialised=serialised)
         return json.dumps(self_as_dict)
 
+    def meta(self, name):
+        """
+        Get the metadata for a property.
+
+        Args:
+            name (str): The name of the proprty.
+
+        Returns:
+            dict: The metadata as a dict.
+        """
+        return self.__meta_info[name]
+
     def add_attr(self, name, value):
         """
         Add a new attribute member to Rick.
@@ -639,6 +652,7 @@ class BaseRickle:
             value (any): Value of new member.
         """
         self.__dict__.update({name: value})
+        self.__meta_info[name] = {'type': 'attr', 'value': value}
 
 class Rickle(BaseRickle):
     """
