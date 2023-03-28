@@ -425,7 +425,7 @@ class BaseRickle:
             except:
                 raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
 
-        if callable(current_node):
+        if inspect.isfunction(current_node):
             try:
                 return current_node()
             except:

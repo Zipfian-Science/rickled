@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.3.1 (2023-03-28)
+--------------------------
+
+* Fixed issue for path based query, where Rickle objects are considered callable (rightfully).
+* Uses `inspect.isfunction` instead of `callable`.
+
 Version 0.3.0 (2023-02-16)
 --------------------------
 
