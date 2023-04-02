@@ -258,6 +258,7 @@ class BaseRickle:
             self.__dict__.update({k:v})
 
     def __init__(self, base : Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, **init_args):
+        self.__meta_info = dict()
         stringed = ''
         if base is None:
             return
@@ -425,7 +426,7 @@ class BaseRickle:
             except:
                 raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
 
-        if callable(current_node):
+        if inspect.isfunction(current_node):
             try:
                 return current_node()
             except:
@@ -630,6 +631,18 @@ class BaseRickle:
         self_as_dict = self.dict(serialised=serialised)
         return json.dumps(self_as_dict)
 
+    def meta(self, name):
+        """
+        Get the metadata for a property.
+
+        Args:
+            name (str): The name of the proprty.
+
+        Returns:
+            dict: The metadata as a dict.
+        """
+        return self.__meta_info[name]
+
     def add_attr(self, name, value):
         """
         Add a new attribute member to Rick.
@@ -639,6 +652,7 @@ class BaseRickle:
             value (any): Value of new member.
         """
         self.__dict__.update({name: value})
+        self.__meta_info[name] = {'type': 'attr', 'value': value}
 
 class Rickle(BaseRickle):
     """
@@ -769,6 +783,18 @@ class Rickle(BaseRickle):
             return True
         else:
             return False
+
+    def meta(self, name):
+        """
+        Get the metadata for a property.
+
+        Args:
+            name (str): The name of the proprty.
+
+        Returns:
+            dict: The metadata as a dict.
+        """
+        return self.__meta_info[name]
 
     def dict(self, serialised : bool = False):
         """
