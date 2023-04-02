@@ -784,6 +784,18 @@ class Rickle(BaseRickle):
         else:
             return False
 
+    def meta(self, name):
+        """
+        Get the metadata for a property.
+
+        Args:
+            name (str): The name of the proprty.
+
+        Returns:
+            dict: The metadata as a dict.
+        """
+        return self.__meta_info[name]
+
     def dict(self, serialised : bool = False):
         """
         Deconstructs the whole object into a Python dictionary.

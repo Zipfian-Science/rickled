@@ -124,6 +124,14 @@ path:
 
         self.assertIsInstance(v, str)
 
+        v = test_rickle('/path/level_one')
+
+        self.assertIsInstance(v, Rickle)
+
+        self.assertTrue(callable(v.funcs))
+
+        self.assertIsInstance(v.level_two.list_member, list)
+
     def test_self_reference(self):
         y = """
 const:
@@ -186,9 +194,9 @@ get_area:
     def test_hot_load_api(self):
 
         s = """
-crypt_exchanges:
+random_joke:
   type: api_json
-  url: https://cryptingup.com/api/exchanges
+  url: https://official-joke-api.appspot.com/random_joke
   expected_http_status: 200
   load_as_rick: true
   deep: true
@@ -197,14 +205,14 @@ crypt_exchanges:
 
         r = Rickle(s)
 
-        observed = r.crypt_exchanges()
+        observed = r.random_joke()
 
         self.assertTrue(isinstance(observed, Rickle))
 
         s = """
-crypt_exchanges:
+random_joke:
   type: api_json
-  url: https://cryptingup.com/api/exchanges
+  url: https://official-joke-api.appspot.com/random_joke
   expected_http_status: 200
   load_as_rick: true
   deep: true
@@ -212,14 +220,14 @@ crypt_exchanges:
 
         r = Rickle(s)
 
-        self.assertTrue(isinstance(r.crypt_exchanges, Rickle))
+        self.assertTrue(isinstance(r.random_joke, Rickle))
 
     def test_hot_load_html(self):
 
         s = """
 page:
     type: html_page
-    url: https://cryptingup.com
+    url: https://zipfian.science
     expected_http_status: 200
     hot_load: true
         """
@@ -233,13 +241,25 @@ page:
         s = """
 page:
     type: html_page
-    url: https://cryptingup.com
+    url: https://zipfian.science
     expected_http_status: 200
         """
 
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.page, str))
+
+        expected_meta = {'type': 'html_page',
+                        'url': 'https://zipfian.science',
+                        'headers': None,
+                        'params': None,
+                        'expected_http_status': 200,
+                        'hot_load' : False
+                    }
+
+        actual_meta = r.meta('page')
+
+        self.assertDictEqual(expected_meta, actual_meta)
 
     def test_hot_load_file(self):
         s = """

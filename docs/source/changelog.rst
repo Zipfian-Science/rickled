@@ -11,7 +11,7 @@ Changelog
 History
 ==========================
 
-Version 0.3.1 (2023-03-28)
+Version 0.3.1 (2023-04-02)
 --------------------------
 
 * Fixed issue for path based query, where Rickle objects are considered callable (rightfully).

@@ -60,6 +60,12 @@ class TestPickles(unittest.TestCase):
 
         self.assertEquals(test_conf.new_var, 43)
 
+        expected_meta = {'type': 'attr', 'value': 42}
+
+        actual_meta = test_conf.meta('new_var')
+
+        self.assertDictEqual(expected_meta, actual_meta)
+
     def test_extended_config(self):
         # Test normal dict
         test_dict = {'A' : 1, 'l' : [1, { 'deep' : 'hole'}], 'B' : { 'k' : 'v'}}
