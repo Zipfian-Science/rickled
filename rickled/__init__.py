@@ -815,7 +815,12 @@ class Rickle(BaseRickle):
                 continue
             if serialised and key in self.__meta_info.keys():
                 d[key] = self.__meta_info[key]
-            elif key in self.__meta_info.keys() and self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition']:
+            elif key in self.__meta_info.keys() and \
+                    self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition']:
+                d[key] = self.__meta_info[key]
+            elif key in self.__meta_info.keys() and \
+                    self.__meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
+                    self.__meta_info[key]['hot_load']:
                 d[key] = self.__meta_info[key]
             elif isinstance(value, BaseRickle):
                 d[key] = value.dict(serialised=serialised)

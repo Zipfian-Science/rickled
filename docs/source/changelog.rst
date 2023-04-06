@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 0.3.2 (2023-04-06)
+--------------------------
+
+* When calling ``dict()`` on rickle, hot loaded items were not being serialised. Fixed.
+
 Version 0.3.1 (2023-04-02)
 --------------------------
 

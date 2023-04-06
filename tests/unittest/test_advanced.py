@@ -209,6 +209,10 @@ random_joke:
 
         self.assertTrue(isinstance(observed, Rickle))
 
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['random_joke'], dict))
+
         s = """
 random_joke:
   type: api_json
@@ -221,6 +225,11 @@ random_joke:
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.random_joke, Rickle))
+
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['random_joke'], dict))
 
     def test_hot_load_html(self):
 
@@ -237,6 +246,10 @@ page:
         observed = r.page()
 
         self.assertTrue(isinstance(observed, str))
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['page'], dict))
 
         s = """
 page:
@@ -261,6 +274,10 @@ page:
 
         self.assertDictEqual(expected_meta, actual_meta)
 
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['page'], str))
+
     def test_hot_load_file(self):
         s = """
 another_rick:
@@ -275,6 +292,10 @@ another_rick:
 
         self.assertTrue(isinstance(observed, str))
 
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['another_rick'], dict))
+
         s = """
 another_rick:
    type: from_file
@@ -284,3 +305,7 @@ another_rick:
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.another_rick, str))
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['another_rick'], str))
