@@ -309,3 +309,28 @@ another_rick:
         d = r.dict()
 
         self.assertTrue(isinstance(d['another_rick'], str))
+
+    def test_serialise_list(self):
+
+        s = """
+BASICS:
+    text: test
+    dictionary:
+        one: value
+        two: value
+    number: 2
+    list:
+        - one
+        - two
+        - four
+        - name: John
+          age: 20
+        """
+
+        r = Rickle(s, deep=True)
+
+        self.assertTrue(isinstance(r.BASICS.list[-1], Rickle))
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['BASICS']['list'][-1], dict))

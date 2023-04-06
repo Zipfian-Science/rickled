@@ -103,11 +103,9 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 0.3.1 (2023-04-02):
+Version 0.3.2 (2023-04-07):
 
-* Fixed issue for path based query, where Rickle objects are considered callable (rightfully).
-* Uses `inspect.isfunction` instead of `callable`.
-* Added `meta` to base class for getting metadata of a property.
+* When calling `dict()` on rickle, hot loaded items were not being serialised. Fixed.
 
 
 Contributors
