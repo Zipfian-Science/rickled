@@ -45,6 +45,9 @@ setup(
     include_package_data=True,
     install_requires=pipreq,
     package_dir={'.': 'rickled'},
+    extras_require = {
+        'twisted':  ['twisted']
+    },
     classifiers=[
             'Intended Audience :: Science/Research',
             'Operating System :: OS Independent',

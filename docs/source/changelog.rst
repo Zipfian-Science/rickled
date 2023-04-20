@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.3.3 (2023-04-21)
+--------------------------
+
+* Adding optional install of `twisted` library.
+
+
 Version 0.3.2 (2023-04-07)
 --------------------------
 
