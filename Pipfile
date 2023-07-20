@@ -11,10 +11,12 @@ rinohtype = "*"
 sphinxcontrib-napoleon = "*"
 python-docs-theme = "*"
 sphinx-rtd-theme = "*"
+pyopenssl = "*"
 
 [packages]
 pyyaml = "*"
 requests = "*"
+twisted = "*"
 
 [requires]
 python_version = "3"
