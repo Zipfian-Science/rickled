@@ -11,6 +11,7 @@ rinohtype = "*"
 sphinxcontrib-napoleon = "*"
 python-docs-theme = "*"
 sphinx-rtd-theme = "*"
+pyopenssl = "*"
 
 [packages]
 pyyaml = "*"

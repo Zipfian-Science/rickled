@@ -11,10 +11,16 @@ Changelog
 History
 ==========================
 
-Version 0.3.3 (2023-04-21)
+Version 0.3.4 (2023-07-20)
+--------------------------
+
+* Fixed error when importing from `rickled.net` when openssl is not installed.
+
+Version 0.3.3 (2023-07-20)
 --------------------------
 
 * Adding optional install of `twisted` library.
+* Added `serve_rickle_http` and `serve_rickle_https` to `rickled.net` to serve Rickles as REST API.
 
 
 Version 0.3.2 (2023-04-07)

@@ -103,9 +103,9 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 0.3.2 (2023-04-07):
+Version 0.3.4 (2023-07-20):
 
-* When calling `dict()` on rickle, hot loaded items were not being serialised. Fixed.
+* Fixed error when importing from `rickled.net` when openssl is not installed.
 
 
 Contributors

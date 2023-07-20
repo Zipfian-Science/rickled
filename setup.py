@@ -31,7 +31,7 @@ else:
 setup(
     name="rickled",
     version=about["__version__"],
-    description='Tools for pickling Python objects in completely different way',
+    description='Tools for pickling Python objects in a completely different way',
     long_description_content_type='text/markdown',
     long_description=long_description,
     license='Apache 2.0',
@@ -46,7 +46,8 @@ setup(
     install_requires=pipreq,
     package_dir={'.': 'rickled'},
     extras_require = {
-        'twisted':  ['twisted']
+        'twisted':  ['twisted'],
+        'twisted,ssl':  ['twisted', 'pyopenssl']
     },
     classifiers=[
             'Intended Audience :: Science/Research',
