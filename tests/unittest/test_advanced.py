@@ -124,6 +124,14 @@ path:
 
         self.assertIsInstance(v, str)
 
+        v = test_rickle('/path/level_one')
+
+        self.assertIsInstance(v, Rickle)
+
+        self.assertTrue(callable(v.funcs))
+
+        self.assertIsInstance(v.level_two.list_member, list)
+
     def test_self_reference(self):
         y = """
 const:
@@ -186,9 +194,9 @@ get_area:
     def test_hot_load_api(self):
 
         s = """
-crypt_exchanges:
+random_joke:
   type: api_json
-  url: https://cryptingup.com/api/exchanges
+  url: https://official-joke-api.appspot.com/random_joke
   expected_http_status: 200
   load_as_rick: true
   deep: true
@@ -197,14 +205,18 @@ crypt_exchanges:
 
         r = Rickle(s)
 
-        observed = r.crypt_exchanges()
+        observed = r.random_joke()
 
         self.assertTrue(isinstance(observed, Rickle))
 
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['random_joke'], dict))
+
         s = """
-crypt_exchanges:
+random_joke:
   type: api_json
-  url: https://cryptingup.com/api/exchanges
+  url: https://official-joke-api.appspot.com/random_joke
   expected_http_status: 200
   load_as_rick: true
   deep: true
@@ -212,14 +224,19 @@ crypt_exchanges:
 
         r = Rickle(s)
 
-        self.assertTrue(isinstance(r.crypt_exchanges, Rickle))
+        self.assertTrue(isinstance(r.random_joke, Rickle))
+
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['random_joke'], dict))
 
     def test_hot_load_html(self):
 
         s = """
 page:
     type: html_page
-    url: https://cryptingup.com
+    url: https://zipfian.science
     expected_http_status: 200
     hot_load: true
         """
@@ -230,16 +247,36 @@ page:
 
         self.assertTrue(isinstance(observed, str))
 
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['page'], dict))
+
         s = """
 page:
     type: html_page
-    url: https://cryptingup.com
+    url: https://zipfian.science
     expected_http_status: 200
         """
 
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.page, str))
+
+        expected_meta = {'type': 'html_page',
+                        'url': 'https://zipfian.science',
+                        'headers': None,
+                        'params': None,
+                        'expected_http_status': 200,
+                        'hot_load' : False
+                    }
+
+        actual_meta = r.meta('page')
+
+        self.assertDictEqual(expected_meta, actual_meta)
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['page'], str))
 
     def test_hot_load_file(self):
         s = """
@@ -255,6 +292,10 @@ another_rick:
 
         self.assertTrue(isinstance(observed, str))
 
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['another_rick'], dict))
+
         s = """
 another_rick:
    type: from_file
@@ -264,3 +305,32 @@ another_rick:
         r = Rickle(s)
 
         self.assertTrue(isinstance(r.another_rick, str))
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['another_rick'], str))
+
+    def test_serialise_list(self):
+
+        s = """
+BASICS:
+    text: test
+    dictionary:
+        one: value
+        two: value
+    number: 2
+    list:
+        - one
+        - two
+        - four
+        - name: John
+          age: 20
+        """
+
+        r = Rickle(s, deep=True)
+
+        self.assertTrue(isinstance(r.BASICS.list[-1], Rickle))
+
+        d = r.dict()
+
+        self.assertTrue(isinstance(d['BASICS']['list'][-1], dict))

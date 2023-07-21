@@ -42,9 +42,9 @@ TesterClass:
 
 
 
-crypt_exchanges:
+random_joke:
   type: api_json
-  url: https://cryptingup.com/api/exchanges
+  url: https://official-joke-api.appspot.com/random_joke
   expected_http_status: 200
   load_as_rick: true
   deep: true
