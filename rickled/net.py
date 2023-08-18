@@ -52,12 +52,12 @@ class HttpResource(resource.Resource):
 
         return response.encode("utf-8")
 
-def serve_rickle_http(rickle, port: int = 8080):
+def serve_rickle_http(rickle, port: int = 8080, interface: str = ''):
     site = server.Site(HttpResource(rickle))
-    reactor.listenTCP(port, site)
+    reactor.listenTCP(port, site, interface=interface)
     reactor.run()
 
-def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: str, port: int = 8080):
+def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: str, port: int = 8080, interface: str = ''):
     ssl_context = ssl.DefaultOpenSSLContextFactory(
         path_to_private_key,
         path_to_certificate,
@@ -65,5 +65,5 @@ def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: st
 
     site = server.Site(HttpResource(rickle))
 
-    reactor.listenSSL(port, site, ssl_context)
+    reactor.listenSSL(port, site, ssl_context, interface=interface)
     reactor.run()

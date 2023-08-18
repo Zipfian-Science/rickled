@@ -45,9 +45,14 @@ setup(
     include_package_data=True,
     install_requires=pipreq,
     package_dir={'.': 'rickled'},
-    extras_require = {
+    extras_require={
         'twisted':  ['twisted'],
-        'twisted,ssl':  ['twisted', 'pyopenssl']
+        'pyopenssl':  ['pyopenssl']
+    },
+    entry_points={
+        'console_scripts': [
+            'rickle = rickled.cli:main',
+        ],
     },
     classifiers=[
             'Intended Audience :: Science/Research',
