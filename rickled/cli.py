@@ -1,6 +1,6 @@
 import os
 
-from __version__ import __version__
+import rickled.__version__ as ver
 
 import argparse
 from typing import List
@@ -141,7 +141,22 @@ def conv(args):
 
 def serve(args):
     from rickled.net import serve_rickle_http, serve_rickle_https
-    pass
+    from rickled import Rickle
+
+    rick = Rickle(args.f)
+
+    if args.s and args.k:
+        serve_rickle_https(rickle=rick,
+                           path_to_certificate=args.s,
+                           path_to_private_key=args.k,
+                           port=args.p,
+                           interface=args.i
+                           )
+    else:
+        serve_rickle_http(rickle=rick,
+                          port=args.p,
+                          interface=args.i
+                          )
 
 def main():
     parser = argparse.ArgumentParser(
@@ -149,7 +164,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=f"""
 -----------------------------------------------------
-{bcolors.HEADER}YAML tools for Python{bcolors.ENDC} (version {__version__}).
+{bcolors.HEADER}YAML tools for Python{bcolors.ENDC} (version {ver}).
 """,
         epilog="-----------------------------------------------------"
     )
@@ -158,7 +173,7 @@ def main():
         "-v",
         help="show version number",
         action="version",
-        version=f'%(prog)s {__version__}'
+        version=f'%(prog)s {ver}'
     )
 
     subparsers = parser.add_subparsers()
@@ -178,9 +193,9 @@ def main():
                              nargs='+', metavar='input')
     parser_conv.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC} of files to convert",
                              default=None, nargs='+', metavar='dir')
-    parser_conv.add_argument('-o', type=str, help=f"{bcolors.OKBLUE}output file{bcolors.ENDC} to convert",
+    parser_conv.add_argument('-o', type=str, help=f"{bcolors.OKBLUE}output file{bcolors.ENDC} names",
                              nargs='+', metavar='output')
-    parser_conv.add_argument('-t', type=str, help=f"output {bcolors.OKBLUE}file type{bcolors.ENDC} (JSON, YAML)",
+    parser_conv.add_argument('-t', type=str, help=f"default output {bcolors.OKBLUE}file type{bcolors.ENDC} (JSON, YAML)",
                              default='yaml', metavar='type')
     parser_conv.add_argument('-s', action='store_true', help=f"{bcolors.OKBLUE}suppress{bcolors.ENDC} verbose output",)
 
@@ -197,9 +212,19 @@ def main():
                                         epilog="-----------------------------------------------------"
                                         )
 
-    parser_serve.add_argument('--file', type=str, help=f"{bcolors.OKBLUE}YAML{bcolors.ENDC} or {bcolors.OKBLUE}JSON{bcolors.ENDC} file to serve")
-    parser_serve.add_argument('--host', type=str, help=f"{bcolors.OKBLUE}host{bcolors.ENDC} interface")
-    parser_serve.add_argument('--port', type=int, help=f"{bcolors.OKBLUE}port{bcolors.ENDC} number")
+    parser_serve.add_argument('-f', type=str,
+                              help=f"{bcolors.OKBLUE}YAML{bcolors.ENDC} or {bcolors.OKBLUE}JSON{bcolors.ENDC} file to serve",
+                              metavar='file')
+    parser_serve.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}config{bcolors.ENDC} file path",
+                              default=None, metavar='config')
+    parser_serve.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}host{bcolors.ENDC} interface, address",
+                              default='', metavar='host')
+    parser_serve.add_argument('-p', type=int, help=f"{bcolors.OKBLUE}port{bcolors.ENDC} number",
+                              default=8080, metavar='port')
+    parser_serve.add_argument('-k', type=str, help=f"{bcolors.OKBLUE}private key{bcolors.ENDC} file path",
+                              default=None, metavar='privkey')
+    parser_serve.add_argument('-s', type=str, help=f"{bcolors.OKBLUE}SSL certificate{bcolors.ENDC} file path",
+                              default=None, metavar='cert')
     parser_serve.set_defaults(func=serve)
 
     args = parser.parse_args()
