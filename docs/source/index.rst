@@ -12,6 +12,7 @@ Rickled
 
    rickled
    examples
+   tools
 
 Starting
 =====================
