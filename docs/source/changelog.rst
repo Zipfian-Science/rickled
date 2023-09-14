@@ -11,6 +11,12 @@ Changelog
 History
 ==========================
 
+Version 0.3.5 (2023-09-09)
+--------------------------
+
+* Added the first of the `rickled.tools`, the `Converter`.
+* Added first CLI tools `rickle conv` and `rickle serve`.
+
 Version 0.3.4 (2023-07-20)
 --------------------------
 

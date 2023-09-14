@@ -1,3 +1,4 @@
+import sys
 import traceback
 import warnings
 import json
@@ -7,6 +8,7 @@ from rickled import Rickle
 try:
     from twisted.web import server, resource
     from twisted.internet import reactor, endpoints, ssl
+    from twisted.python import log
 except ModuleNotFoundError as exc:
     warnings.warn('Required Python package not found.', ImportWarning)
 except ImportError as exc:
@@ -30,7 +32,9 @@ class HttpResource(resource.Resource):
 
     def render_GET(self, request):
 
-        content = self.rickle(request.uri.decode("utf-8"))
+        uri = request.uri.decode("utf-8")
+
+        content = self.rickle(uri)
 
         try:
             if isinstance(content, Rickle):
@@ -46,18 +50,22 @@ class HttpResource(resource.Resource):
             else:
                 response = content
         except:
-            request.setResponseCode(500)
+            status_code = 500
+            request.setResponseCode(status_code)
             request.setHeader(b"content-type", b"text/html")
             response = traceback.format_exc()
 
+
         return response.encode("utf-8")
 
-def serve_rickle_http(rickle, port: int = 8080):
+def serve_rickle_http(rickle, port: int = 8080, interface: str = ''):
+    log.startLogging(sys.stdout)
     site = server.Site(HttpResource(rickle))
-    reactor.listenTCP(port, site)
+    reactor.listenTCP(port, site, interface=interface)
     reactor.run()
 
-def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: str, port: int = 8080):
+def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: str, port: int = 8080, interface: str = ''):
+    log.startLogging(sys.stdout)
     ssl_context = ssl.DefaultOpenSSLContextFactory(
         path_to_private_key,
         path_to_certificate,
@@ -65,5 +73,5 @@ def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: st
 
     site = server.Site(HttpResource(rickle))
 
-    reactor.listenSSL(port, site, ssl_context)
+    reactor.listenSSL(port, site, ssl_context, interface=interface)
     reactor.run()
