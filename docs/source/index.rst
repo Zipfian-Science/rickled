@@ -104,9 +104,11 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 0.3.4 (2023-07-20):
+Version 1.0.0 (2023-09-20):
 
-* Fixed error when importing from `rickled.net` when openssl is not installed.
+* Added the schema validation tool `Schema` in `tools`.
+* Added all CLI tools.
+* Now releasing version 1.0.0
 
 
 Contributors
