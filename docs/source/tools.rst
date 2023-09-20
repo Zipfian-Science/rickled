@@ -11,3 +11,8 @@ Converter
 =====================
 .. autoclass:: rickled.tools.Converter
    :members:
+
+Schema tools
+=====================
+.. autoclass:: rickled.tools.Schema
+   :members:
