@@ -1,4 +1,4 @@
-# Rickled
+# Rickled - Smart Python tools for working with YAML
 ```
                                       ....                                      
                                 &((((((((((((((%,                               
@@ -53,7 +53,116 @@
 
 by Zipfian Science                               
 ```
-Python tools for creating pickles in a different way.
+Rickled is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON data. Here's a brief summary of its key features:
+
+1. **Serialization**: Rickled allows you to easily serialize Python objects to YAML format. This is particularly useful for converting Python data structures into a human-readable and easily shareable format.
+
+2. **Schema Validation**: It provides the capability to validate YAML and JSON data against predefined schemas. This ensures that your data adheres to a specific structure or format, helping to maintain data consistency.
+
+3. **Schema Generation**: You can generate schema definitions from existing YAML (or JSON) files. This is helpful when you want to formalize the structure of your data or for documentation purposes.
+
+4. **Conversion between YAML and JSON**: Rickled offers seamless conversion between YAML and JSON formats. This facilitates data interchange between systems that use different serialization formats.
+
+5. **Simple Web Server**: One unique feature of Rickled is its ability to create a basic web server from a YAML file. This means you can define endpoints, routes, and data sources purely by writing it as a YAML file, making it easy to prototype web services without extensive coding, or to create mock REST APIs.
+
+In summary, Rickled is a powerful utility for working with YAML and JSON data in Python. It simplifies tasks like serialization, schema validation, schema generation, format conversion, and even enables quick web server prototyping using YAML configuration files. This tool is valuable for developers and data engineers working with structured data in a flexible and efficient manner.
+
+# Usage
+
+For usage examples see [examples](https://docs.zipfian.science/rickled/examples.html) page.
+
+## Install
+
+First install the tool (Python version >= 3.7):
+
+```bash script
+$ pip install rickled
+```
+
+Optionally the twisted web server can be installed alongside for the `serve` functionality.
+
+```bash script
+$ pip install rickled[twisted]
+```
+
+Furthermore, if SSL support is needed:
+
+```bash script
+$ pip install rickled[twisted,pyopenssl]
+```
+
+Check if the installation succeeded:
+
+```bash script
+$ rickle --help
+```
+
+## Schema tools
+
+Two main schema tools exist, the `check` and the `gen` tools.
+
+### Schema `check`
+
+For checking the schema of input files, the `check` tool is used.
+
+```bash script
+$ rickle schema check --help
+```
+
+```bash script
+$ rickle schema check -i test.yaml -c schema.yaml 
+```
+
+### Schema `gen`
+
+Schema files can be generated from YAML files with the `gen` tool.
+
+```bash script
+$ rickle schema gen --help
+```
+
+```bash script
+$ rickle schema gen -i test.yaml
+```
+
+This will generate a schema file called `test.schema.yaml`.
+
+
+## Conversion tools
+
+Rickled can also be used for bulk conversion from YAML to JSON or the other way around.
+
+```bash script
+$ rickle conv --help
+```
+
+To convert input files (or directories):
+
+```bash script
+$ rickle conv -i test.yaml -o test.json
+```
+
+For each input file the output file can be defined and the path suffix is used to infer the desired output type.
+
+Alternatively the type can be specified with the `-t` flag.
+
+## Serving via HTTP(s)
+
+A nifty little use of this Python tool is the ability to host a webserver, using a YAML file.
+ 
+```bash script
+$ rickle serve --help
+```
+
+```bash script
+$ rickle serve -f basic_example.yaml
+```
+
+This will start listening on http://localhost:8080, for requests using `GET`. 
+
+# Contributing
+
+As this is an open source project, forks and PRs are welcome! Please review some of the practices used below when contributing.
 
 ## Sauce layout
 
@@ -65,6 +174,10 @@ rickled
    |
    |- rickled
    |  |- __init__.py
+   |  |- __version__.py
+   |  |- cli.py
+   |  |- net.py
+   |  |- tools.py
    |
    |- tests
    |  |- integration

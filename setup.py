@@ -35,7 +35,7 @@ setup(
     long_description_content_type='text/markdown',
     long_description=long_description,
     license='Apache 2.0',
-    keywords = ['Pickle', 'Python'],
+    keywords = ['Pickle', 'Python', 'YAML', 'JSON'],
     author='Zipfian Science',
     author_email='about@zipfian.science',
     zip_safe=False,

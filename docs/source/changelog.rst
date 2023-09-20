@@ -11,6 +11,13 @@ Changelog
 History
 ==========================
 
+Version 1.0.0 (2023-09-20)
+--------------------------
+
+* Added the schema validation tool `Schema` in `tools`.
+* Added all CLI tools.
+* Now releasing version 1.0.0
+
 Version 0.3.5 (2023-09-09)
 --------------------------
 
