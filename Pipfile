@@ -4,14 +4,14 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-coverage = "*"
 twine = "*"
-Sphinx = "*"
-rinohtype = "*"
-sphinxcontrib-napoleon = "*"
-python-docs-theme = "*"
-sphinx-rtd-theme = "*"
 pyopenssl = "*"
+coverage = "*"
+sphinx = "*"
+python-docs-theme = "*"
+sphinxcontrib-napoleon = "*"
+sphinx-rtd-theme = "*"
+rinohtype = "*"
 
 [packages]
 pyyaml = "*"
