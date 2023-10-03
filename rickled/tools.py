@@ -328,22 +328,21 @@ class Converter:
             with input_file.open("r") as fin:
                 return json.load(fin)
 
-        if suffix == '.yaml':
+        if suffix in ['.yaml', '.yml']:
             with input_file.open("r") as fin:
                 return yaml.safe_load(fin)
 
-        if suffix is None:
-            try:
-                with input_file.open("r") as fin:
-                    return json.load(fin)
-            except:
-                pass
+        try:
+            with input_file.open("r") as fin:
+                return json.load(fin)
+        except:
+            pass
 
-            try:
-                with input_file.open("r") as fin:
-                    return yaml.safe_load(fin)
-            except:
-                raise ValueError(f"Input file {input_file.name} could not be inferred")
+        try:
+            with input_file.open("r") as fin:
+                return yaml.safe_load(fin)
+        except:
+            raise ValueError(f"Input file {input_file.name} could not be inferred")
 
     def do_convert(self):
         """
