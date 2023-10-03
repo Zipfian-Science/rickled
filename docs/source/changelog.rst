@@ -15,6 +15,7 @@ Version 1.0.1 (2023-10-03)
 --------------------------
 
 * Added the ability to load a Rickle from URL at init.
+* Added the `-b` flag to `serve` CLI tool to open host on browser.
 
 
 Version 1.0.0 (2023-09-20)

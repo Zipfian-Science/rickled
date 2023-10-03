@@ -15,19 +15,26 @@ def serve(args):
     from rickled.net import serve_rickle_http, serve_rickle_https
     from rickled import Rickle
 
+
     rick = Rickle(args.f)
 
-    if args.s and args.k:
+    if args.b:
+        import webbrowser
+        host = 'localhost' if args.a == '' else args.a
+        scheme = 'https' if args.c and args.k else 'http'
+        webbrowser.open(f'{scheme}://{host}:{args.p}', new=2)
+
+    if args.c and args.k:
         serve_rickle_https(rickle=rick,
-                           path_to_certificate=args.s,
+                           path_to_certificate=args.c,
                            path_to_private_key=args.k,
                            port=args.p,
-                           interface=args.i
+                           interface=args.a
                            )
     else:
         serve_rickle_http(rickle=rick,
                           port=args.p,
-                          interface=args.i
+                          interface=args.a
                           )
 
 def check(args):
@@ -75,9 +82,9 @@ def main():
                                         epilog="-----------------------------------------------------"
                                         )
 
-    parser_conv.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC} to convert",
+    parser_conv.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC}(s) to convert",
                              nargs='+', metavar='input')
-    parser_conv.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC} of files to convert",
+    parser_conv.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC}(s) of input files",
                              default=None, nargs='+', metavar='dir')
     parser_conv.add_argument('-o', type=str, help=f"{bcolors.OKBLUE}output file{bcolors.ENDC} names",
                              nargs='+', metavar='output')
@@ -104,14 +111,15 @@ def main():
     # TODO implement config
     # parser_serve.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}config{bcolors.ENDC} file path",
     #                           default=None, metavar='config')
-    parser_serve.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}host{bcolors.ENDC} interface, address",
-                              default='', metavar='host')
+    parser_serve.add_argument('-a', type=str, help=f"{bcolors.OKBLUE}host address{bcolors.ENDC}",
+                              default='', metavar='address')
     parser_serve.add_argument('-p', type=int, help=f"{bcolors.OKBLUE}port{bcolors.ENDC} number",
                               default=8080, metavar='port')
     parser_serve.add_argument('-k', type=str, help=f"{bcolors.OKBLUE}private key{bcolors.ENDC} file path",
                               default=None, metavar='privkey')
-    parser_serve.add_argument('-s', type=str, help=f"{bcolors.OKBLUE}SSL certificate{bcolors.ENDC} file path",
+    parser_serve.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}SSL certificate{bcolors.ENDC} file path",
                               default=None, metavar='cert')
+    parser_serve.add_argument('-b', action='store_true', help=f"open URL in {bcolors.OKBLUE}browser{bcolors.ENDC}", )
     parser_serve.set_defaults(func=serve)
 
     #################### SCHEMA #####################
@@ -129,7 +137,7 @@ def main():
 
     #################### SCHEMA - CHECK ############
     parser_schema_check = schema_subparsers.add_parser('check',
-                                          help=f'Tool for checking {bcolors.OKBLUE}schemas{bcolors.ENDC} of YAML files',
+                                          help=f'Tool for {bcolors.OKBLUE}checking{bcolors.ENDC} schemas of YAML files',
                                           description=f"""
         ---
         {bcolors.HEADER}Tool for checking schemas of YAML files{bcolors.ENDC}.
@@ -138,9 +146,9 @@ def main():
                                           )
 
 
-    parser_schema_check.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC} to check",
+    parser_schema_check.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC}(s) to check",
                              nargs='+', metavar='input')
-    parser_schema_check.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC} of files to check",
+    parser_schema_check.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC}(s) of files to check",
                              default=None, nargs='+', metavar='dir')
 
     parser_schema_check.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}schema definition file{bcolors.ENDC} to compare",
@@ -158,7 +166,7 @@ def main():
 
     #################### SCHEMA - GEN ############
     parser_schema_gen = schema_subparsers.add_parser('gen',
-                                                       help=f'Tool for generating {bcolors.OKBLUE}schemas{bcolors.ENDC} of YAML files',
+                                                       help=f'Tool for {bcolors.OKBLUE}generating{bcolors.ENDC} schemas of YAML files',
                                                        description=f"""
             ---
             {bcolors.HEADER}Tool for generating schemas of YAML files{bcolors.ENDC}.
@@ -166,10 +174,10 @@ def main():
                                                        epilog="-----------------------------------------------------"
                                                        )
 
-    parser_schema_gen.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC} to generate from",
+    parser_schema_gen.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC}(s) to generate from",
                                      nargs='+', metavar='input')
     parser_schema_gen.add_argument('-d', type=str,
-                                     help=f"{bcolors.OKBLUE}directory{bcolors.ENDC} of files to generate from",
+                                     help=f"{bcolors.OKBLUE}directory{bcolors.ENDC}(s) of files to generate from",
                                      default=None, nargs='+', metavar='dir')
 
     parser_schema_gen.add_argument('-s', action='store_true',
