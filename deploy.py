@@ -69,6 +69,7 @@ def upload_docs_via_ftp():
     try:
         with ftplib.FTP(os.getenv('FTP_HOST'), os.getenv('FTP_USERNAME'), os.getenv('FTP_PASSWORD')) as ftp:
             ftp.cwd(os.getenv('FTP_DIRECTORY'))
+            ftp.set_pasv(False)
 
             for f in glob.glob('./docs/build/html/*'):
                 if os.path.isfile(f):

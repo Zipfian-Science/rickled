@@ -104,11 +104,12 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 1.0.0 (2023-09-20):
+Version 1.0.1 (2023-10-03):
 
-* Added the schema validation tool `Schema` in `tools`.
-* Added all CLI tools.
-* Now releasing version 1.0.0
+* Added the ability to load a Rickle from URL at init.
+* Added the `-b` flag to `serve` CLI tool to open host on browser.
+* Bug fix in `infer_read_file_type` when reading unknown file suffix.
+* Renamed the `-i` flag to `-a` in `serve` CLI tool.
 
 
 Contributors

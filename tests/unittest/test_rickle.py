@@ -380,3 +380,10 @@ def tester(x, c):
         s_ = test_conf_yaml.to_yaml_string(serialised=False)
 
         self.assertTrue(True)
+
+    def test_load_from_url(self):
+        url = 'https://official-joke-api.appspot.com/random_joke'
+
+        r = Rickle(url)
+
+        self.assertTrue(True)
