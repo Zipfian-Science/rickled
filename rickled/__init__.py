@@ -277,17 +277,18 @@ class BaseRickle:
             with open(base, 'r') as f:
                 stringed = f.read()
         elif isinstance(base, str):
-            from urllib3.util import parse_url
             try:
-                parsed = parse_url(base)
-                if all([parsed.scheme, parsed.host]):
-
-                    response = requests.get(url=base,)
-                    dict_data = response.json()
-                    self._iternalize(dict_data, deep, **init_args)
-                    return
-
-            except:
+                from urllib3.util import parse_url
+                try:
+                    parsed = parse_url(base)
+                    if all([parsed.scheme, parsed.host]):
+                        response = requests.get(url=base,)
+                        dict_data = response.json()
+                        self._iternalize(dict_data, deep, **init_args)
+                        return
+                except:
+                    pass
+            except (ImportError, ModuleNotFoundError):
                 pass
 
             stringed = base
