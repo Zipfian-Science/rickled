@@ -334,3 +334,33 @@ BASICS:
         d = r.dict()
 
         self.assertTrue(isinstance(d['BASICS']['list'][-1], dict))
+
+    def test_strict(self):
+
+        s = """
+test:
+    has: name
+    get: name
+        """
+
+        with self.assertRaises(ValueError):
+            r = BaseRickle(s, strict=True)
+
+        with self.assertRaises(ValueError):
+            r = Rickle(s, strict=True)
+
+        r = BaseRickle(s, strict=False)
+        with self.assertRaises(TypeError):
+            r.test.has('get')
+
+        r = Rickle(s, strict=False)
+        with self.assertRaises(TypeError):
+            r.test.has('get')
+
+        r = BaseRickle()
+        with self.assertRaises(ValueError):
+            r.add_attr("__setattr__", True)
+
+        r = Rickle()
+        with self.assertRaises(ValueError):
+            r.add_attr("__setattr__", True)
