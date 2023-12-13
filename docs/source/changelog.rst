@@ -11,6 +11,11 @@ Changelog
 History
 ==========================
 
+Version 1.0.2 (2023-12-12)
+--------------------------
+
+* Added `strict` boolean parameter for allowing properties that are reserved keywords.
+
 Version 1.0.1 (2023-10-03)
 --------------------------
 
