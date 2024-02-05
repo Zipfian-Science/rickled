@@ -103,7 +103,7 @@ path:
 
         self.assertEqual(v, 42)
 
-        v = test_rickle('/path/level_one/funcs?x=100&y=world')
+        v = test_rickle("/path/level_one/funcs?x=100&y='world'")
 
         self.assertEqual(v, 'Hello world, 20.0!')
 
@@ -364,3 +364,31 @@ test:
         r = Rickle()
         with self.assertRaises(ValueError):
             r.add_attr("__setattr__", True)
+
+    def test_callable(self):
+        test_yaml = """
+root:
+    func:
+        type: function
+        name: func
+        args:
+            x: 2
+            y: 2
+        load: >
+            def func(x, y):
+                return x ** y
+        """
+
+        r = Rickle(test_yaml, load_lambda=True)
+
+        v = r('/root/func?x=2&y=3')
+
+        self.assertEqual(v, 8)
+
+        v = r('/root/func', x=3, y=2)
+
+        self.assertEqual(v, 9)
+
+        v = r('/root/func')
+
+        self.assertEqual(v, 4)

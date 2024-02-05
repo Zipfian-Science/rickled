@@ -49,6 +49,39 @@ class TestPickles(unittest.TestCase):
         self.assertEquals(test_conf_yaml.ONE, "value")
         self.assertEquals(test_conf_json.ONE, "value")
 
+    def test_base_set(self):
+        test = {
+            'level_one' : {
+                'level_two' : {
+                    'level_three' : 1
+                }
+            }
+        }
+
+        rickle = BaseRickle(test)
+
+        rickle.set('/level_one/level_two/level_three', 99)
+
+        with self.assertRaises(KeyError):
+            rickle.set('level_one/level_two/level_three', -1)
+
+        with self.assertRaises(NameError):
+            rickle.set('/', -1)
+
+        self.assertEquals(rickle.level_one.level_two.level_three, 99)
+
+        rickle.set('level_one', True)
+
+        self.assertTrue(rickle.level_one)
+
+        rickle['planet'] = 'Hello Uranus!'
+
+        self.assertEquals(rickle.planet, 'Hello Uranus!')
+
+        rickle['planet'] = 'Hello Venus :)'
+
+        self.assertEquals(rickle.planet, 'Hello Venus :)')
+
     def test_base_config_add_attr(self):
         test_conf = BaseRickle()
 
@@ -125,6 +158,38 @@ class TestPickles(unittest.TestCase):
 
         self.assertIsInstance(value, BaseRickle)
         self.assertEquals(value.type, 'env')
+
+
+        ###########
+        # Test path like get
+
+        value = test_conf_yaml.get('/BASICS/dictionary/one')
+
+        self.assertEquals(value, 'value')
+
+        ###########
+        # Test dict like accesss
+
+        v = test_conf_yaml['MYSQL']
+
+        self.assertDictEqual(v.dict(), {'conn' : '127.0.0.1', 'usr' : 'test'})
+
+        with self.assertRaises(KeyError):
+            v = test_conf_yaml['asdasdasdasd']
+
+    def test_config_remove(self):
+        test_conf_yaml = BaseRickle('./tests/placebos/test_config.yaml', deep=True)
+
+        test_conf_yaml.remove('/MYSQL/conn')
+
+        self.assertDictEqual(test_conf_yaml.MYSQL.dict(), {'usr' : 'test'})
+
+        test_conf_yaml = BaseRickle('./tests/placebos/test_config.yaml', deep=True)
+
+        del test_conf_yaml['MYSQL']
+
+        with self.assertRaises(KeyError):
+            v = test_conf_yaml['MYSQL']
 
     def test_config_to_dict(self):
         test_dict = {'user': {
