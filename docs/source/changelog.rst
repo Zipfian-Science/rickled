@@ -11,6 +11,24 @@ Changelog
 History
 ==========================
 
+Version 1.1.0 (2024-02-05)
+--------------------------
+
+* Added `set` to BaseRickle, as a equivalent to the `get` method.
+* Updated the `get` method to handle document paths.
+* Added `remove` method to delete items from object.
+* Added the `__delitem__` dunder, now able to `del rickle['key']`.
+* Fixed bug where `search_path` was exiting loops in dictionary too early (after first find).
+* Implemented type guessing of params for functions when using path like calling.
+* Added ability to add params to callable. Example `rickle('/path/to/func', x=1, y='str')`.
+* Bug fix in trying to parse URL by user `deajan`, commit `7cb1773`.
+
+
+Version 1.0.2 (2023-12-12)
+--------------------------
+
+* Added `strict` boolean parameter for allowing properties that are reserved keywords.
+
 Version 1.0.1 (2023-10-03)
 --------------------------
 
