@@ -104,12 +104,16 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 1.0.1 (2023-10-03):
+Version 1.1.0 (2024-02-05):
 
-* Added the ability to load a Rickle from URL at init.
-* Added the `-b` flag to `serve` CLI tool to open host on browser.
-* Bug fix in `infer_read_file_type` when reading unknown file suffix.
-* Renamed the `-i` flag to `-a` in `serve` CLI tool.
+* Added `set` to BaseRickle, as a equivalent to the `get` method.
+* Updated the `get` method to handle document paths.
+* Added `remove` method to delete items from object.
+* Added the `__delitem__` dunder, now able to `del rickle['key']`.
+* Fixed bug where `search_path` was exiting loops in dictionary too early (after first find).
+* Implemented type guessing of params for functions when using path like calling.
+* Added ability to add params to callable. Example `rickle('/path/to/func', x=1, y='str')`.
+* Bug fix in trying to parse URL by user `deajan`, commit `7cb1773`.
 
 
 Contributors
