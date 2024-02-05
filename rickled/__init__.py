@@ -368,12 +368,6 @@ class BaseRickle:
     def __eq__(self, other):
         return repr(self) == repr(other)
 
-    def __setitem__(self, key, item):
-        self.__dict__.update( {key : item} )
-
-    def __getitem__(self, key):
-        return self.__dict__[key]
-
     def __len__(self):
         return len(self.__dict__)
 
@@ -401,18 +395,42 @@ class BaseRickle:
         else:
             raise StopIteration
 
+    def __getitem__(self, key):
+        if key is None:
+            raise KeyError("NoneType is not a valid key type")
+        if not isinstance(key, str):
+            raise TypeError("Key can only be of case sensitive string type")
+
+        return self.__dict__[key]
+
+    def __setitem__(self, key, value):
+        if key is None:
+            raise KeyError("NoneType is not a valid key type")
+        if not isinstance(key, str):
+            raise TypeError("Key can only be of case sensitive string type")
+
+        self.__dict__.update({key: value})
+
+    def __delitem__(self, key):
+        if key is None:
+            raise KeyError("NoneType is not a valid key type")
+        if not isinstance(key, str):
+            raise TypeError("Key can only be of case sensitive string type")
+
+        del self.__dict__[key]
+
     def __search_path(self, key, dictionary=None, parent_path=None):
         if dictionary is None:
-            dictionary = self.__dict__
+            dictionary = self.dict()
         if parent_path is None:
             parent_path = ''
-        if key in dictionary:
-            return [f'{parent_path}/{key}']
         values = list()
+        if key in dictionary:
+            values = [f'{parent_path}/{key}']
         for k, v in dictionary.items():
             if isinstance(v, BaseRickle):
                 try:
-                    value = self.__search_path(key=key, dictionary=v.__dict__,  parent_path=f'{parent_path}/{k}')
+                    value = self.__search_path(key=key, dictionary=v.dict(),  parent_path=f'{parent_path}/{k}')
                     values.extend(value)
                 except StopIteration:
                     continue
@@ -442,14 +460,15 @@ class BaseRickle:
             return list()
 
 
-    def __call__(self, path : str):
+    def __call__(self, path : str, **kwargs):
         """
         Rickle objects can be queried via a path string.
 
         Notes:
-            '/' => root
-            '/name' => member
-            '/path/to/name?param=1' => lambda/function
+            '/' => root.
+            '/name' => member.
+            '/path/to/name?param=1' => lambda/function.
+            If '?' is in path the inline parameters are used and kwargs are ignored.
 
         Args:
             path (str): The path as a string, down to the last mentioned node.
@@ -459,7 +478,7 @@ class BaseRickle:
         """
 
         if not path.startswith('/'):
-            raise ValueError('Missing root path /')
+            raise KeyError('Missing root path /')
         if path == '/':
             return self
 
@@ -475,19 +494,32 @@ class BaseRickle:
                 raise NameError(f'The path {path} could not be traversed')
 
         if '?' in path_list[-1]:
+            import ast
             args_string = path_list[-1].split('?')[-1]
             args = {a.split('=')[0] : a.split('=')[1] for a in args_string.split('&')}
+            type_guessed_args = dict()
+            for n, v in args.items():
+                v_stripped = v.strip()
+                try:
+                    literal = ast.literal_eval(v_stripped)
+                except Exception as exc:
+                    raise TypeError(f"Could not guess the parameter type, {exc}")
 
+                if isinstance(literal, str):
+                    # This is intentionally done to strip away the literal quotes
+                    type_guessed_args[n] = v_stripped[1:-1]
+                else:
+                    type_guessed_args[n] = literal
             try:
-                return current_node(**args)
-            except:
-                raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
+                return current_node(**type_guessed_args)
+            except Exception as exc:
+                raise TypeError(f'{exc} occurred. The node in the path {path} is of type {type(current_node)} or does not match the query')
 
         if inspect.isfunction(current_node):
             try:
-                return current_node()
-            except:
-                raise TypeError(f'The node in the path {path} is of type {type(current_node)} and does not match the query')
+                return current_node(**kwargs)
+            except Exception as exc:
+                raise TypeError(f'{exc} occurred. The node in the path {path} is of type {type(current_node)} or does not match the query')
 
         else:
             return current_node
@@ -528,14 +560,18 @@ class BaseRickle:
         Yields:
             tuple: str, object.
         """
-        for key in self.__dict__.keys():
+        d = self.dict()
+        for key in d.keys():
             if self.__eval_name(key):
                 continue
-            yield key, self.__dict__[key]
+            yield key, d[key]
 
     def get(self, key : str, default=None, do_recursive : bool = False):
         """
         Acts as a regular get from a dictionary but can employ a recursive search of structure and returns the first found key-value pair.
+
+        Note:
+            Document paths like '/root/to/path' can also be used. If the path can not be traversed, the default value is returned.
 
         Args:
             key (str): key string being searched.
@@ -546,6 +582,9 @@ class BaseRickle:
             obj: value found, or None for nothing found.
         """
         try:
+            if '/' in key:
+                v = self(key)
+                return v
             if do_recursive:
                 value = self._recursive_search(self.__dict__, key)
             else:
@@ -553,6 +592,68 @@ class BaseRickle:
             return value
         except StopIteration:
             return default
+        except NameError:
+            return default
+        except Exception as ex:
+            raise ex
+
+    def set(self, key: str, value):
+        """
+        As with the `get` method, this method can be used to update the inherent dictionary with new values.
+
+        Note:
+            Document paths like '/root/to/path' can also be used. If the path can not be traversed, an error is raised.
+
+        Args:
+            key (str): key string to set.
+            value: Any Python like value that can be deserialised.
+        """
+
+        if '/' in key and not key.startswith('/'):
+            raise KeyError('Missing root path /')
+        if not '/' in key:
+            key = f"/{key}"
+
+        if key == '/':
+            raise NameError('Can not set a value to self')
+
+        path_list = key.split('/')
+
+        current_node = self
+
+        for node_name in path_list[1:-1]:
+            current_node = current_node.get(node_name)
+            if current_node is None:
+                raise NameError(f'The path {key} could not be traversed')
+
+        if '?' in path_list[-1]:
+            raise KeyError(f'Function params "{path_list[-1]}" included in path!')
+
+        current_node.__dict__.update({path_list[-1]: value})
+
+    def remove(self, key: str):
+        if '/' in key and not key.startswith('/'):
+            raise KeyError('Missing root path /')
+        if not '/' in key:
+            key = f"/{key}"
+
+        if key == '/':
+            raise NameError('Can not remove self')
+
+        path_list = key.split('/')
+
+        current_node = self
+
+        for node_name in path_list[1:-1]:
+            current_node = current_node.get(node_name)
+            if current_node is None:
+                raise NameError(f'The path {key} could not be traversed')
+
+        if '?' in path_list[-1]:
+            raise KeyError(f'Function params "{path_list[-1]}" included in path!')
+
+        del current_node.__dict__[path_list[-1]]
+
 
     def values(self):
         """
@@ -561,8 +662,9 @@ class BaseRickle:
         Returns:
             list: of objects.
         """
-        keys = list(self.__dict__.keys())
-        objects = [self.__dict__[k] for k in keys if not self.__eval_name(k)]
+        d = self.dict()
+        keys = list(d.keys())
+        objects = [d[k] for k in keys if not self.__eval_name(k)]
 
         return objects
 
@@ -573,7 +675,8 @@ class BaseRickle:
         Returns:
             list: of keys.
         """
-        keys = list(self.__dict__.keys())
+        d = self.dict()
+        keys = list(d.keys())
         keys = [k for k in keys if not self.__eval_name(k)]
 
         return keys
@@ -620,11 +723,11 @@ class BaseRickle:
         Returns:
             bool: if found.
         """
-        if key in self.__dict__:
+        if key in self.dict():
             return True
         if deep:
             try:
-                self._recursive_search(self.__dict__, key)
+                self._recursive_search(self.dict(), key)
                 return True
             except StopIteration:
                 return False
@@ -733,7 +836,7 @@ class Rickle(BaseRickle):
 
     def _iternalize(self, dictionary: dict, deep: bool, **init_args):
         for k, v in dictionary.items():
-            self._check_kw(k)
+            self._check_kw(k) # Redundant but easier to check twice than to paste 10 times
             if isinstance(v, dict):
                 if 'type' in v.keys():
                     if v['type'] == 'env':
@@ -1139,7 +1242,8 @@ class Rickle(BaseRickle):
                                   }
 
     def add_dataframe(self):
-        self._check_kw(name)
+        # Implement later
+        # self._check_kw(name)
         raise NotImplementedError()
 
     def _load_from_file(self,
