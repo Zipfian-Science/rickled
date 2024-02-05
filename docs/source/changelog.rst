@@ -11,7 +11,7 @@ Changelog
 History
 ==========================
 
-Version 1.1.0 (2024-01-20)
+Version 1.1.0 (2024-02-05)
 --------------------------
 
 * Added `set` to BaseRickle, as a equivalent to the `get` method.
