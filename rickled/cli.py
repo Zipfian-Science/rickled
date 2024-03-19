@@ -5,7 +5,7 @@
 
 import rickled.__version__ as ver
 import argparse
-from rickled.tools import bcolors
+from rickled.tools import cli_bcolors
 from rickled.tools import Schema
 from rickled.tools import Converter
 from rickled.net import serve_rickle_http, serve_rickle_https
@@ -14,17 +14,6 @@ import re
 import json
 import yaml
 import ast
-
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 def conv(args):
     Converter(input_files=args.i,
@@ -207,7 +196,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=f"""
 -----------------------------------------------------
-{bcolors.HEADER}YAML tools for Python{bcolors.ENDC} (version {ver}).
+{cli_bcolors.HEADER}YAML tools for Python{cli_bcolors.ENDC} (version {ver}).
 """,
         epilog="-----------------------------------------------------"
     )
@@ -230,23 +219,23 @@ def main():
 
 
     parser_conv = subparsers.add_parser('conv',
-                                        help=f'Tool for {bcolors.OKBLUE}converting{bcolors.ENDC} files to or from YAML',
+                                        help=f'Tool for {cli_bcolors.OKBLUE}converting{cli_bcolors.ENDC} files to or from YAML',
                                         description=f"""
 ---
-{bcolors.HEADER}Tool for converting files to or from YAML{bcolors.ENDC}.
+{cli_bcolors.HEADER}Tool for converting files to or from YAML{cli_bcolors.ENDC}.
     """,
                                         epilog="-----------------------------------------------------"
                                         )
 
-    parser_conv.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC}(s) to convert",
+    parser_conv.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to convert",
                              nargs='+', metavar='input')
-    parser_conv.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC}(s) of input files",
+    parser_conv.add_argument('-d', type=str, help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of input files",
                              default=None, nargs='+', metavar='dir')
-    parser_conv.add_argument('-o', type=str, help=f"{bcolors.OKBLUE}output file{bcolors.ENDC} names",
+    parser_conv.add_argument('-o', type=str, help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} names",
                              nargs='+', metavar='output')
-    parser_conv.add_argument('-t', type=str, help=f"default output {bcolors.OKBLUE}file type{bcolors.ENDC} (JSON, YAML)",
+    parser_conv.add_argument('-t', type=str, help=f"default output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (JSON, YAML)",
                              default='yaml', metavar='type')
-    parser_conv.add_argument('-s', action='store_true', help=f"{bcolors.OKBLUE}suppress{bcolors.ENDC} verbose output",)
+    parser_conv.add_argument('-s', action='store_true', help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
 
     parser_conv.set_defaults(func=conv)
 
@@ -259,24 +248,24 @@ def main():
 
 
     parser_obj = subparsers.add_parser('obj',
-                                        help=f'Tool for {bcolors.OKBLUE}accessing/manipulating{bcolors.ENDC} YAML files',
-                                        description=f"""
+                                       help=f'Tool for {cli_bcolors.OKBLUE}accessing/manipulating{cli_bcolors.ENDC} YAML files',
+                                       description=f"""
     ---
-    {bcolors.HEADER}Tool for accessing/manipulating YAML files{bcolors.ENDC}.
+    {cli_bcolors.HEADER}Tool for accessing/manipulating YAML files{cli_bcolors.ENDC}.
         """,
-                                        epilog="-----------------------------------------------------"
-                                        )
+                                       epilog="-----------------------------------------------------"
+                                       )
 
-    parser_obj.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC} to read/modify",
+    parser_obj.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC} to read/modify",
                             metavar='input', required=True)
-    parser_obj.add_argument('-o', type=str, help=f"{bcolors.OKBLUE}output file{bcolors.ENDC} to save modified",
+    parser_obj.add_argument('-o', type=str, help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} to save modified",
                             metavar='output', required=False)
     parser_obj.add_argument('-t', type=str,
-                             help=f"output {bcolors.OKBLUE}type{bcolors.ENDC} (JSON, YAML)",
-                             default='yaml', metavar='type')
-    parser_obj.add_argument('-p', action='store_true', help=f"{bcolors.OKBLUE}print{bcolors.ENDC} output",
+                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
+                            default='yaml', metavar='type')
+    parser_obj.add_argument('-p', action='store_true', help=f"{cli_bcolors.OKBLUE}print{cli_bcolors.ENDC} output",
                             default=False)
-    parser_obj.add_argument('-l', action='store_true', help=f"load {bcolors.OKBLUE}lambda{bcolors.ENDC} types",
+    parser_obj.add_argument('-l', action='store_true', help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} types",
                             default=False)
 
     subparsers_obj = parser_obj.add_subparsers()
@@ -288,16 +277,16 @@ def main():
     #  \___|___| |_|
 
     get_obj_parser = subparsers_obj.add_parser('get',
-                       help=f'Tool for {bcolors.OKBLUE}getting{bcolors.ENDC} values from YAML files',
-                       description=f"""
+                                               help=f'Tool for {cli_bcolors.OKBLUE}getting{cli_bcolors.ENDC} values from YAML files',
+                                               description=f"""
         ---
-        {bcolors.HEADER}Tool for getting values from YAML files{bcolors.ENDC}.
+        {cli_bcolors.HEADER}Tool for getting values from YAML files{cli_bcolors.ENDC}.
             """,
-                                          epilog="-----------------------------------------------------"
-                                          )
+                                               epilog="-----------------------------------------------------"
+                                               )
 
-    get_obj_parser.add_argument('key', type=str, help=f"{bcolors.OKBLUE}Key{bcolors.ENDC} to get value",
-                            metavar='key')
+    get_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to get value",
+                                metavar='key')
 
     get_obj_parser.set_defaults(func=obj_get)
 
@@ -308,17 +297,17 @@ def main():
     # |___/___| |_|
 
     set_obj_parser = subparsers_obj.add_parser('set',
-                                               help=f'Tool for {bcolors.OKBLUE}setting{bcolors.ENDC} values in YAML files',
+                                               help=f'Tool for {cli_bcolors.OKBLUE}setting{cli_bcolors.ENDC} values in YAML files',
                                                description=f"""
             ---
-            {bcolors.HEADER}Tool for setting values in YAML files{bcolors.ENDC}.
+            {cli_bcolors.HEADER}Tool for setting values in YAML files{cli_bcolors.ENDC}.
                 """,
                                                epilog="-----------------------------------------------------"
                                                )
 
-    set_obj_parser.add_argument('key', type=str, help=f"{bcolors.OKBLUE}Key{bcolors.ENDC} to set value",
+    set_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to set value",
                                 metavar='key')
-    set_obj_parser.add_argument('value', type=str, help=f"{bcolors.OKBLUE}Value{bcolors.ENDC} to set",
+    set_obj_parser.add_argument('value', type=str, help=f"{cli_bcolors.OKBLUE}Value{cli_bcolors.ENDC} to set",
                                 metavar='value')
 
     set_obj_parser.set_defaults(func=obj_set)
@@ -330,15 +319,15 @@ def main():
     # |___/|___|____|
 
     del_obj_parser = subparsers_obj.add_parser('del',
-                                               help=f'Tool for {bcolors.OKBLUE}deleting{bcolors.ENDC} keys in YAML files',
+                                               help=f'Tool for {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys in YAML files',
                                                description=f"""
                 ---
-                {bcolors.HEADER}Tool for deleting keys in YAML files{bcolors.ENDC}.
+                {cli_bcolors.HEADER}Tool for deleting keys in YAML files{cli_bcolors.ENDC}.
                     """,
                                                epilog="-----------------------------------------------------"
                                                )
 
-    del_obj_parser.add_argument('key', type=str, help=f"{bcolors.OKBLUE}Key{bcolors.ENDC} to delete",
+    del_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to delete",
                                 metavar='key')
 
     del_obj_parser.set_defaults(func=obj_del)
@@ -350,16 +339,16 @@ def main():
     #   |_|   |_| |_| |___|
 
     type_obj_parser = subparsers_obj.add_parser('type',
-                                               help=f'Tool for {bcolors.OKBLUE}checking type{bcolors.ENDC} of keys in YAML files',
-                                               description=f"""
+                                                help=f'Tool for {cli_bcolors.OKBLUE}checking type{cli_bcolors.ENDC} of keys in YAML files',
+                                                description=f"""
                     ---
-                    {bcolors.HEADER}Tool for checking type of keys in YAML files{bcolors.ENDC}.
+                    {cli_bcolors.HEADER}Tool for checking type of keys in YAML files{cli_bcolors.ENDC}.
                         """,
-                                               epilog="-----------------------------------------------------"
-                                               )
+                                                epilog="-----------------------------------------------------"
+                                                )
 
-    type_obj_parser.add_argument('key', type=str, help=f"{bcolors.OKBLUE}Key{bcolors.ENDC} to check",
-                                metavar='key')
+    type_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to check",
+                                 metavar='key')
 
     type_obj_parser.set_defaults(func=obj_type)
 
@@ -370,16 +359,16 @@ def main():
     # |___/___/_/ \_\_|_\\___|_||_|
 
     search_obj_parser = subparsers_obj.add_parser('search',
-                                               help=f'Tool for {bcolors.OKBLUE}searching{bcolors.ENDC} keys in YAML files',
-                                               description=f"""
+                                                  help=f'Tool for {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} keys in YAML files',
+                                                  description=f"""
                     ---
-                    {bcolors.HEADER}Tool for searching keys in YAML files{bcolors.ENDC}.
+                    {cli_bcolors.HEADER}Tool for searching keys in YAML files{cli_bcolors.ENDC}.
                         """,
-                                               epilog="-----------------------------------------------------"
-                                               )
+                                                  epilog="-----------------------------------------------------"
+                                                  )
 
-    search_obj_parser.add_argument('key', type=str, help=f"{bcolors.OKBLUE}Key{bcolors.ENDC} to search",
-                                metavar='key')
+    search_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to search",
+                                   metavar='key')
 
     search_obj_parser.set_defaults(func=obj_search)
 
@@ -390,19 +379,19 @@ def main():
     # |_|  \___/|_|\_|\___|
 
     func_obj_parser = subparsers_obj.add_parser('func',
-                                               help=f'Tool for {bcolors.OKBLUE}executing function{bcolors.ENDC} defined in YAML files',
-                                               description=f"""
+                                                help=f'Tool for {cli_bcolors.OKBLUE}executing function{cli_bcolors.ENDC} defined in YAML files',
+                                                description=f"""
                     ---
-                    {bcolors.HEADER}Tool for executing function defined in YAML files{bcolors.ENDC}.
+                    {cli_bcolors.HEADER}Tool for executing function defined in YAML files{cli_bcolors.ENDC}.
                         """,
-                                               epilog="-----------------------------------------------------"
-                                               )
+                                                epilog="-----------------------------------------------------"
+                                                )
 
-    func_obj_parser.add_argument('-x', action='store_true', help=f"{bcolors.OKBLUE}infer parameter{bcolors.ENDC} types",
-                            default=False)
-    func_obj_parser.add_argument('key', type=str, help=f"{bcolors.OKBLUE}Key{bcolors.ENDC} (name) of function",
-                                metavar='key')
-    func_obj_parser.add_argument('params', type=str, help=f"{bcolors.OKBLUE}Params{bcolors.ENDC} for function",
+    func_obj_parser.add_argument('-x', action='store_true', help=f"{cli_bcolors.OKBLUE}infer parameter{cli_bcolors.ENDC} types",
+                                 default=False)
+    func_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} (name) of function",
+                                 metavar='key')
+    func_obj_parser.add_argument('params', type=str, help=f"{cli_bcolors.OKBLUE}Params{cli_bcolors.ENDC} for function",
                                  metavar='params', nargs='+')
 
     func_obj_parser.set_defaults(func=obj_func)
@@ -417,29 +406,29 @@ def main():
 
 
     parser_serve = subparsers.add_parser('serve',
-                                        help=f'Tool for serving YAML via {bcolors.OKBLUE}http(s){bcolors.ENDC}',
-                                        description=f"""
+                                         help=f'Tool for serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
+                                         description=f"""
     ---
-    {bcolors.HEADER}Tool for serving YAML via http(s){bcolors.ENDC}.
+    {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
         """,
-                                        epilog="-----------------------------------------------------"
-                                        )
+                                         epilog="-----------------------------------------------------"
+                                         )
 
     parser_serve.add_argument('-f', type=str,
-                              help=f"{bcolors.OKBLUE}YAML{bcolors.ENDC} or {bcolors.OKBLUE}JSON{bcolors.ENDC} file to serve",
+                              help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
                               metavar='file')
     # TODO implement config
-    # parser_serve.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}config{bcolors.ENDC} file path",
+    # parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
     #                           default=None, metavar='config')
-    parser_serve.add_argument('-a', type=str, help=f"{bcolors.OKBLUE}host address{bcolors.ENDC}",
+    parser_serve.add_argument('-a', type=str, help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC}",
                               default='', metavar='address')
-    parser_serve.add_argument('-p', type=int, help=f"{bcolors.OKBLUE}port{bcolors.ENDC} number",
+    parser_serve.add_argument('-p', type=int, help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number",
                               default=8080, metavar='port')
-    parser_serve.add_argument('-k', type=str, help=f"{bcolors.OKBLUE}private key{bcolors.ENDC} file path",
+    parser_serve.add_argument('-k', type=str, help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
                               default=None, metavar='privkey')
-    parser_serve.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}SSL certificate{bcolors.ENDC} file path",
+    parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
                               default=None, metavar='cert')
-    parser_serve.add_argument('-b', action='store_true', help=f"open URL in {bcolors.OKBLUE}browser{bcolors.ENDC}", )
+    parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
     parser_serve.set_defaults(func=serve)
 
     #################### SCHEMA #####################
@@ -451,13 +440,13 @@ def main():
 
 
     parser_schema = subparsers.add_parser('schema',
-                                        help=f'Tool for generating and checking {bcolors.OKBLUE}schemas{bcolors.ENDC} of YAML files',
-                                        description=f"""
+                                          help=f'Tool for generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
+                                          description=f"""
     ---
-    {bcolors.HEADER}Tool for generating and checking schemas of YAML files{bcolors.ENDC}.
+    {cli_bcolors.HEADER}Tool for generating and checking schemas of YAML files{cli_bcolors.ENDC}.
         """,
-                                        epilog="-----------------------------------------------------"
-                                        )
+                                          epilog="-----------------------------------------------------"
+                                          )
 
     schema_subparsers = parser_schema.add_subparsers()
 
@@ -468,28 +457,28 @@ def main():
     #  \___|_||_|___\___|_|\_\
 
     parser_schema_check = schema_subparsers.add_parser('check',
-                                          help=f'Tool for {bcolors.OKBLUE}checking{bcolors.ENDC} schemas of YAML files',
-                                          description=f"""
+                                                       help=f'Tool for {cli_bcolors.OKBLUE}checking{cli_bcolors.ENDC} schemas of YAML files',
+                                                       description=f"""
         ---
-        {bcolors.HEADER}Tool for checking schemas of YAML files{bcolors.ENDC}.
+        {cli_bcolors.HEADER}Tool for checking schemas of YAML files{cli_bcolors.ENDC}.
             """,
-                                          epilog="-----------------------------------------------------"
-                                          )
+                                                       epilog="-----------------------------------------------------"
+                                                       )
 
 
-    parser_schema_check.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC}(s) to check",
-                             nargs='+', metavar='input')
-    parser_schema_check.add_argument('-d', type=str, help=f"{bcolors.OKBLUE}directory{bcolors.ENDC}(s) of files to check",
-                             default=None, nargs='+', metavar='dir')
+    parser_schema_check.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to check",
+                                     nargs='+', metavar='input')
+    parser_schema_check.add_argument('-d', type=str, help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to check",
+                                     default=None, nargs='+', metavar='dir')
 
-    parser_schema_check.add_argument('-c', type=str, help=f"{bcolors.OKBLUE}schema definition file{bcolors.ENDC} to compare",
+    parser_schema_check.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}schema definition file{cli_bcolors.ENDC} to compare",
                                      metavar='schema')
 
     parser_schema_check.add_argument('-o', type=str,
-                                     help=f"{bcolors.OKBLUE}output directory{bcolors.ENDC} to move failed files to",
+                                     help=f"{cli_bcolors.OKBLUE}output directory{cli_bcolors.ENDC} to move failed files to",
                                      metavar='output')
 
-    parser_schema_check.add_argument('-s', action='store_true', help=f"{bcolors.OKBLUE}suppress{bcolors.ENDC} verbose output", )
+    parser_schema_check.add_argument('-s', action='store_true', help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
 
     parser_schema_check.set_defaults(func=check)
 
@@ -500,22 +489,22 @@ def main():
     #  \___|___|_|\_|
 
     parser_schema_gen = schema_subparsers.add_parser('gen',
-                                                       help=f'Tool for {bcolors.OKBLUE}generating{bcolors.ENDC} schemas of YAML files',
-                                                       description=f"""
+                                                     help=f'Tool for {cli_bcolors.OKBLUE}generating{cli_bcolors.ENDC} schemas of YAML files',
+                                                     description=f"""
             ---
-            {bcolors.HEADER}Tool for generating schemas of YAML files{bcolors.ENDC}.
+            {cli_bcolors.HEADER}Tool for generating schemas of YAML files{cli_bcolors.ENDC}.
                 """,
-                                                       epilog="-----------------------------------------------------"
-                                                       )
+                                                     epilog="-----------------------------------------------------"
+                                                     )
 
-    parser_schema_gen.add_argument('-i', type=str, help=f"{bcolors.OKBLUE}input file{bcolors.ENDC}(s) to generate from",
-                                     nargs='+', metavar='input')
+    parser_schema_gen.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to generate from",
+                                   nargs='+', metavar='input')
     parser_schema_gen.add_argument('-d', type=str,
-                                     help=f"{bcolors.OKBLUE}directory{bcolors.ENDC}(s) of files to generate from",
-                                     default=None, nargs='+', metavar='dir')
+                                   help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to generate from",
+                                   default=None, nargs='+', metavar='dir')
 
     parser_schema_gen.add_argument('-s', action='store_true',
-                                     help=f"{bcolors.OKBLUE}suppress{bcolors.ENDC} verbose output", )
+                                   help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
 
     parser_schema_gen.set_defaults(func=gen)
 

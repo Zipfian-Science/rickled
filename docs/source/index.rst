@@ -3,22 +3,37 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Rickled
+rickle
 **************************
 .. toctree::
    :maxdepth: 2
    :numbered:
    :caption: Contents:
 
-   rickled
+   rickle
    examples
    tools
 
 Starting
 =====================
-Rickle is a lightweight tool for loading and writing very small Python objects to YAML or JSON representations.
-This is especially useful for creating YAML config files and serialising them as Python objects.
-Works great in interactive Python environments like notebooks.
+``rickle`` is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON data. Here's a brief summary of its key features:
+
+1. **Serialization**: ``rickle`` allows you to easily serialize Python objects to YAML format. This is particularly useful for converting Python data structures into a human-readable and easily shareable format.
+
+2. **Schema Validation**: It provides the capability to validate YAML and JSON data against predefined schemas. This ensures that your data adheres to a specific structure or format, helping to maintain data consistency.
+
+3. **Schema Generation**: You can generate schema definitions from existing YAML (or JSON) files. This is helpful when you want to formalize the structure of your data or for documentation purposes.
+
+4. **Conversion between YAML and JSON**: ``rickle`` offers seamless conversion between YAML and JSON formats. This facilitates data interchange between systems that use different serialization formats.
+
+5. **Simple Web Server**: One unique feature of ``rickle`` is its ability to create a basic web server from a YAML file. This means you can define endpoints, routes, and data sources purely by writing it as a YAML file, making it easy to prototype web services without extensive coding, or to create mock REST APIs.
+
+In summary, ``rickle`` is a powerful utility for working with YAML and JSON data in Python.
+It simplifies tasks like serialization, schema validation, schema generation, format conversion,
+and even enables quick web server prototyping using YAML configuration files.
+This tool is valuable for developers and data engineers working
+with structured data in a flexible and efficient manner.
+
 
 To install:
 
@@ -96,7 +111,7 @@ Then import the tools:
 About
 =====================
 
-Rickle is quick to use tool mainly meant to easily encapsulate config YAML files in other Zipfian Science tools.
+``rickle`` is quick to use tool mainly meant to easily encapsulate config YAML files in other Zipfian Science tools.
 
 Changes and history
 ---------------------
@@ -104,17 +119,9 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 1.1.0 (2024-02-05):
+Version 1.1.1 (2024-03-19):
 
-* Added `set` to BaseRickle, as a equivalent to the `get` method.
-* Updated the `get` method to handle document paths.
-* Added `remove` method to delete items from object.
-* Added the `__delitem__` dunder, now able to `del rickle['key']`.
-* Fixed bug where `search_path` was exiting loops in dictionary too early (after first find).
-* Implemented type guessing of params for functions when using path like calling.
-* Added ability to add params to callable. Example `rickle('/path/to/func', x=1, y='str')`.
-* Bug fix in trying to parse URL by user `deajan`, commit `7cb1773`.
-
+* Updated documentation and links to pages.
 
 Contributors
 ---------------------

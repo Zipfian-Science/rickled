@@ -39,8 +39,8 @@ setup(
     author='Zipfian Science',
     author_email='about@zipfian.science',
     zip_safe=False,
-    url='https://github.com/Zipfian-Science/rickled',
-    download_url='https://github.com/Zipfian-Science/rickled/archive/v_01.tar.gz',
+    url='https://github.com/Zipfian-Science/rickle',
+    download_url='https://github.com/Zipfian-Science/rickle/archive/v_01.tar.gz',
     packages=find_packages(".", exclude=("tests", "dist", "deploy", "egg-info")),
     include_package_data=True,
     install_requires=pipreq,
@@ -55,8 +55,8 @@ setup(
         ],
     },
     classifiers=[
-            'Intended Audience :: Science/Research',
+            'Intended Audience :: Developers',
             'Operating System :: OS Independent',
             'Programming Language :: Python :: 3',
-            'Topic :: Scientific/Engineering :: Artificial Intelligence']
+            'Topic :: Software Development']
 )

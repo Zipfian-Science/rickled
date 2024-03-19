@@ -11,4 +11,4 @@ Security updates will only be applied to versions from `1.1.0` and up.
 
 ## Reporting a Vulnerability
 
-For reporting vulnerabilities, please create a new issue in the GitHub repo page or alternatively mailing about (at) zipfian.science.
+For reporting vulnerabilities, please create a new issue in the GitHub repo page or alternatively mailing repos (at) zipfian.science.

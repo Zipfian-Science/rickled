@@ -4,7 +4,7 @@ import yaml
 import json
 import os
 
-class bcolors:
+class cli_bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
     OKGREEN = '\033[92m'
@@ -79,11 +79,11 @@ class Schema:
                     yaml.safe_dump(schema, fout)
 
                 if not self.silent:
-                    print(f"{bcolors.OKBLUE}{pair[0]}{bcolors.ENDC} -> {bcolors.OKBLUE}{pair[1]}{bcolors.ENDC}")
+                    print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
                 continue
             except Exception as exc:
                 if not self.silent:
-                    print(f"{bcolors.FAIL}{str(exc)}{bcolors.ENDC}")
+                    print(f"{cli_bcolors.FAIL}{str(exc)}{cli_bcolors.ENDC}")
                 continue
     def do_validation(self):
         """
@@ -114,12 +114,12 @@ class Schema:
                     failed_validation.append(file)
 
                 if not self.silent:
-                    result = f"{bcolors.OKGREEN}OK{bcolors.ENDC}" if passed else f"{bcolors.FAIL}FAIL{bcolors.ENDC}"
-                    print(f"{bcolors.OKBLUE}{file}{bcolors.ENDC} -> {result}")
+                    result = f"{cli_bcolors.OKGREEN}OK{cli_bcolors.ENDC}" if passed else f"{cli_bcolors.FAIL}FAIL{cli_bcolors.ENDC}"
+                    print(f"{cli_bcolors.OKBLUE}{file}{cli_bcolors.ENDC} -> {result}")
                 continue
             except Exception as exc:
                 if not self.silent:
-                    print(f"{bcolors.FAIL}{str(exc)}{bcolors.ENDC}")
+                    print(f"{cli_bcolors.FAIL}{str(exc)}{cli_bcolors.ENDC}")
                 continue
 
         if self.output_dir:
@@ -224,7 +224,7 @@ class Schema:
                 if not present:
                     if req:
                         if not no_print:
-                            print(f"Required {bcolors.FAIL}'{k}'{bcolors.ENDC} (per schema {v}),\n In {obj},\n Path {bcolors.WARNING}{new_path}{bcolors.ENDC}")
+                            print(f"Required {cli_bcolors.FAIL}'{k}'{cli_bcolors.ENDC} (per schema {v}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                         return False
                     else:
                         new_path = path
@@ -237,7 +237,7 @@ class Schema:
                 if not (null_no_type or null_with_type or non_null):
                     if not no_print:
                         print(
-                        f"Type '{k}' == {bcolors.FAIL}'{type(obj[k]).__name__}'{bcolors.ENDC},\n Required type {bcolors.OKBLUE}'{v['type']}'{bcolors.ENDC} (per schema {v}),\n In {obj},\n Path {bcolors.WARNING}{new_path}{bcolors.ENDC}")
+                        f"Type '{k}' == {cli_bcolors.FAIL}'{type(obj[k]).__name__}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{v['type']}'{cli_bcolors.ENDC} (per schema {v}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                     return False
 
                 if v['type'] in ['dict', 'list']:
@@ -259,7 +259,7 @@ class Schema:
             if length > -1 and obj_length != length:
                 if not no_print:
                     print(
-                    f"Length '{obj}' == {bcolors.FAIL}{obj_length}{bcolors.ENDC},\n Required length {bcolors.OKBLUE}{length}{bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {bcolors.WARNING}{new_path}{bcolors.ENDC}")
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required length {cli_bcolors.OKBLUE}{length}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                 return False
 
             if schema_len > 0:
@@ -271,7 +271,7 @@ class Schema:
                     if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
                         if not no_print:
                             print(
-                            f"Type '{o}' == {bcolors.FAIL}'{type(o).__name__}'{bcolors.ENDC},\n Required type {bcolors.OKBLUE}'{single_type['type']}'{bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {bcolors.WARNING}{new_path}{bcolors.ENDC}")
+                            f"Type '{o}' == {cli_bcolors.FAIL}'{type(o).__name__}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                         return False
                     if single_type['type'] in ['dict', 'list']:
                         if not Schema.schema_validation(o, single_type, path=new_path, no_print=no_print):
@@ -385,9 +385,9 @@ class Converter:
                         json.dump(input_data, fout)
 
                 if not self.silent:
-                    print(f"{bcolors.OKBLUE}{pair[0]}{bcolors.ENDC} -> {bcolors.OKBLUE}{pair[1]}{bcolors.ENDC}")
+                    print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
                 continue
             except Exception as exc:
                 if not self.silent:
-                    print(f"{bcolors.FAIL}{str(exc)}{bcolors.ENDC}")
+                    print(f"{cli_bcolors.FAIL}{str(exc)}{cli_bcolors.ENDC}")
                 continue
