@@ -12,6 +12,7 @@ python-docs-theme = "*"
 sphinxcontrib-napoleon = "*"
 sphinx-rtd-theme = "*"
 rinohtype = "*"
+sphinx-book-theme = "*"
 
 [packages]
 pyyaml = "*"

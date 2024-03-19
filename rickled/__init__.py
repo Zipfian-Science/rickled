@@ -18,46 +18,6 @@ try:
 except ModuleNotFoundError as exc:
     warnings.warn(f"The module requests is not installed. This will break API calls.")
 
-# def is_keyword(name):
-#     """
-#     Function to check if property name is a reserved keyword.
-#
-#     Args:
-#         name (str): Name of property.
-#
-#     Returns:
-#         bool: True if matched.
-#     """
-#     if name in [
-#         'add_api_json_call',
-#         'add_class_definition',
-#         'add_html_page',
-#         'add_from_file',
-#         'add_dataframe',
-#         'add_csv_file',
-#         'add_base64',
-#         'add_env_variable',
-#         'add_lambda',
-#         'add_function',
-#         'add_module_import',
-#         'search_path',
-#         'items',
-#         'get',
-#         'values',
-#         'keys',
-#         'dict',
-#         'has',
-#         'to_yaml_file',
-#         'to_yaml_string',
-#         'to_json_file',
-#         'to_json_string',
-#         'meta',
-#         'add_attr',
-#     ]:
-#         return True
-#     else:
-#         return False
-
 class ObjectRickler:
     """
     A class to convert Python objects to Rickle objects, deconstruct objects, create objects from Rickle objects.
