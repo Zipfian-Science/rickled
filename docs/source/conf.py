@@ -23,8 +23,8 @@ sys.setrecursionlimit(1500)
 
 # -- Project information -----------------------------------------------------
 
-project = 'Rickled'
-copyright = '2023, Zipfian Science'
+project = 'rickle'
+copyright = '2024, Zipfian Science'
 author = 'Zipfian Science'
 
 # -- General configuration ---------------------------------------------------
@@ -52,7 +52,8 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_book_theme'
 # html_theme ='alabaster'
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -72,4 +73,11 @@ master_doc = 'index'
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
-html_sidebars = {'**': ['localtoc.html', 'sourcelink.html', 'searchbox.html']}
+# html_sidebars = {'**': ['localtoc.html', 'sourcelink.html', 'searchbox.html']}
+
+html_title = "rickle documentation"
+
+
+###########
+##### Read here: https://sphinx-book-theme.readthedocs.io/en/latest/index.html
+#########

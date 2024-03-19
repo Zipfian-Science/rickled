@@ -1,67 +1,35 @@
-# Rickled
+# rickle - Smart Python tools for working with YAML
 ```
-                                      ....                                      
-                                &((((((((((((((%,                               
-                              #(*,*((//(((((((((((%.                            
-                            ,((*,&,    .,.(#(((#((((%                           
-                           /((((((/(/////(/###(((((((%                          
-                           #(((((/(/(((//(/(/(((((((((%                         
-                          .((((#     #/#.    %#((((((((%                        
-                          ,(((/       #       %((((((((#*                       
-                          ,((((*     #(/     &((((((((((%                       
-                          ,((((%(((((/#/((//(#((((#((((##,                      
-                          ((%(@@&///@%/(/@//@@(#(##((((((/                      
-                          %&@@@@@@@,&,@&@@@@@@@@#&(((((((&                      
-                          ##&&@@@@@@@@@@@&#(##@&#%#((((((#                      
-                          #(###(#&.(*#*&/#*&%#(%(##(((((((,                     
-                          %((#(((//(/(/(///((#((((((((((((/                     
-                          %/#((((//////////(((((((((((((((#                     
-                          %((((((///////////((((((((((((((@                     
-                          %((((((//////////(((((((((((((((#                     
-                          #((((((/(//////(/((((((((#(((((((                     
-                          #((((((/////(((/((((((((((##/((#(.                    
-                          %((((((//////(/(((((((((((##/((((.                    
-                          #((((((//(///((((((((((((##((((((.                    
-                          #(((((((((//(((((((((((((((((((((                     
-                         *(((((((///(//(((((((((((((((((((#                     
-                         (((#(((/////////(((((((((((((((((%                     
-                         %((((((////////((((((((((((((((((@                     
-                        *(((((((/////////(((((((((((((((((/                     
-                        &(((((((/(///(((((#(((((((((((((((                      
-                       *((((((((/////((((((((((((((((((((&                      
-                       (((((((((///((/(((((((((((((((((((/                      
-                      %(((((((#////(/(((((((((((((((((((#.                      
-                     .#((((((((///((((((((((((((((#((((((                       
-                     *(/#(((((((/(/((((((((((((((((((((#.                       
-                     %((/(((((/(/(/(((((((((((((((###((..                       
-                     #(((((/##((/((((((((((((((((###((..                        
-                     #(((((((((((((((((((((#(#(((((((,,                         
-                    .#(((((((((((((((((((((((((###((/.                          
-                     #((((((((((((((((((((((((((((((                            
-                     *(((((#(/#(//((((((((((((((((..                            
-                      &(//##(//(//((//((((((((((#                               
-                       *///(//////////(((((///#                                 
-                         *#//////////(///(#/                                    
-   
- _______      _          __       __               __  
-|_   __ \    (_)        [  |  _  [  |             |  ] 
-  | |__) |   __   .---.  | | / ]  | | .---.   .--.| |  
-  |  __ /   [  | / /'`\] | '' <   | |/ /__\\/ /'`\' |  
- _| |  \ \_  | | | \__.  | |`\ \  | || \__.,| \__/  |  
-|____| |___|[___]'.___.'[__|  \_][___]'.__.' '.__.;__] 
-                                                       
-                                        
+██████╗ ██╗ ██████╗██╗  ██╗██╗     ███████╗
+██╔══██╗██║██╔════╝██║ ██╔╝██║     ██╔════╝
+██████╔╝██║██║     █████╔╝ ██║     █████╗  
+██╔══██╗██║██║     ██╔═██╗ ██║     ██╔══╝  
+██║  ██║██║╚██████╗██║  ██╗███████╗███████╗
+╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝
+                                           
 by Zipfian Science                               
 ```
-Python tools for creating a different type of pickling by [Zipfian Science](https://zipfian.science/).
+`rickle` is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON data. Here's a brief summary of its key features:
 
-Rickle is a lightweight tool for loading and writing very small Python objects to YAML or JSON representations.
-This is especially useful for creating YAML config files and serialising them as Python objects.
-Works great in interactive Python environments like notebooks.
+1. **Serialization**: `rickle` allows you to easily serialize Python objects to YAML format. This is particularly useful for converting Python data structures into a human-readable and easily shareable format.
 
-For documentation, see [docs](https://docs.zipfian.science/rickled/index.html).
+2. **Schema Validation**: It provides the capability to validate YAML and JSON data against predefined schemas. This ensures that your data adheres to a specific structure or format, helping to maintain data consistency.
 
-Source on [GitHub](https://github.com/Zipfian-Science/rickled).
+3. **Schema Generation**: You can generate schema definitions from existing YAML (or JSON) files. This is helpful when you want to formalize the structure of your data or for documentation purposes.
+
+4. **Conversion between YAML and JSON**: `rickle` offers seamless conversion between YAML and JSON formats. This facilitates data interchange between systems that use different serialization formats.
+
+5. **Simple Web Server**: One unique feature of `rickle` is its ability to create a basic web server from a YAML file. This means you can define endpoints, routes, and data sources purely by writing it as a YAML file, making it easy to prototype web services without extensive coding, or to create mock REST APIs.
+
+In summary, `rickle` is a powerful utility for working with YAML and JSON data in Python. 
+It simplifies tasks like serialization, schema validation, schema generation, format conversion, 
+and even enables quick web server prototyping using YAML configuration files. 
+This tool is valuable for developers and data engineers working 
+with structured data in a flexible and efficient manner.
+
+For documentation, see [docs](https://zipfian.science/docs/rickle/index.html).
+
+Source on [GitHub](https://github.com/Zipfian-Science/rickle).
 ## Install
 
 ```shell script
@@ -138,6 +106,8 @@ Then use Rickle:
 ```
 
 ## Release
+
+See the version history in [changelog](https://zipfian.science/docs/rickle/changelog.html).
 
 - Date: {pypi_metdata_release_date}
 - Version: {pypi_metdata_version_number}

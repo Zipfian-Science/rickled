@@ -5,7 +5,6 @@
 
 Rickled Tools
 **************************
-.. contents:: Table of Contents
 
 Converter
 =====================

@@ -5,7 +5,6 @@
 
 Rickle Picking
 **************************
-.. contents:: Table of Contents
 
 Simple classes for encapsulating Python objects, with functions to write these simple objects to YAML or JSON.
 

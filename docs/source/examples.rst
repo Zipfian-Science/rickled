@@ -1,18 +1,12 @@
-.. Natural Selection documentation master file, created by
-   sphinx-quickstart on Tue Sep 22 22:57:54 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Examples
 **************************
-.. contents:: Table of Contents
 
-There are many uses of Rickle, and some of the functionality is described here through examples.
+There are many uses of ``rickle``, and some of the functionality is described here through examples.
 
 Simple Config
 ========================
 
-The most basic usage of a Rickle is to use it as a config object. Let's create a scenario in which this might be useful.
+The most basic usage of a ``rickle`` is to use it as a config object. Let's create a scenario in which this might be useful.
 Say you have a common API served through a Flask app. You need 10 versions of the API, each having the same code base but with different databases in the back, and some different endpoint configurations.
 Below we follow an example app with 10 different configs saved as YAML files.
 
@@ -86,7 +80,7 @@ As an example, we will have the simple API:
                 return results
 
 
-Here we can see that the config YAML file is loaded as a Rickle. In the creation of the Flask API, we load details from the Rickle.
+Here we can see that the config YAML file is loaded as a ``rickle``. In the creation of the Flask API, we load details from the ``rickle``.
 We then get the settings for the endpoint "status". If the endpoint is not defined in the YAML, we simply don't create it.
 That gives us the power to create a new YAML config for another country where the "status" endpoint does not exist.
 
@@ -152,9 +146,11 @@ For the less likely event that you need to modify the YAML string dynamically be
         doc_page: _|documentation_endpoint|_
         version: '1.0.0'
 
-And then the string will be searched and replaced before the YAML is loaded and a Rickle is constructed.
+And then the string will be searched and replaced before the YAML is loaded and a ``rickle`` is constructed.
 
 .. code-block:: python
+
+    from rickled import BaseRickle, Rickle
 
     # Create an empty Rickle
     config = BaseRickle()
@@ -177,7 +173,7 @@ Even though the possibilities are opened up here, there are probably better ways
 Load multiple files
 ---------------------
 
-We are not limited to only loading configs from one YAML (or JSON) file. Multiple files can be loaded into one Rickle at once.
+We are not limited to only loading configs from one YAML (or JSON) file. Multiple files can be loaded into one ``rickle`` at once.
 Be sure to not have duplicate keys in the same root.
 
 Let's create the same config but split it into two, because we probably have the same DB connection details for all 10 countries.
@@ -202,9 +198,12 @@ And now the country config ``config_SW.yaml``:
 
 Notice how here we don't have the root ``APP``, but only to show the example.
 
-We can now load both into the same Rickle:
+We can now load both into the same ``rickle``:
 
 .. code-block:: python
+
+    from rickled import BaseRickle, Rickle
+
 
     # Load a list of YAML files
     config = BaseRickle(['./db_conf.yaml', './config_SW.yaml'])
@@ -253,7 +252,7 @@ If we had a lot of duplication, we can simply reference the same values.
 Strings, Repr
 ---------------------
 
-A Rickle can have a string representation, which will be in YAML format.
+A ``rickle`` can have a string representation, which will be in YAML format.
 
 .. code-block:: python
 
@@ -270,7 +269,7 @@ Str will give the serialised version where repr will give a raw view.
 Dict, Items, Values
 ---------------------
 
-A Rickle can act like a Python dictionary, like the following examples:
+A ``rickle`` can act like a Python dictionary, like the following examples:
 
 .. code-block:: python
 
@@ -292,7 +291,7 @@ A Rickle can act like a Python dictionary, like the following examples:
    rick['new']
    >> 0.99
 
-A Rickle can also be converted to a Python dictionary:
+A ``rickle`` can also be converted to a Python dictionary:
 
 .. code-block:: python
 
@@ -305,7 +304,7 @@ A Rickle can also be converted to a Python dictionary:
 To YAML, JSON
 ---------------------
 
-A rickle can also be dumped to YAML or JSON.
+A ``rickle`` can also be dumped to YAML or JSON.
 
 .. code-block:: python
 
@@ -345,10 +344,10 @@ Note that we can define a default value. The default is always None, so no excep
 Add lambdas
 ---------------------
 
-Another extension that could potentially be very useful is adding lambdas to a Rickle. This is not without security risks.
+Another extension that could potentially be very useful is adding lambdas to a ``rickle``. This is not without security risks.
 If lambdas are loaded that you did not author yourself and do not know what they do, they can do anything.
 
-A Rickle can be loaded without lambdas or functions by passing the ``load_lambda`` argument at creation.
+A ``rickle`` can be loaded without lambdas or functions by passing the ``load_lambda`` argument at creation.
 But this is not a foolproof safety measure. Even with ``load_lambda=False``, if you load other sources such as API results or other files, they can reference other calls that do execute the lambda functions.
 
 The safest way to load unknown sources is to not load them. However, you can always define the following ENV variable:
@@ -384,7 +383,7 @@ And can be used as ``datenow(message='Hello friend')``.
 Add functions
 ---------------------
 
-Functions are a further extension to lambdas. They allow self referencing to the Rickle, and are multi line blocks.
+Functions are a further extension to lambdas. They allow self referencing to the ``rickle``, and are multi line blocks.
 
 .. code-block:: yaml
 
@@ -415,7 +414,7 @@ And then the function can be called as follows.
 
    rick.get_area(x=52, y=34.9, z=10, f=0.8)
 
-A self reference to the Rickle can also be added.
+A self reference to the ``rickle`` can also be added.
 
 .. code-block:: yaml
 
@@ -500,7 +499,7 @@ If we have a CSV file with the following contents:
    h,2,0.9,o
    p,1,1.0,c
 
-Where ``A,B,C,D`` are the columns, the following will load a list of three Rickle objects.
+Where ``A,B,C,D`` are the columns, the following will load a list of three ``rickle`` objects.
 
 .. code-block:: yaml
 
@@ -574,7 +573,7 @@ A third way to load the CSV is to load the columns as lists.
 Add from file
 ---------------------
 
-Other files can also be loaded, either as another Rickle, a binary file, or a plain text file.
+Other files can also be loaded, either as another ``rickle``, a binary file, or a plain text file.
 
 .. code-block:: yaml
 
@@ -585,7 +584,7 @@ Other files can also be loaded, either as another Rickle, a binary file, or a pl
       deep: true
       load_lambda: true
 
-This will load the contents of the file as a Rickle object.
+This will load the contents of the file as a ``rickle`` object.
 
 .. code-block:: yaml
 
@@ -620,7 +619,7 @@ Data can also be loaded from an API, expecting a JSON response.
       url: https://cryptingup.com/api/exchanges
       expected_http_status: 200
 
-This will load the JSON response as a dictionary. But the contents can also be loaded as a Rickle.
+This will load the JSON response as a dictionary. But the contents can also be loaded as a ``rickle``.
 Note, this can be dangerous, therefore a ``load_lambda`` property is defined. However, this response can point to another API call with ``load_lambda`` set as true.
 Only load API responses as Rickles when you trust the contents, or set the ENV ``RICKLE_SAFE_LOAD=1``.
 
@@ -755,7 +754,7 @@ Whole new classes can be defined. This will have a type and will be initialised 
    >> '1991-02-20'
 
    print(type(rick.TesterClass))
-   >> <class 'TesterClass'>
+   >> '<class "TesterClass">'
 
 Paths and searching
 ========================
@@ -772,7 +771,7 @@ We can search for paths by using the ``search_path`` method.
    rickle.search_path('point')
    >> ['/config/default/point', '/config/control/point', '/docs/controls/point']
 
-If we search for point, we found all the paths in the Rickle.
+If we search for point, we found all the paths in the ``rickle``.
 
 Use paths
 ---------------------
@@ -833,7 +832,7 @@ This is very experimental should be used as such.
 Object to Rickle
 ---------------------
 
-A Python object can be converted to a Rickle, taking the attributes visible and functions with as best it can.
+A Python object can be converted to a ``rickle``, taking the attributes visible and functions with as best it can.
 
 .. code-block:: python
 
@@ -873,7 +872,7 @@ And then using the Rickler:
    >> Hello Phiber Optik
       Hello Dark Avenger
 
-Note that ``__hidden`` will not be a part of the Rickle.
+Note that ``__hidden`` will not be a part of the ``rickle``.
 
 The Python object can also be converted to a dictionary.
 
@@ -896,7 +895,7 @@ The Python object can also be converted to a dictionary.
 Rickle to object
 ---------------------
 
-A Rickle can also be attached to a Python object.
+A ``rickle`` can also be attached to a Python object.
 
 .. code-block:: python
 
@@ -913,7 +912,7 @@ A Rickle can also be attached to a Python object.
          for name in self.names:
             print(f'Hello, {name}')
 
-And then the following Rickle can be defined:
+And then the following ``rickle`` can be defined:
 
 .. code-block:: yaml
 
