@@ -6,13 +6,15 @@
 rickle
 **************************
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :numbered:
    :caption: Contents:
 
    rickle
    examples
    tools
+   cli_tools
+   changelog
 
 Starting
 =====================

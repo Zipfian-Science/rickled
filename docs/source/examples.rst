@@ -16,30 +16,36 @@ Basic usage
 Let's make our first simple config in YAML, call it ``config_US.yaml``.
 
 .. code-block:: yaml
+   :linenos:
+   :caption: config_US.yaml
+   :name: config-us-yaml
 
- APP:
-    details:
-        name: user_api
-        doc_page: '/doc'
-        version: '1.0.0'
-    database:
-        host: 127.0.0.1
-        user: local
-        passw: ken-s3nt_me
-    endpoints:
-        status:
-            description: Gets the status for a region in the country.
-            params:
-                region: US
-                language: en-US
-        users:
-            description: Gets the users for a given city.
-            params:
-                city: Seattle
+     APP:
+        details:
+            name: user_api
+            doc_page: '/doc'
+            version: '1.0.0'
+        database:
+            host: 127.0.0.1
+            user: local
+            passw: ken-s3nt_me
+        endpoints:
+            status:
+                description: Gets the status for a region in the country.
+                params:
+                    region: US
+                    language: en-US
+            users:
+                description: Gets the users for a given city.
+                params:
+                    city: Seattle
 
 As an example, we will have the simple API:
 
 .. code-block:: python
+   :linenos:
+   :caption: app.py
+   :name: app-py
 
     from flask import Flask, Resource
     from flask_restx import Api
@@ -91,6 +97,7 @@ Create from different things
 The config does not have to be loaded from a YAML file. It does not even have to be loaded.
 
 .. code-block:: python
+    :linenos:
 
     # Create an empty Rickle
     config = BaseRickle()
@@ -139,16 +146,20 @@ Add global arguments
 For the less likely event that you need to modify the YAML string dynamically before loading, arguments can be given as follows.
 
 .. code-block:: yaml
+    :linenos:
+    :caption: config_ZA.yaml
+    :name: conf-za-yaml
 
- APP:
-    details:
-        name: user_api
-        doc_page: _|documentation_endpoint|_
-        version: '1.0.0'
+     APP:
+        details:
+            name: user_api
+            doc_page: _|documentation_endpoint|_
+            version: '1.0.0'
 
 And then the string will be searched and replaced before the YAML is loaded and a ``rickle`` is constructed.
 
 .. code-block:: python
+    :linenos:
 
     from rickled import BaseRickle, Rickle
 
@@ -156,17 +167,18 @@ And then the string will be searched and replaced before the YAML is loaded and 
     config = BaseRickle()
 
     # Loaded from a JSON file
-    config = BaseRickle('./config_ZA.json', documentation_endpoint='/za_docs')
+    config = BaseRickle('./config_ZA.yaml', documentation_endpoint='/za_docs')
 
 This will in effect change the YAML to the following (before loading it).
 
 .. code-block:: yaml
+    :linenos:
 
- APP:
-    details:
-        name: user_api
-        doc_page: /za_docs
-        version: '1.0.0'
+     APP:
+        details:
+            name: user_api
+            doc_page: /za_docs
+            version: '1.0.0'
 
 Even though the possibilities are opened up here, there are probably better ways to solve this (such as using ENV vars as shown later in this examples page).
 
@@ -181,6 +193,9 @@ Let's create the same config but split it into two, because we probably have the
 Here we have a file ``db_conf.yaml``:
 
 .. code-block:: yaml
+    :linenos:
+    :caption: db_conf.yaml
+    :name: db-conf-yaml
 
     database:
         host: 127.0.0.1
@@ -190,6 +205,9 @@ Here we have a file ``db_conf.yaml``:
 And now the country config ``config_SW.yaml``:
 
 .. code-block:: yaml
+    :linenos:
+    :caption: config_SW.yaml
+    :name: conf-sw-yaml
 
     details:
         name: user_api
@@ -201,6 +219,7 @@ Notice how here we don't have the root ``APP``, but only to show the example.
 We can now load both into the same ``rickle``:
 
 .. code-block:: python
+    :linenos:
 
     from rickled import BaseRickle, Rickle
 
@@ -222,6 +241,8 @@ What is especially powerful of YAML is the ability to add references.
 If we had a lot of duplication, we can simply reference the same values.
 
 .. code-block:: yaml
+   :linenos:
+   :emphasize-lines: 11,12,18,19,24,25
 
    APP:
       details:
@@ -249,6 +270,9 @@ If we had a lot of duplication, we can simply reference the same values.
                language: *language
                db_version: *db_version
 
+This results in the values on lines 18 and 24 are pre-filled with the value ``'en-US'`` as defined on line 12.
+Similarly lines  19 and 25 are pre-filled with ``'1.1.0'`` as defined on line 11.
+
 Strings, Repr
 ---------------------
 
@@ -256,13 +280,13 @@ A ``rickle`` can have a string representation, which will be in YAML format.
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   print(str(rick))
-   >> database:
-        host: 127.0.0.1
-        user: local
-        passw: ken-s3nt_me
+   >> print(str(rick))
+   database:
+     host: 127.0.0.1
+     user: local
+     passw: ken-s3nt_me
 
 Str will give the serialised version where repr will give a raw view.
 
@@ -273,32 +297,32 @@ A ``rickle`` can act like a Python dictionary, like the following examples:
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   rick.items()
-   >> [(k, v)]
+   >> rick.items()
+   [(k, v)]
 
-   rick.values()
-   >> [v, v]
+   >> rick.values()
+   [v, v]
 
-   rick.keys()
-   >> [k, k]
+   >> rick.keys()
+   [k, k]
 
-   rick.get('k', default=0.42)
-   >> 72
+   >> rick.get('k', default=0.42)
+   72
 
-   rick['new'] = 0.99
-   rick['new']
-   >> 0.99
+   >> rick['new'] = 0.99
+   >> rick['new']
+   0.99
 
 A ``rickle`` can also be converted to a Python dictionary:
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   rick.dict()
-   >> {'k' : 'v'}
+   >> rick.dict()
+   {'k' : 'v'}
 
 
 To YAML, JSON
@@ -307,6 +331,7 @@ To YAML, JSON
 A ``rickle`` can also be dumped to YAML or JSON.
 
 .. code-block:: python
+   :linenos:
 
    rick = Rickle('test.yaml')
 
@@ -326,6 +351,9 @@ Using the Rickle class, instead of the BasicRickle, we can add a lot more extend
 Here we have a file ``db_conf.yaml`` again, but this time we are loading the values from OS env:
 
 .. code-block:: yaml
+   :linenos:
+   :caption: db_conf.yaml
+   :name: db-conf-again-yaml
 
    database:
       host:
@@ -359,6 +387,7 @@ Again, the best way to load lambdas is to load what you trust.
 Example of a lambda:
 
 .. code-block:: yaml
+   :linenos:
 
    datenow:
       type: lambda
@@ -369,6 +398,7 @@ Example of a lambda:
 The lambda can be used by calling ``datenow()``. Lambdas can also have arguments:
 
 .. code-block:: yaml
+   :linenos:
 
    datenow:
       type: lambda
@@ -380,12 +410,15 @@ The lambda can be used by calling ``datenow()``. Lambdas can also have arguments
 
 And can be used as ``datenow(message='Hello friend')``.
 
+.. _sect-ext-usage-functions:
+
 Add functions
 ---------------------
 
 Functions are a further extension to lambdas. They allow self referencing to the ``rickle``, and are multi line blocks.
 
 .. code-block:: yaml
+   :linenos:
 
    get_area:
       type: function
@@ -409,14 +442,15 @@ Functions are a further extension to lambdas. They allow self referencing to the
 And then the function can be called as follows.
 
 .. code-block:: python
+   :linenos:
 
    rick = Rickle('test.yaml', load_lambda=True)
-
    rick.get_area(x=52, y=34.9, z=10, f=0.8)
 
 A self reference to the ``rickle`` can also be added.
 
 .. code-block:: yaml
+   :linenos:
 
    const:
       f: 0.7
@@ -444,6 +478,7 @@ In this example ``rickle.const.f`` is used in the function.
 This will only work if the attribute referred to is found on the same level. The following example won't work.
 
 .. code-block:: yaml
+   :linenos:
 
    const:
       f: 0.7
@@ -468,9 +503,9 @@ This will only work if the attribute referred to is found on the same level. The
                return math.floor(area * self.const.f)
 
 .. code-block:: python
+   :linenos:
 
    rick = Rickle('test.yaml', load_lambda=True)
-
    rick.one_higher.get_area(x=52, y=34.9, z=10, f=0.8)
 
 This will result in an AttributeError:
@@ -478,7 +513,7 @@ This will result in an AttributeError:
 .. code-block:: python
 
    >> Traceback (most recent call last):
-   >>   File "C:\source\Zipfian Science\rickled\tests\unittest\test_advanced.py", line 183, in test_self_reference
+   >>   File ".\Zipfian Science\rickled\tests\unittest\test_advanced.py", line 183, in test_self_reference
    >>     area = r.functions.get_area(x=10, y=10, z=10)
    >>   File "<string>", line 1, in <lambda>
    >>   File "<string>", line 7, in get_area3ee93073e2f441af9f6a9acac3e21635
@@ -502,6 +537,7 @@ If we have a CSV file with the following contents:
 Where ``A,B,C,D`` are the columns, the following will load a list of three ``rickle`` objects.
 
 .. code-block:: yaml
+   :linenos:
 
    csv:
       type: from_csv
@@ -511,22 +547,23 @@ Where ``A,B,C,D`` are the columns, the following will load a list of three ``ric
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   rick.csv[0].A == 'j'
-   >> True
+   >> rick.csv[0].A == 'j'
+   True
 
-   rick.csv[0].C == 0.2
-   >> True
+   >> rick.csv[0].C == 0.2
+   True
 
-   rick.csv[-1].D == 'c'
-   >> True
+   >> rick.csv[-1].D == 'c'
+   True
 
 If ``fieldnames`` is null, the first row in the file is assumed to be the names.
 
 If the file is not loaded as a Rickle, lists of lists are loaded, and this assumes that the first row is not the field names.
 
 .. code-block:: yaml
+   :linenos:
 
    csv:
       type: from_csv
@@ -536,13 +573,13 @@ If the file is not loaded as a Rickle, lists of lists are loaded, and this assum
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   rick.csv[0]
-   >> ['A','B','C','D']
+   >> rick.csv[0]
+   ['A','B','C','D']
 
-   rick.csv[-1]
-   >> ['p',1,1.0,'c']
+   >> rick.csv[-1]
+   ['p',1,1.0,'c']
 
 A third way to load the CSV is to load the columns as lists.
 
@@ -553,6 +590,7 @@ A third way to load the CSV is to load the columns as lists.
    p,1,1.0,c
 
 .. code-block:: yaml
+   :linenos:
 
    csv:
       type: from_csv
@@ -562,13 +600,13 @@ A third way to load the CSV is to load the columns as lists.
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   rick.csv.A
-   >> ['j','h','p']
+   >> rick.csv.A
+   ['j','h','p']
 
-   rick.csv.C
-   >> [0.2,0.9,1.0]
+   >> rick.csv.C
+   [0.2,0.9,1.0]
 
 Add from file
 ---------------------
@@ -576,6 +614,7 @@ Add from file
 Other files can also be loaded, either as another ``rickle``, a binary file, or a plain text file.
 
 .. code-block:: yaml
+   :linenos:
 
    another_rick:
       type: from_file
@@ -587,6 +626,7 @@ Other files can also be loaded, either as another ``rickle``, a binary file, or 
 This will load the contents of the file as a ``rickle`` object.
 
 .. code-block:: yaml
+   :linenos:
 
    another_rick:
       type: from_file
@@ -597,6 +637,7 @@ This will load the contents of the file as a ``rickle`` object.
 This will load the contents as plain text.
 
 .. code-block:: yaml
+   :linenos:
 
    another_rick:
       type: from_file
@@ -613,6 +654,7 @@ Add from REST API
 Data can also be loaded from an API, expecting a JSON response.
 
 .. code-block:: yaml
+   :linenos:
 
    crypt_exchanges:
       type: api_json
@@ -624,6 +666,7 @@ Note, this can be dangerous, therefore a ``load_lambda`` property is defined. Ho
 Only load API responses as Rickles when you trust the contents, or set the ENV ``RICKLE_SAFE_LOAD=1``.
 
 .. code-block:: yaml
+   :linenos:
 
    crypt_exchanges:
       type: api_json
@@ -651,6 +694,7 @@ Other properties that can be defined:
 The property ``hot_load`` will turn this into a function that, when called, does the request with the params/headers.
 
 .. code-block:: yaml
+   :linenos:
 
    crypt_exchanges:
       type: api_json
@@ -661,9 +705,9 @@ The property ``hot_load`` will turn this into a function that, when called, does
 This example will load the results hot off the press.
 
 .. code-block:: python
+   :linenos:
 
    rick = Rickle('test.yaml')
-
    rick.crypt_exchanges()
 
 Notice how it is called with parentheses because it is now a function (``hot_load=true``).
@@ -674,6 +718,7 @@ Add base 64 encoded
 A base 64 string can be loaded as bytes.
 
 .. code-block:: yaml
+   :linenos:
 
    encoded:
       type: base64
@@ -686,6 +731,7 @@ Add HTML page
 Useful when loading up a documentation page.
 
 .. code-block:: yaml
+   :linenos:
 
    encoded:
       type: html_page
@@ -702,6 +748,7 @@ Import Python modules
 Should you need specific Python modules loaded, you can define the following:
 
 .. code-block:: yaml
+   :linenos:
 
    r_modules:
       type: module_import
@@ -714,6 +761,7 @@ Define a class
 Whole new classes can be defined. This will have a type and will be initialised with attributes and functions.
 
 .. code-block:: yaml
+   :linenos:
 
    TesterClass:
       name: TesterClass
@@ -748,13 +796,13 @@ Whole new classes can be defined. This will have a type and will be initialised 
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml')
+   >> rick = Rickle('test.yaml')
 
-   rick.TesterClass.datenow()
-   >> '1991-02-20'
+   >> rick.TesterClass.datenow()
+   '1991-02-20'
 
-   print(type(rick.TesterClass))
-   >> '<class "TesterClass">'
+   >> print(type(rick.TesterClass))
+   '<class "TesterClass">'
 
 Paths and searching
 ========================
@@ -768,8 +816,8 @@ We can search for paths by using the ``search_path`` method.
 
 .. code-block:: python
 
-   rickle.search_path('point')
-   >> ['/config/default/point', '/config/control/point', '/docs/controls/point']
+   >> rickle.search_path('point')
+   ['/config/default/point', '/config/control/point', '/docs/controls/point']
 
 If we search for point, we found all the paths in the ``rickle``.
 
@@ -779,6 +827,7 @@ Use paths
 We can access the attributes by using the paths. If we have the following YAML:
 
 .. code-block:: yaml
+   :linenos:
 
    path:
       datenow:
@@ -810,16 +859,16 @@ And the we can use paths.
 
 .. code-block:: python
 
-   test_rickle = Rickle(yaml, load_lambda=True)
+   >> test_rickle = Rickle(yaml, load_lambda=True)
 
-   test_rickle('/path/level_one/level_two/member') == 42
-   >> True
+   >> test_rickle('/path/level_one/level_two/member') == 42
+   True
 
-   test_rickle('/path/level_one/funcs?x=100&y=world') == 'Hello world, 20.0!'
-   >> True
+   >> test_rickle('/path/level_one/funcs?x=100&y=world') == 'Hello world, 20.0!'
+   True
 
-   test_rickle('/path/datenow')
-   >> '1991-08-06'
+   >> test_rickle('/path/datenow')
+   '1991-08-06'
 
 We can even call functions like this, and pass the arguments as parameters.
 
@@ -835,6 +884,7 @@ Object to Rickle
 A Python object can be converted to a ``rickle``, taking the attributes visible and functions with as best it can.
 
 .. code-block:: python
+   :linenos:
 
    class TestObject:
 
@@ -853,44 +903,46 @@ And then using the Rickler:
 
 .. code-block:: python
 
-   rickler = ObjectRickler()
+   >> rickler = ObjectRickler()
 
-   test_object = TestObject()
+   >> test_object = TestObject()
 
-   rick = rickler.to_rickle(test_object, deep=True, load_lambda=True)
+   >> rick = rickler.to_rickle(test_object, deep=True, load_lambda=True)
 
-   isinstance(rick, Rickle)
-   >> True
+   >> isinstance(rick, Rickle)
+   True
 
-   rick.names
-   >> ['Phiber Optik', 'Dark Avenger']
+   >> rick.names
+   ['Phiber Optik', 'Dark Avenger']
 
-   rick.deep[0].k
-   >> 0.2
+   >> rick.deep[0].k
+   0.2
 
-   rick.print_names()
-   >> Hello Phiber Optik
-      Hello Dark Avenger
+   >> rick.print_names()
+   Hello Phiber Optik
+   Hello Dark Avenger
 
-Note that ``__hidden`` will not be a part of the ``rickle``.
+.. note::
+
+    Note that ``__hidden`` will not be a part of the ``rickle``.
 
 The Python object can also be converted to a dictionary.
 
 .. code-block:: python
 
-   obj_dict = rickler.deconstruct(test_object, include_imports=True, include_class_source=True)
+   >> obj_dict = rickler.deconstruct(test_object, include_imports=True, include_class_source=True)
 
-   obj_dict['names']
-   >> ['Phiber Optik', 'Dark Avenger']
+   >> obj_dict['names']
+   ['Phiber Optik', 'Dark Avenger']
 
-   obj_dict['print_names']
-   >> {
-          "type": "function",
-          "name": "print_names",
-          "is_method" : True,
-          "load": "def print_names(self):\n         for name in self.names:\n            print(f'Hello, {name}')",
-          "args": {}
-      }
+   >> obj_dict['print_names']
+   {
+      "type": "function",
+      "name": "print_names",
+      "is_method" : True,
+      "load": "def print_names(self):\n         for name in self.names:\n            print(f'Hello, {name}')",
+      "args": {}
+   }
 
 Rickle to object
 ---------------------
@@ -898,6 +950,7 @@ Rickle to object
 A ``rickle`` can also be attached to a Python object.
 
 .. code-block:: python
+   :linenos:
 
    class TestObject:
 
@@ -915,6 +968,7 @@ A ``rickle`` can also be attached to a Python object.
 And then the following ``rickle`` can be defined:
 
 .. code-block:: yaml
+   :linenos:
 
    path:
       datenow:
@@ -946,16 +1000,16 @@ Then added to the object:
 
 .. code-block:: python
 
-   rick = Rickle('test.yaml', load_lambda=True)
+   >> rick = Rickle('test.yaml', load_lambda=True)
 
-   rickler = ObjectRickler()
+   >> rickler = ObjectRickler()
 
-   obj = rickler.from_rickle(rick, TestObject)
+   >> obj = rickler.from_rickle(rick, TestObject)
 
-   obj.names
-   >> ['Phiber Optik', 'Dark Avenger']
+   >> obj.names
+   ['Phiber Optik', 'Dark Avenger']
 
-   obj.path.datenow()
-   >> '1988-11-02'
+   >> obj.path.datenow()
+   '1988-11-02'
 
 
