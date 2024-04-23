@@ -120,7 +120,7 @@ class ObjectRickler:
         else:
             obj = cls()
 
-        for name, value in rickle.dict().items():
+        for name, value in rickle.dict(True).items():
             if isinstance(value, dict) and 'type' in value.keys():
                 if value['type'] == 'function':
                     _name = value.get('name', name)
@@ -693,13 +693,13 @@ class BaseRickle:
                 return False
         return False
 
-    def to_yaml_file(self, file_path : str, serialised : bool = True):
+    def to_yaml_file(self, file_path : str, serialised : bool = False):
         """
         Does a self dump to a YAML file.
 
         Args:
             file_path (str): File path.
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -708,12 +708,12 @@ class BaseRickle:
         with open(file_path, 'w', encoding='utf-8') as fs:
             yaml.safe_dump(self_as_dict, fs)
 
-    def to_yaml_string(self, serialised : bool = True):
+    def to_yaml_string(self, serialised : bool = False):
         """
         Dumps self to YAML string.
 
         Args:
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -724,13 +724,13 @@ class BaseRickle:
         self_as_dict = self.dict(serialised=serialised)
         return yaml.safe_dump(self_as_dict, None)
 
-    def to_json_file(self, file_path: str, serialised : bool = True):
+    def to_json_file(self, file_path: str, serialised : bool = False):
         """
         Does a self dump to a JSON file.
 
         Args:
             file_path (str): File path.
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -739,12 +739,12 @@ class BaseRickle:
         with open(file_path, 'w', encoding='utf-8') as fs:
             json.dump(self_as_dict, fs)
 
-    def to_json_string(self, serialised : bool = True):
+    def to_json_string(self, serialised : bool = False):
         """
         Dumps self to YAML string.
 
         Args:
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = True).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -954,13 +954,16 @@ class Rickle(BaseRickle):
                 continue
             if serialised and key in self.__meta_info.keys():
                 d[key] = self.__meta_info[key]
+            # Revisit this at some later point
             elif key in self.__meta_info.keys() and \
-                    self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition']:
-                d[key] = self.__meta_info[key]
+                    self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition', 'module_import', 'base64']:
+                # d[key] = self.__meta_info[key]
+                continue
             elif key in self.__meta_info.keys() and \
                     self.__meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
                     self.__meta_info[key]['hot_load']:
-                d[key] = self.__meta_info[key]
+                # d[key] = self.__meta_info[key]
+                continue
             elif isinstance(value, BaseRickle):
                 d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):

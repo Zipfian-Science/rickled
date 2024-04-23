@@ -3,6 +3,7 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/rickled)
 [![Downloads](https://static.pepy.tech/badge/rickled)](https://pepy.tech/project/rickled)
 [![Downloads](https://static.pepy.tech/badge/rickled/month)](https://pepy.tech/project/rickled)
+[![General badge](https://img.shields.io/badge/Coverage-75+-<COLOR>.svg)](https://zipfian.science/docs/rickle/coverage/index.html)
 
 ```
 ██████╗ ██╗ ██████╗██╗  ██╗██╗     ███████╗
