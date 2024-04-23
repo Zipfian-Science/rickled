@@ -2,90 +2,140 @@
 # https://patorjk.com/software/taag/
 # Large heading using "Shaded Blocky" font
 # Sub headings using "Small" font
+import sys
+import warnings
+from enum import Enum
 
 import rickled.__version__ as ver
 import argparse
 from rickled.tools import cli_bcolors
 from rickled.tools import Schema
 from rickled.tools import Converter
-from rickled.net import serve_rickle_http, serve_rickle_https
+
 from rickled import Rickle
 import re
 import json
 import yaml
 import ast
 
+GITHUB_DOCS_URL = "https://github.com/Zipfian-Science/rickled/blob/master/docs/source/cli_tools.rst#cli-tools"
+
+class CLIError(Exception):
+
+    class CLITool(Enum):
+        CONV = 1
+        OBJ = 2
+        SERVE = 3
+        SCHEMA = 4
+        OBJ_GET = 5
+        OBJ_SET = 6
+        OBJ_DEL = 7
+        OBJ_TYPE = 8
+        OBJ_SEARCH = 9
+        OBJ_FUNC = 10
+        SCHEMA_CHECK = 11
+        SCHEMA_GEN = 12
+
+
+    def __init__(self, message, cli_tool: CLITool):
+        self.message = message
+        self.cli_tool = cli_tool
+
+
 def conv(args):
-    Converter(input_files=args.i,
-              output_files=args.o,
-              input_directories=args.d,
-              default_output_type=args.t,
-              silent=args.s).do_convert()
+    try:
+        Converter(input_files=args.i,
+                  output_files=args.o,
+                  input_directories=args.d,
+                  default_output_type=args.t,
+                  silent=args.s).do_convert()
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.CONV)
 
 def obj_get(args):
-    import json
-    import yaml
-    if args:
-        r = Rickle(args.i, load_lambda=args.l)
-        v = r.get(args.key)
-        if isinstance(v, Rickle):
-            if args.t.lower() == 'json':
-                print(v.to_json_string())
+    try:
+        if args:
+            r = Rickle(args.i, load_lambda=args.l)
+            v = r.get(args.key)
+            if isinstance(v, Rickle):
+                v = v.dict()
+            elif v is None:
+                v = ''
+
+            if args.o:
+                with open(args.o, 'w') as fp:
+                    if args.t.lower() == 'json':
+                        json.dump(v, fp)
+                    else:
+                        yaml.safe_dump(v, fp)
             else:
-                print(v.to_yaml_string())
-        elif isinstance(v, dict):
-            if args.t.lower() == 'json':
-                print(json.dumps(v))
-            else:
-                print(yaml.safe_dump(v))
-        else:
-            print(v)
+                if args.t.lower() == 'json':
+                    print(json.dumps(v))
+                else:
+                    print(yaml.safe_dump(v))
+
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_GET)
 
 
 
 def obj_set(args):
-    if args:
-        r = Rickle(args.i)
-        r.set(args.key, args.value)
-        if args.p:
-            if args.t.lower() == 'json':
-                print(r.to_json_string())
+    try:
+        if args:
+            r = Rickle(args.i)
+            r.set(args.key, args.value)
+
+            if args.o:
+                if args.t.lower() == 'json':
+                    r.to_json_file(args.o)
+                else:
+                    r.to_yaml_file(args.o)
             else:
-                print(r.to_yaml_string())
-        if args.o:
-            if args.t.lower() == 'json':
-                r.to_json_file(args.o)
-            else:
-                r.to_yaml_file(args.o)
+                if args.t.lower() == 'json':
+                    print(r.to_json_string())
+                else:
+                    print(r.to_yaml_string())
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SET)
 
 
 def obj_del(args):
-    if args:
-        r = Rickle(args.i)
-        r.remove(args.key)
-        if args.p:
-            if args.t.lower() == 'json':
-                print(r.to_json_string())
+    try:
+        if args:
+            r = Rickle(args.i)
+            r.remove(args.key)
+
+            if args.o:
+                if args.t.lower() == 'json':
+                    r.to_json_file(args.o)
+                else:
+                    r.to_yaml_file(args.o)
             else:
-                print(r.to_yaml_string())
-        if args.o:
-            if args.t.lower() == 'json':
-                r.to_json_file(args.o)
-            else:
-                r.to_yaml_file(args.o)
+                if args.t.lower() == 'json':
+                    print(r.to_json_string())
+                else:
+                    print(r.to_yaml_string())
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_DEL)
 
 def obj_type(args):
-    if args:
-        r = Rickle(args.i, load_lambda=args.l)
-        v = r.get(args.key)
-        print(type(v))
+    try:
+        if args:
+            r = Rickle(args.i, load_lambda=args.l)
+            v = r.get(args.key)
+            print(type(v))
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_TYPE)
 
 def obj_search(args):
-    if args:
-        r = Rickle(args.i, load_lambda=args.l)
-        paths = r.search_path(args.key)
-        for p in paths:
-            print(p)
+    try:
+        if args:
+            r = Rickle(args.i, load_lambda=args.l)
+            paths = r.search_path(args.key)
+            for p in paths:
+                print(p)
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SEARCH)
 
 def obj_func(args):
     def guess_parse(param_value):
@@ -121,84 +171,119 @@ def obj_func(args):
         else:
             raise ValueError('Could not interpret type, only str, int, float, bool, list, dict accepted.')
 
+    try:
+        re_pat = re.compile(r"(.+?)=(.+)")
+        if args:
+            r = Rickle(args.i, load_lambda=args.l)
 
-    re_pat = re.compile(r"(.+?)=(.+)")
-    if args:
-        r = Rickle(args.i, load_lambda=args.l)
+            params = dict()
+            if args.params:
+                for p in args.params:
+                    m = re_pat.match(p)
+                    param_name = m.group(1)
+                    param_value = m.group(2)
+                    if ':' in param_name:
+                        param_name, ptype = param_name.split(':')
+                        param_value = parse_type(ptype, param_value)
+                    elif args.x:
+                        param_value = guess_parse(param_value)
 
-        params = dict()
-        if args.params:
-            for p in args.params:
-                m = re_pat.match(p)
-                param_name = m.group(1)
-                param_value = m.group(2)
-                if ':' in param_name:
-                    param_name, ptype = param_name.split(':')
-                    param_value = parse_type(ptype, param_value)
-                elif args.x:
-                    param_value = guess_parse(param_value)
+                    params[param_name] = param_value
+            v = r(args.key, **params)
 
-                params[param_name] = param_value
-        v = r(args.key, **params)
-
-        if not v is None:
-            if isinstance(v, Rickle):
-                if args.t.lower() == 'json':
-                    print(v.to_json_string())
+            if not v is None:
+                if isinstance(v, Rickle):
+                    if args.t.lower() == 'json':
+                        print(v.to_json_string())
+                    else:
+                        print(v.to_yaml_string())
+                elif isinstance(v, dict):
+                    if args.t.lower() == 'json':
+                        print(json.dumps(v))
+                    else:
+                        print(yaml.safe_dump(v))
                 else:
-                    print(v.to_yaml_string())
-            elif isinstance(v, dict):
-                if args.t.lower() == 'json':
-                    print(json.dumps(v))
-                else:
-                    print(yaml.safe_dump(v))
-            else:
-                print(v)
+                    print(v)
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_FUNC)
 
 
 def serve(args):
-    rick = Rickle(args.f)
+    try:
+        from rickled.net import serve_rickle_http, serve_rickle_https
+    except NameError:
+        warnings.warn('Required Python package "twisted" not found.', ImportWarning)
+        return
 
-    if args.b:
-        import webbrowser
-        host = 'localhost' if args.a == '' else args.a
-        scheme = 'https' if args.c and args.k else 'http'
-        webbrowser.open(f'{scheme}://{host}:{args.p}', new=2)
+    try:
+        rick = Rickle(args.i)
 
-    if args.c and args.k:
-        serve_rickle_https(rickle=rick,
-                           path_to_certificate=args.c,
-                           path_to_private_key=args.k,
-                           port=args.p,
-                           interface=args.a
-                           )
-    else:
-        serve_rickle_http(rickle=rick,
-                          port=args.p,
-                          interface=args.a
-                          )
+        if args.b:
+            import webbrowser
+            host = 'localhost' if args.a == '' else args.a
+            scheme = 'https' if args.c and args.k else 'http'
+            webbrowser.open(f'{scheme}://{host}:{args.p}', new=2)
+
+        if args.c and args.k:
+            serve_rickle_https(rickle=rick,
+                               path_to_certificate=args.c,
+                               path_to_private_key=args.k,
+                               port=args.p,
+                               interface=args.a,
+                               serialised=args.s,
+                               output_type=args.t
+                               )
+        else:
+            serve_rickle_http(rickle=rick,
+                              port=args.p,
+                              interface=args.a,
+                              serialised=args.s,
+                              output_type=args.t
+                              )
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SERVE)
 
 def check(args):
-    Schema(input_files=args.i,
-           input_directories=args.d,
-           schema=args.c,
-           output_dir=args.o,
-           silent=args.s).do_validation()
+    try:
+        Schema(input_files=args.i,
+               input_directories=args.d,
+               schema=args.c,
+               output_dir=args.o,
+               silent=args.s).do_validation()
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_CHECK)
 
 def gen(args):
-    Schema(input_files=args.i,
-           input_directories=args.d,
-           silent=args.s).do_generation()
+    try:
+        Schema(input_files=args.i,
+               input_directories=args.d,
+               output_files=args.o,
+               silent=args.s,
+               default_output_type=args.t).do_generation()
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_GEN)
 
 def main():
     parser = argparse.ArgumentParser(
         prog='rickle',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=f"""
------------------------------------------------------
+---------------------------------------------------------------------------------------------{cli_bcolors.OKGREEN}
+██████╗ ██╗ ██████╗██╗  ██╗██╗     ███████╗
+██╔══██╗██║██╔════╝██║ ██╔╝██║     ██╔════╝
+██████╔╝██║██║     █████╔╝ ██║     █████╗  
+██╔══██╗██║██║     ██╔═██╗ ██║     ██╔══╝  
+██║  ██║██║╚██████╗██║  ██╗███████╗███████╗
+╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝{cli_bcolors.ENDC}
+
 {cli_bcolors.HEADER}YAML tools for Python{cli_bcolors.ENDC} (version {ver}).
+---------------------------------------------------------------------------------------------
 """,
-        epilog="-----------------------------------------------------"
+        epilog=f"""
+---------------------------------------------------------------------------------------------
+\nFor usage examples, visit:\n{cli_bcolors.UNDERLINE}{GITHUB_DOCS_URL}{cli_bcolors.ENDC}\n\n
+---------------------------------------------------------------------------------------------
+        """
     )
     parser.add_argument(
         "--version",
@@ -219,13 +304,11 @@ def main():
 
 
     parser_conv = subparsers.add_parser('conv',
-                                        help=f'Tool for {cli_bcolors.OKBLUE}converting{cli_bcolors.ENDC} files to or from YAML',
+                                        help=f'{cli_bcolors.OKBLUE}Converting{cli_bcolors.ENDC} files to or from YAML',
                                         description=f"""
----
+
 {cli_bcolors.HEADER}Tool for converting files to or from YAML{cli_bcolors.ENDC}.
-    """,
-                                        epilog="-----------------------------------------------------"
-                                        )
+    """, )
 
     parser_conv.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to convert",
                              nargs='+', metavar='input')
@@ -250,10 +333,9 @@ def main():
     parser_obj = subparsers.add_parser('obj',
                                        help=f'Tool for {cli_bcolors.OKBLUE}accessing/manipulating{cli_bcolors.ENDC} YAML files',
                                        description=f"""
-    ---
+
     {cli_bcolors.HEADER}Tool for accessing/manipulating YAML files{cli_bcolors.ENDC}.
         """,
-                                       epilog="-----------------------------------------------------"
                                        )
 
     parser_obj.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC} to read/modify",
@@ -263,8 +345,6 @@ def main():
     parser_obj.add_argument('-t', type=str,
                             help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
                             default='yaml', metavar='type')
-    parser_obj.add_argument('-p', action='store_true', help=f"{cli_bcolors.OKBLUE}print{cli_bcolors.ENDC} output",
-                            default=False)
     parser_obj.add_argument('-l', action='store_true', help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} types",
                             default=False)
 
@@ -277,12 +357,11 @@ def main():
     #  \___|___| |_|
 
     get_obj_parser = subparsers_obj.add_parser('get',
-                                               help=f'Tool for {cli_bcolors.OKBLUE}getting{cli_bcolors.ENDC} values from YAML files',
+                                               help=f'{cli_bcolors.OKBLUE}Getting{cli_bcolors.ENDC} values from YAML files',
                                                description=f"""
-        ---
+
         {cli_bcolors.HEADER}Tool for getting values from YAML files{cli_bcolors.ENDC}.
             """,
-                                               epilog="-----------------------------------------------------"
                                                )
 
     get_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to get value",
@@ -297,12 +376,11 @@ def main():
     # |___/___| |_|
 
     set_obj_parser = subparsers_obj.add_parser('set',
-                                               help=f'Tool for {cli_bcolors.OKBLUE}setting{cli_bcolors.ENDC} values in YAML files',
+                                               help=f'{cli_bcolors.OKBLUE}Setting{cli_bcolors.ENDC} values in YAML files',
                                                description=f"""
-            ---
+
             {cli_bcolors.HEADER}Tool for setting values in YAML files{cli_bcolors.ENDC}.
                 """,
-                                               epilog="-----------------------------------------------------"
                                                )
 
     set_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to set value",
@@ -319,12 +397,11 @@ def main():
     # |___/|___|____|
 
     del_obj_parser = subparsers_obj.add_parser('del',
-                                               help=f'Tool for {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys in YAML files',
+                                               help=f'For {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys in YAML files',
                                                description=f"""
-                ---
+
                 {cli_bcolors.HEADER}Tool for deleting keys in YAML files{cli_bcolors.ENDC}.
                     """,
-                                               epilog="-----------------------------------------------------"
                                                )
 
     del_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to delete",
@@ -339,12 +416,11 @@ def main():
     #   |_|   |_| |_| |___|
 
     type_obj_parser = subparsers_obj.add_parser('type',
-                                                help=f'Tool for {cli_bcolors.OKBLUE}checking type{cli_bcolors.ENDC} of keys in YAML files',
+                                                help=f'Printing value {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} ',
                                                 description=f"""
-                    ---
+
                     {cli_bcolors.HEADER}Tool for checking type of keys in YAML files{cli_bcolors.ENDC}.
                         """,
-                                                epilog="-----------------------------------------------------"
                                                 )
 
     type_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to check",
@@ -359,12 +435,11 @@ def main():
     # |___/___/_/ \_\_|_\\___|_||_|
 
     search_obj_parser = subparsers_obj.add_parser('search',
-                                                  help=f'Tool for {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} keys in YAML files',
+                                                  help=f'For {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} key paths in YAML files',
                                                   description=f"""
-                    ---
+
                     {cli_bcolors.HEADER}Tool for searching keys in YAML files{cli_bcolors.ENDC}.
                         """,
-                                                  epilog="-----------------------------------------------------"
                                                   )
 
     search_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to search",
@@ -379,12 +454,11 @@ def main():
     # |_|  \___/|_|\_|\___|
 
     func_obj_parser = subparsers_obj.add_parser('func',
-                                                help=f'Tool for {cli_bcolors.OKBLUE}executing function{cli_bcolors.ENDC} defined in YAML files',
+                                                help=f'Executing {cli_bcolors.OKBLUE}function{cli_bcolors.ENDC} defined in YAML files',
                                                 description=f"""
-                    ---
+
                     {cli_bcolors.HEADER}Tool for executing function defined in YAML files{cli_bcolors.ENDC}.
                         """,
-                                                epilog="-----------------------------------------------------"
                                                 )
 
     func_obj_parser.add_argument('-x', action='store_true', help=f"{cli_bcolors.OKBLUE}infer parameter{cli_bcolors.ENDC} types",
@@ -406,15 +480,14 @@ def main():
 
 
     parser_serve = subparsers.add_parser('serve',
-                                         help=f'Tool for serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
+                                         help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
                                          description=f"""
-    ---
+
     {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
         """,
-                                         epilog="-----------------------------------------------------"
                                          )
 
-    parser_serve.add_argument('-f', type=str,
+    parser_serve.add_argument('-i', type=str,
                               help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
                               metavar='file')
     # TODO implement config
@@ -429,6 +502,11 @@ def main():
     parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
                               default=None, metavar='cert')
     parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
+    parser_serve.add_argument('-s', action='store_true',
+                              help=f"Serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data", )
+    parser_serve.add_argument('-t', type=str,
+                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
+                            default='json', metavar='type')
     parser_serve.set_defaults(func=serve)
 
     #################### SCHEMA #####################
@@ -440,12 +518,11 @@ def main():
 
 
     parser_schema = subparsers.add_parser('schema',
-                                          help=f'Tool for generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
+                                          help=f'Generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
                                           description=f"""
-    ---
+
     {cli_bcolors.HEADER}Tool for generating and checking schemas of YAML files{cli_bcolors.ENDC}.
         """,
-                                          epilog="-----------------------------------------------------"
                                           )
 
     schema_subparsers = parser_schema.add_subparsers()
@@ -457,12 +534,11 @@ def main():
     #  \___|_||_|___\___|_|\_\
 
     parser_schema_check = schema_subparsers.add_parser('check',
-                                                       help=f'Tool for {cli_bcolors.OKBLUE}checking{cli_bcolors.ENDC} schemas of YAML files',
+                                                       help=f'{cli_bcolors.OKBLUE}Checking{cli_bcolors.ENDC} schemas of YAML files',
                                                        description=f"""
-        ---
+
         {cli_bcolors.HEADER}Tool for checking schemas of YAML files{cli_bcolors.ENDC}.
             """,
-                                                       epilog="-----------------------------------------------------"
                                                        )
 
 
@@ -491,28 +567,65 @@ def main():
     parser_schema_gen = schema_subparsers.add_parser('gen',
                                                      help=f'Tool for {cli_bcolors.OKBLUE}generating{cli_bcolors.ENDC} schemas of YAML files',
                                                      description=f"""
-            ---
+
             {cli_bcolors.HEADER}Tool for generating schemas of YAML files{cli_bcolors.ENDC}.
                 """,
-                                                     epilog="-----------------------------------------------------"
                                                      )
 
     parser_schema_gen.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to generate from",
                                    nargs='+', metavar='input')
+    parser_schema_gen.add_argument('-o', type=str,
+                                   help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC}(s) to write to",
+                                   nargs='+', metavar='output')
     parser_schema_gen.add_argument('-d', type=str,
                                    help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to generate from",
                                    default=None, nargs='+', metavar='dir')
-
+    parser_schema_gen.add_argument('-t', type=str,
+                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
+                            default='yaml', metavar='type')
     parser_schema_gen.add_argument('-s', action='store_true',
                                    help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
 
     parser_schema_gen.set_defaults(func=gen)
 
     #################################################
-
-    args = parser.parse_args()
-
-    args.func(args)
+    # Making a bit more friendly for debugging
+    try:
+        args = parser.parse_args()
+        args.func(args)
+    except AttributeError as exc:
+        sys.stderr.write(f'\n{cli_bcolors.FAIL}error: {exc}{cli_bcolors.ENDC}\n\n')
+        parser.print_help(sys.stderr)
+        sys.exit(2)
+    except CLIError as cli_exc:
+        sys.stderr.write(f'\n{cli_bcolors.FAIL}error: {cli_exc.message}{cli_bcolors.ENDC}\n\n')
+        if cli_exc.cli_tool == CLIError.CLITool.CONV:
+            parser_conv.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ:
+            parser_obj.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.SERVE:
+            parser_serve.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.SCHEMA:
+            parser_schema.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ_GET:
+            get_obj_parser.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ_SET:
+            set_obj_parser.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ_DEL:
+            del_obj_parser.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ_TYPE:
+            type_obj_parser.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ_SEARCH:
+            search_obj_parser.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.OBJ_FUNC:
+            func_obj_parser.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.SCHEMA_CHECK:
+            parser_schema_check.print_help(sys.stderr)
+        elif cli_exc.cli_tool == CLIError.CLITool.SCHEMA_GEN:
+            parser_schema_gen.print_help(sys.stderr)
+        else:
+            parser.print_help(sys.stderr)
+        sys.exit(2)
 
 if __name__ == "__main__":
     main()

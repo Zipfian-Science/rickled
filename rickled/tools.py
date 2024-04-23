@@ -31,8 +31,10 @@ class Schema:
                  input_files: List[str] = None,
                  input_directories: List[str] = None,
                  schema: Union[str, dict] = None,
+                 output_files: List[str] = None,
                  output_dir: str = None,
                  silent: bool = False,
+                 default_output_type: str = 'yaml'
                  ):
         self.input_files = input_files
         self.input_directories = input_directories
@@ -42,9 +44,13 @@ class Schema:
         else:
             self.schema = schema
 
+        self.output_files = output_files
+
         self.output_dir = output_dir
 
         self.silent = silent
+
+        self.default_output_type = default_output_type
 
     def do_generation(self):
         """
@@ -60,10 +66,11 @@ class Schema:
                 self.input_files.extend(list(dir_path.glob("*.yaml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
 
-
-        self.output_files = list()
-        for input_file in self.input_files:
-            self.output_files.append(f"{os.path.splitext(input_file)[0]}.schema.yaml")
+        if self.output_files is None:
+            self.output_files = list()
+            out_dir = f"{self.output_dir}/" if self.output_dir else './'
+            for input_file in self.input_files:
+                self.output_files.append(f"{out_dir}{os.path.splitext(input_file)[0]}.schema.{self.default_output_type.lower()}")
 
 
         zipped = zip(self.input_files, self.output_files)
@@ -73,10 +80,17 @@ class Schema:
                 input_data = Converter.infer_read_file_type(pair[0])
                 output_file = Path(pair[1])
 
+                suffix = output_file.suffix.lower() if output_file.suffix else f".{self.default_output_type}"
+
                 schema = Schema.generate_schema_from_obj(input_data)
 
-                with output_file.open("w") as fout:
-                    yaml.safe_dump(schema, fout)
+                if suffix == '.yaml':
+                    with output_file.open("w") as fout:
+                        yaml.safe_dump(schema, fout)
+
+                if suffix == '.json':
+                    with output_file.open("w") as fout:
+                        json.dump(schema, fout)
 
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
@@ -158,14 +172,14 @@ class Schema:
     @staticmethod
     def _data_types_to_schema(value: Union[list, dict, str, int, float, bool, None]):
 
+        if value == bool:
+            return {'type': 'bool'}
         if value == str:
             return {'type': 'str'}
         if value == int:
             return {'type': 'int'}
         if value == float:
             return {'type': 'float'}
-        if value == bool:
-            return {'type': 'bool'}
         if value is None:
             return {'type': 'any'}
 
@@ -201,7 +215,7 @@ class Schema:
         return Schema._data_types_to_schema(rep)
 
     @staticmethod
-    def schema_validation(obj, schema: dict, path: str = 'root', no_print: bool = False) -> bool:
+    def schema_validation(obj, schema: dict, path: str = '', no_print: bool = False) -> bool:
         """
         Validates if obj conforms to schema.
 
@@ -217,7 +231,7 @@ class Schema:
         new_path = path
         if schema['type'] == 'dict':
             for k, v in schema['schema'].items():
-                new_path = f"{new_path}->{k}"
+                new_path = f"{new_path}/{k}"
                 req = v.get('required', False)
                 nullable = v.get('nullable', False)
                 present = k in obj.keys()
@@ -266,7 +280,7 @@ class Schema:
                 single_type = schema['schema'][0]
 
                 for i in range(obj_length):
-                    new_path = f"{new_path}->[{i}]"
+                    new_path = f"{new_path}/[{i}]"
                     o = obj[i]
                     if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
                         if not no_print:
@@ -357,6 +371,7 @@ class Converter:
             self.input_files = list()
             for d in self.input_directories:
                 dir_path = Path(d)
+                # TODO extend glo range here if expanding
                 self.input_files.extend(list(dir_path.glob("*.yaml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
 
@@ -364,7 +379,7 @@ class Converter:
         if self.output_files is None:
             self.output_files = list()
             for input_file in self.input_files:
-                self.output_files.append(f"{os.path.splitext(input_file)[0]}.{self.default_output_type}")
+                self.output_files.append(f"{os.path.splitext(input_file)[0]}.{self.default_output_type.lower()}")
 
 
         zipped = zip(self.input_files, self.output_files)

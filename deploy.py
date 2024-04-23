@@ -80,6 +80,19 @@ def upload_docs_via_ftp():
                             print(f"{bcolors.OKBLUE}Uploaded: {file_path.name}{bcolors.ENDC}")
                         except Exception as exc:
                             print(f"{bcolors.FAIL}{bcolors.BOLD}-- ERROR: {f} {str(exc)}!{bcolors.ENDC}")
+
+            ftp.cwd('../../..')
+            ftp.cwd(os.getenv('FTP_DIRECTORY') + '/coverage')
+
+            for f in glob.glob('./coverage_report/unittests/*'):
+                if os.path.isfile(f):
+                    with open(f, 'rb') as _f:
+                        file_path = Path(f)
+                        try:
+                            ftp.storlines(f'STOR {file_path.name}', _f)
+                            print(f"{bcolors.OKBLUE}Uploaded: {file_path.name}{bcolors.ENDC}")
+                        except Exception as exc:
+                            print(f"{bcolors.FAIL}{bcolors.BOLD}-- ERROR: {f} {str(exc)}!{bcolors.ENDC}")
     except Exception as exc:
         print(f"{bcolors.FAIL}{bcolors.BOLD}-- ERROR: {f} {str(exc)}!{bcolors.ENDC}")
         return

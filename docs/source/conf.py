@@ -19,6 +19,9 @@ sys.setrecursionlimit(1500)
 ###########################
 # For a full list of toc directives:
 # https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html
+#
+# For badges and buttons:
+# https://sphinx-design.readthedocs.io/en/sbt-theme/badges_buttons.html
 ###########################
 
 # -- Project information -----------------------------------------------------
@@ -33,10 +36,15 @@ author = 'Zipfian Science'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = ['sphinxcontrib.napoleon',
-              'sphinx.ext.todo',
-              'sphinx.ext.githubpages',
-              'sphinx.ext.autosectionlabel'
+              # 'sphinx.ext.todo',
+              # 'sphinx.ext.githubpages',
+              'sphinx.ext.autosectionlabel',
+              "myst_parser",
+                "sphinx_design",
+'sphinx_copybutton'
               ]
+
+myst_enable_extensions = ["colon_fence"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -77,6 +85,22 @@ pygments_style = 'sphinx'
 
 html_title = "rickle documentation"
 
+html_theme_options = {
+    "show_toc_level": 1,
+    "repository_url": "https://github.com/Zipfian-Science/rickled",
+    "use_repository_button": True,
+    "external_links": [
+      {"name": "PyPI", "url": "https://pypi.org/project/rickled/"},
+    ],
+    "icon_links": [
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/rickled/",
+            "icon": "fa-custom fa-pypi",
+            "type": "fontawesome",
+        },
+    ],
+}
 
 ###########
 ##### Read here: https://sphinx-book-theme.readthedocs.io/en/latest/index.html
