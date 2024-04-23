@@ -125,7 +125,7 @@ When specifying the output names, the order of output filenames must match the o
 
     rickle conv -i config_dev.yaml config_prd.yaml -o confDev.json confPrd.json
 
-Troubleshooting
+Troubleshooting Conv
 ---------------------
 
 Most likely any occurring error would be a failure to read the file in the given format. File types are inferred from file extensions.
@@ -570,7 +570,7 @@ Without using the ``-x`` option to infer the values and explicitly defining them
 
 Would produce the same results.
 
-Troubleshooting
+Troubleshooting Obj
 ---------------------
 
 1. Get
@@ -582,6 +582,20 @@ The most likely problem to occur is if the path can not be traversed, i.e. the p
     rickle obj -i conf.yaml -t JSON get /path_to_nowhere
 
 And this will result in printing nothing (default behaviour).
+
+2. Set
+
+The most likely problem to occur is if the path can not be traversed, i.e. the path is incorrect:
+
+.. code-block:: shell
+
+   error: The path /root_node/level_one/unknown/email could not be traversed
+
+3. Func
+
+Any number of errors could occur here, and that's due to the fact that Python code is being executed. A typical problem
+that could occur is the parameters not having explicit types defined. If the types are not defined they are interpreted
+as being strings.
 
 Schema tools
 ========================
@@ -775,14 +789,177 @@ Furthermore, failed input files can be moved to directory using ``-o``:
 Serve tool
 ========================
 
-txt
+This is a little tool to serve the a YAML or JSON file as a mini API.
 
-Basic usage
----------------------
+Example
+------------------------
 
-txt
+Take the following example:
 
-Troubleshooting
----------------------
+.. code-block:: yaml
+   :linenos:
+   :caption: mock-example.yaml
+   :name: mock-example-yaml
 
-txt
+   root:
+     env_var:
+       type: env
+       load: USERNAME
+       default: noname
+     encoded:
+       type: base64
+       load: dG9vIG1hbnkgc2VjcmV0cw==
+     heavens_gate:
+       type: html_page
+       url: https://www.heavensgate.com/
+     random_joke:
+       type: api_json
+       url: https://official-joke-api.appspot.com/random_joke
+       expected_http_status: 200
+       load_as_rick: true
+       hot_load: true
+       deep: true
+     data:
+       dict_type:
+         a: 1
+         b: 2
+         c: 3
+       list_type:
+         - hello
+         - world
+
+If running the serve tool with the option ``-b`` a new tab in the browser will be opened, directed to the listening port:
+
+.. code-block:: shell
+
+   rickle serve -i mock-example.yaml -b
+
+A port number can be defined specified using ``-p``:
+
+.. code-block:: shell
+
+   rickle serve -i mock-example.yaml -b -p 3301
+
+Using the given example input file the following JSON data will be returned:
+
+.. code-block:: json
+
+   {
+     "root": {
+       "env_var": "do",
+       "heavens_gate": ".......",
+       "data": {
+         "dict_type": {
+           "a": 1,
+           "b": 2,
+           "c": 3
+         },
+         "list_type": [
+           "hello",
+           "world"
+         ]
+       }
+     }
+   }
+
+.. note::
+
+   The text for ``heavens_gate`` is excluded.
+
+Calling ``http://localhost:3301/root/random_joke`` will return (example):
+
+.. code-block:: json
+
+   {
+     "type": "general",
+     "setup": "What kind of award did the dentist receive?",
+     "punchline": "A little plaque.",
+     "id": 255
+   }
+
+Furthermore, SSL can be used:
+
+.. code-block:: shell
+
+   rickle serve -i mock-example.yaml -b -p 3301 -k .\local.pem -c .\local.crt
+
+And finally, if the given YAML or JSON file needs to be given in serialised form, use ``-s``:
+
+.. code-block:: shell
+
+   rickle serve -i mock-example.yaml -b -s
+
+which will give the following:
+
+.. code-block:: json
+
+   {
+     "root": {
+       "env_var": {
+         "type": "env",
+         "load": "USERNAME",
+         "default": "noname"
+       },
+       "encoded": {
+         "type": "base64",
+         "load": "dG9vIG1hbnkgc2VjcmV0cw=="
+       },
+       "heavens_gate": {
+         "type": "html_page",
+         "url": "https://www.heavensgate.com/",
+         "headers": null,
+         "params": null,
+         "expected_http_status": 200,
+         "hot_load": false
+       },
+       "random_joke": {
+         "type": "api_json",
+         "url": "https://official-joke-api.appspot.com/random_joke",
+         "http_verb": "GET",
+         "headers": null,
+         "params": null,
+         "body": null,
+         "deep": true,
+         "load_lambda": false,
+         "expected_http_status": 200,
+         "hot_load": true
+       },
+       "data": {
+         "dict_type": {
+           "a": 1,
+           "b": 2,
+           "c": 3
+         },
+         "list_type": [
+           "hello",
+           "world"
+         ]
+       }
+     }
+   }
+
+Output can also be given as ``application/yaml`` with YAML output using the ``-t`` option:
+
+.. code-block:: shell
+
+   rickle serve -i mock-example.yaml -b -t YAML
+
+Which will produce the YAML output:
+
+.. code-block:: yaml
+
+   root:
+     data:
+       dict_type:
+         a: 1
+         b: 2
+         c: 3
+       list_type:
+       - hello
+       - world
+     env_var: do
+     heavens_gate: "......."
+
+.. note::
+
+   In some browsers, the YAML output will be downloaded as data and not rendered in the browser.

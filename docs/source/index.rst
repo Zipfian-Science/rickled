@@ -121,11 +121,23 @@ Changes and history
 See :ref:`changelog-page` for version history.
 
 
-Version 1.1.1 (2024-03-19):
+Version 1.1.2 (2024-04-23):
 
-* Updated documentation and links to pages.
+* Minor fix in schem tool where bool mistaken as int.
+* Added CLI tools documentation.
+* Fixed bug when using CLI tool and twisted not installed, better error handling in CLI tools.
+* Changed the default ``serialised=False`` for the to YAML and JSON file/string methods.
+* Changed default behaviour of ``serve`` to return deserialised form.
+* Added 404 response to serve when path can not be traversed.
+* Added ``-s`` to ``serve`` to serve the file in serialised form.
+* Added ``-t`` to ``serve`` to serve the file in output type JSON or YAML (JSON by default).
+* Changed ``-f`` to ``-i`` in ``serve`` tool for consistency.
 
 Contributors
 ---------------------
 
 * Fabian Sperrle
+
+Coverage
+---------------------
+For a report on the testing coverage, see `coverage report <https://zipfian.science/docs/rickle/coverage/index.html>`_

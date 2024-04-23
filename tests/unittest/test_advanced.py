@@ -209,7 +209,7 @@ random_joke:
 
         self.assertTrue(isinstance(observed, Rickle))
 
-        d = r.dict()
+        d = r.dict(True)
 
         self.assertTrue(isinstance(d['random_joke'], dict))
 
@@ -247,7 +247,7 @@ page:
 
         self.assertTrue(isinstance(observed, str))
 
-        d = r.dict()
+        d = r.dict(True)
 
         self.assertTrue(isinstance(d['page'], dict))
 
@@ -292,7 +292,7 @@ another_rick:
 
         self.assertTrue(isinstance(observed, str))
 
-        d = r.dict()
+        d = r.dict(True)
 
         self.assertTrue(isinstance(d['another_rick'], dict))
 

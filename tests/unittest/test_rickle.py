@@ -419,7 +419,7 @@ def tester(x, c):
         files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
         test_conf_yaml = Rickle(files, deep=True, load_lambda=True)
 
-        test_conf_yaml.to_yaml_file('./test_out.yaml')
+        test_conf_yaml.to_yaml_file('./test_out.yaml', serialised=True)
 
         test_conf_yaml_reload = Rickle('./test_out.yaml', deep=True, load_lambda=True)
 

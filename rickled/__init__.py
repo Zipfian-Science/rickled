@@ -120,7 +120,7 @@ class ObjectRickler:
         else:
             obj = cls()
 
-        for name, value in rickle.dict().items():
+        for name, value in rickle.dict(True).items():
             if isinstance(value, dict) and 'type' in value.keys():
                 if value['type'] == 'function':
                     _name = value.get('name', name)
@@ -954,13 +954,16 @@ class Rickle(BaseRickle):
                 continue
             if serialised and key in self.__meta_info.keys():
                 d[key] = self.__meta_info[key]
+            # Revisit this at some later point
             elif key in self.__meta_info.keys() and \
-                    self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition']:
-                d[key] = self.__meta_info[key]
+                    self.__meta_info[key]['type'] in ['function', 'lambda', 'class_definition', 'module_import', 'base64']:
+                # d[key] = self.__meta_info[key]
+                continue
             elif key in self.__meta_info.keys() and \
                     self.__meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
                     self.__meta_info[key]['hot_load']:
-                d[key] = self.__meta_info[key]
+                # d[key] = self.__meta_info[key]
+                continue
             elif isinstance(value, BaseRickle):
                 d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
