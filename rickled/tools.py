@@ -3,6 +3,22 @@ from pathlib import Path
 import yaml
 import json
 import os
+import sys
+
+import tomli_w as tomlw
+if sys.version_info < (3, 11):
+    import tomli as toml
+else:
+    import tomllib as toml
+
+def toml_null_stripper(d):
+    new_dict = {}
+    for k, v in d.items():
+        if isinstance(v, dict):
+            v = toml_null_stripper(v)
+        if v not in (u"", None, {}):
+            new_dict[k] = v
+    return new_dict
 
 class cli_bcolors:
     HEADER = '\033[95m'
@@ -13,7 +29,6 @@ class cli_bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-
 
 class Schema:
     """
@@ -49,8 +64,9 @@ class Schema:
         self.output_dir = output_dir
 
         self.silent = silent
-
-        self.default_output_type = default_output_type
+        if default_output_type.strip().lower() == 'yml':
+            default_output_type = 'yaml'
+        self.default_output_type = default_output_type.strip().lower()
 
     def do_generation(self):
         """
@@ -64,7 +80,9 @@ class Schema:
             for d in self.input_directories:
                 dir_path = Path(d)
                 self.input_files.extend(list(dir_path.glob("*.yaml")))
+                self.input_files.extend(list(dir_path.glob("*.yml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
+                self.input_files.extend(list(dir_path.glob("*.toml")))
 
         if self.output_files is None:
             self.output_files = list()
@@ -92,6 +110,10 @@ class Schema:
                     with output_file.open("w") as fout:
                         json.dump(schema, fout)
 
+                if suffix == '.toml':
+                    with output_file.open("wb") as fout:
+                        tomlw.dump(toml_null_stripper(schema), fout)
+
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
                 continue
@@ -116,7 +138,9 @@ class Schema:
             for d in self.input_directories:
                 dir_path = Path(d)
                 self.input_files.extend(list(dir_path.glob("*.yaml")))
+                self.input_files.extend(list(dir_path.glob("*.yml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
+                self.input_files.extend(list(dir_path.glob("*.toml")))
 
         for file in self.input_files:
             try:
@@ -346,6 +370,10 @@ class Converter:
             with input_file.open("r") as fin:
                 return yaml.safe_load(fin)
 
+        if suffix == '.toml':
+            with input_file.open("rb") as fin:
+                return toml.load(fin)
+
         try:
             with input_file.open("r") as fin:
                 return json.load(fin)
@@ -355,6 +383,12 @@ class Converter:
         try:
             with input_file.open("r") as fin:
                 return yaml.safe_load(fin)
+        except:
+            pass
+
+        try:
+            with input_file.open("rb") as fin:
+                return toml.load(fin)
         except:
             raise ValueError(f"Input file {input_file.name} could not be inferred")
 
@@ -373,7 +407,9 @@ class Converter:
                 dir_path = Path(d)
                 # TODO extend glo range here if expanding
                 self.input_files.extend(list(dir_path.glob("*.yaml")))
+                self.input_files.extend(list(dir_path.glob("*.yml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
+                self.input_files.extend(list(dir_path.glob("*.toml")))
 
 
         if self.output_files is None:
@@ -398,6 +434,10 @@ class Converter:
                 if suffix == '.json':
                     with output_file.open("w") as fout:
                         json.dump(input_data, fout)
+
+                if suffix == '.toml':
+                    with output_file.open("wb") as fout:
+                        tomlw.dump(toml_null_stripper(input_data), fout)
 
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")

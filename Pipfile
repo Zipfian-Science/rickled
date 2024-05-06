@@ -21,6 +21,8 @@ sphinx-copybutton = "*"
 pyyaml = "*"
 requests = "*"
 twisted = "*"
+tomli = "*"
+tomli-w = "*"
 
 [requires]
 python_version = "3"
