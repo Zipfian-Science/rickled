@@ -8,10 +8,15 @@ Changelog
 History
 ==========================
 
+Version 1.1.3 (2024-05-05)
+--------------------------
+
+* New addition: TOML now supported
+
 Version 1.1.2 (2024-04-23)
 --------------------------
 
-* Minor fix in schem tool where bool mistaken as int.
+* Minor fix in schema tool where bool mistaken as int.
 * Added CLI tools documentation.
 * Fixed bug when using CLI tool and twisted not installed, better error handling in CLI tools.
 * Changed the default ``serialised=False`` for the to YAML and JSON file/string methods.

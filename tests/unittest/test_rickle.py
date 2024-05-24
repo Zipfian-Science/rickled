@@ -452,3 +452,25 @@ def tester(x, c):
         r = Rickle(url)
 
         self.assertTrue(True)
+
+
+    def test_toml_load(self):
+
+        toml_str = """
+[[players]]
+name = "Lehtinen"
+number = 26
+
+[[players]]
+name = "Numminen"
+number = 27
+        """
+
+
+        rick = BaseRickle(toml_str)
+
+        expected_dict = {
+            "players": [{"name": "Lehtinen", "number": 26}, {"name": "Numminen", "number": 27}]
+        }
+
+        self.assertDictEqual(rick.dict(), expected_dict)

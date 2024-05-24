@@ -26,7 +26,7 @@ if os.path.isfile(os.path.join(here, 'requirements.txt')):
         if '-i http' in pipreq[0]:
             pipreq.pop(0)
 else:
-    pipreq = ['pyyaml', 'requests']
+    pipreq = ['pyyaml', 'requests', "tomli;python_version<'3.11'", "tomli-w"]
 
 setup(
     name="rickled",

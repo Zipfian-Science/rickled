@@ -5,7 +5,13 @@ import json
 
 import yaml
 
-from rickled import Rickle
+import tomli_w as tomlw
+if sys.version_info < (3, 11):
+    import tomli as toml
+else:
+    import tomllib as toml
+
+from rickled import Rickle, toml_null_stripper
 
 try:
     from twisted.web import server, resource
@@ -52,14 +58,20 @@ class HttpResource(resource.Resource):
                 response = content.dict(self.serialised)
                 if self.output_type == 'json':
                     request.setHeader(b"content-type", b"application/json")
-                    response = json.dumps(response)
+                    response = content.to_json(serialised=self.serialised)
+                elif self.output_type == 'toml':
+                    request.setHeader(b"content-type", b"application/toml")
+                    response = content.to_toml(serialised=self.serialised)
                 else:
                     request.setHeader(b"content-type", b"application/yaml")
-                    response = yaml.safe_dump(response)
+                    response = content.to_yaml(serialised=self.serialised)
             elif isinstance(content, dict) or isinstance(content, list):
                 if self.output_type == 'json':
                     request.setHeader(b"content-type", b"application/json")
                     response = json.dumps(content)
+                elif self.output_type == 'toml':
+                    request.setHeader(b"content-type", b"application/toml")
+                    response = tomlw.dumps(toml_null_stripper(content))
                 else:
                     request.setHeader(b"content-type", b"application/yaml")
                     response = yaml.safe_dump(content)
