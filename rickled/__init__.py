@@ -4,7 +4,7 @@ import json
 import copy
 import warnings
 from typing import Union, TypeVar
-from io import TextIOWrapper
+from io import TextIOWrapper, BytesIO
 import yaml
 import base64
 import types
@@ -12,11 +12,20 @@ import re
 import inspect
 from functools import partial
 import uuid
+import sys
+import tomli_w as tomlw
 
 try:
     import requests
 except ModuleNotFoundError as exc:
     warnings.warn(f"The module requests is not installed. This will break API calls.")
+
+if sys.version_info < (3, 11):
+    import tomli as toml
+else:
+    import tomllib as toml
+
+from rickled.tools import toml_null_stripper
 
 class ObjectRickler:
     """
@@ -274,8 +283,10 @@ class BaseRickle:
             stringed = base.read()
         elif isinstance(base, list):
             for file in base:
-                with open(file, 'r') as f:
-                    stringed = f'{stringed}\n{f.read()}'
+                if os.path.isfile(file):
+                    with open(file, 'r') as f:
+                        stringed = f'{stringed}\n{f.read()}'
+
         elif os.path.isfile(base):
             with open(base, 'r') as f:
                 stringed = f.read()
@@ -301,20 +312,29 @@ class BaseRickle:
                 _k = f'_|{k}|_'
                 stringed = stringed.replace(_k, json.dumps(v))
 
+        error_list = list()
         try:
             dict_data = yaml.safe_load(stringed)
             self._iternalize(dict_data, deep, **init_args)
             return
         except Exception as exc:
-            print("Tried YAML: {}".format(exc))
+            error_list.append(f"YAML: {exc}")
         try:
-            dict_data = json.loads(base)
+            dict_data = json.loads(stringed)
             self._iternalize(dict_data, deep, **init_args)
             return
         except Exception as exc:
-            print("Tried JSON: {}".format(exc))
+            error_list.append(f"JSON: {exc}")
+        try:
+            dict_data = toml.loads(stringed)
+            self._iternalize(dict_data, deep, **init_args)
+            return
+        except Exception as exc:
+            error_list.append(f"TOML: {exc}")
 
 
+        for error in error_list:
+            print(error)
         raise ValueError('Base object could not be internalized, type {} not handled'.format(type(base)))
 
     def __repr__(self):
@@ -693,8 +713,78 @@ class BaseRickle:
                 return False
         return False
 
+    def to_yaml(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False):
+        """
+        Does a self dump to a YAML file or returns as string.
+
+        Args:
+            output (str, TextIOWrapper): File path or stream (default = None).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
+        """
+
+        self_as_dict = self.dict(serialised=serialised)
+
+        if output:
+            if isinstance(output, TextIOWrapper):
+                yaml.safe_dump(self_as_dict, output)
+            elif isinstance(output, str):
+                with open(output, 'w', encoding='utf-8') as fs:
+                    yaml.safe_dump(self_as_dict, fs)
+        else:
+            return yaml.safe_dump(self_as_dict, None)
+
+    def to_json(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False):
+        """
+        Does a self dump to a JSON file or returns as string.
+
+        Args:
+            output (str, TextIOWrapper): File path or stream (default = None).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
+        """
+        self_as_dict = self.dict(serialised=serialised)
+
+        if output:
+            if isinstance(output, TextIOWrapper):
+                json.dump(self_as_dict, output)
+            elif isinstance(output, str):
+                with open(output, 'w', encoding='utf-8') as fs:
+                    json.dump(self_as_dict, fs)
+        else:
+            return json.dumps(self_as_dict)
+
+    def to_toml(self, output: Union[str, BytesIO] = None, serialised: bool = False):
+        """
+        Does a self dump to a TOML file or returns as string.
+
+        Args:
+            output (str, TextIOWrapper): File path or stream (default = None).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
+            IO stream "output" needs to be BytesIO object
+        """
+
+        self_as_dict = toml_null_stripper(self.dict(serialised=serialised))
+
+        if output:
+            if isinstance(output, BytesIO):
+                tomlw.dump(self_as_dict, output)
+            elif isinstance(output, str):
+                with open(output, 'wb', encoding='utf-8') as fs:
+                    tomlw.dump(self_as_dict, fs)
+        else:
+            return tomlw.dumps(self_as_dict)
+
     def to_yaml_file(self, file_path : str, serialised : bool = False):
         """
+        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_yaml`` instead.
         Does a self dump to a YAML file.
 
         Args:
@@ -710,6 +800,7 @@ class BaseRickle:
 
     def to_yaml_string(self, serialised : bool = False):
         """
+        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_yaml`` instead.
         Dumps self to YAML string.
 
         Args:
@@ -726,6 +817,7 @@ class BaseRickle:
 
     def to_json_file(self, file_path: str, serialised : bool = False):
         """
+        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_json`` instead.
         Does a self dump to a JSON file.
 
         Args:
@@ -741,6 +833,7 @@ class BaseRickle:
 
     def to_json_string(self, serialised : bool = False):
         """
+        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_json`` instead.
         Dumps self to YAML string.
 
         Args:
@@ -760,7 +853,7 @@ class BaseRickle:
         Get the metadata for a property.
 
         Args:
-            name (str): The name of the proprty.
+            name (str): The name of the property.
 
         Returns:
             dict: The metadata as a dict.

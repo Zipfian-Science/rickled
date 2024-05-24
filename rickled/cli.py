@@ -11,12 +11,15 @@ import argparse
 from rickled.tools import cli_bcolors
 from rickled.tools import Schema
 from rickled.tools import Converter
+from rickled.tools import toml_null_stripper
 
 from rickled import Rickle
 import re
 import json
 import yaml
 import ast
+
+import tomli_w as tomlw
 
 GITHUB_DOCS_URL = "https://github.com/Zipfian-Science/rickled/blob/master/docs/source/cli_tools.rst#cli-tools"
 
@@ -57,22 +60,36 @@ def obj_get(args):
         if args:
             r = Rickle(args.i, load_lambda=args.l)
             v = r.get(args.key)
+            dump_type = args.t.lower()
+
             if isinstance(v, Rickle):
-                v = v.dict()
+                v = toml_null_stripper(v.dict())
+            if isinstance(v, dict):
+                v = toml_null_stripper(v)
             elif v is None:
                 v = ''
 
             if args.o:
-                with open(args.o, 'w') as fp:
-                    if args.t.lower() == 'json':
+
+                if dump_type == 'json':
+                    with open(args.o, 'w') as fp:
                         json.dump(v, fp)
-                    else:
+                elif dump_type == 'toml':
+                    with open(args.o, 'wb') as fp:
+                        tomlw.dump(v, fp)
+                else:
+                    with open(args.o, 'w') as fp:
                         yaml.safe_dump(v, fp)
+
+
             else:
-                if args.t.lower() == 'json':
+                if dump_type == 'json':
                     print(json.dumps(v))
+                elif dump_type == 'toml':
+                    print(tomlw.dumps(v))
                 else:
                     print(yaml.safe_dump(v))
+
 
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_GET)
@@ -84,17 +101,22 @@ def obj_set(args):
         if args:
             r = Rickle(args.i)
             r.set(args.key, args.value)
+            dump_type = args.t.lower()
 
             if args.o:
-                if args.t.lower() == 'json':
-                    r.to_json_file(args.o)
+                if dump_type == 'json':
+                    r.to_json(output=args.o)
+                elif dump_type == 'toml':
+                    r.to_toml(output=args.o)
                 else:
-                    r.to_yaml_file(args.o)
+                    r.to_yaml(output=args.o)
             else:
-                if args.t.lower() == 'json':
-                    print(r.to_json_string())
+                if dump_type == 'json':
+                    print(r.to_json())
+                elif dump_type == 'toml':
+                    print(r.to_toml())
                 else:
-                    print(r.to_yaml_string())
+                    print(r.to_yaml())
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SET)
 
@@ -104,17 +126,22 @@ def obj_del(args):
         if args:
             r = Rickle(args.i)
             r.remove(args.key)
+            dump_type = args.t.lower()
 
             if args.o:
-                if args.t.lower() == 'json':
-                    r.to_json_file(args.o)
+                if dump_type == 'json':
+                    r.to_json(output=args.o)
+                elif dump_type == 'toml':
+                    r.to_toml(output=args.o)
                 else:
-                    r.to_yaml_file(args.o)
+                    r.to_yaml(output=args.o)
             else:
-                if args.t.lower() == 'json':
-                    print(r.to_json_string())
+                if dump_type == 'json':
+                    print(r.to_json())
+                elif dump_type == 'toml':
+                    print(r.to_toml())
                 else:
-                    print(r.to_yaml_string())
+                    print(r.to_yaml())
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_DEL)
 
@@ -175,6 +202,7 @@ def obj_func(args):
         re_pat = re.compile(r"(.+?)=(.+)")
         if args:
             r = Rickle(args.i, load_lambda=args.l)
+            dump_type = args.t.lower()
 
             params = dict()
             if args.params:
@@ -193,13 +221,17 @@ def obj_func(args):
 
             if not v is None:
                 if isinstance(v, Rickle):
-                    if args.t.lower() == 'json':
-                        print(v.to_json_string())
+                    if dump_type == 'json':
+                        print(v.to_json())
+                    elif dump_type == 'toml':
+                        print(v.to_toml())
                     else:
-                        print(v.to_yaml_string())
+                        print(v.to_yaml())
                 elif isinstance(v, dict):
-                    if args.t.lower() == 'json':
+                    if dump_type == 'json':
                         print(json.dumps(v))
+                    elif dump_type == 'toml':
+                        print(tomlw.dumps(v))
                     else:
                         print(yaml.safe_dump(v))
                 else:
@@ -276,7 +308,12 @@ def main():
 ██║  ██║██║╚██████╗██║  ██╗███████╗███████╗
 ╚═╝  ╚═╝╚═╝ ╚═════╝╚═╝  ╚═╝╚══════╝╚══════╝{cli_bcolors.ENDC}
 
-{cli_bcolors.HEADER}YAML tools for Python{cli_bcolors.ENDC} (version {ver}).
+{cli_bcolors.HEADER}YAML (+JSON, TOML...) tools for Python{cli_bcolors.ENDC} (version {ver}).
+---------------------------------------------------------------------------------------------
+Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
+- {cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}TOML{cli_bcolors.ENDC}
 ---------------------------------------------------------------------------------------------
 """,
         epilog=f"""
@@ -593,8 +630,7 @@ def main():
     try:
         args = parser.parse_args()
         args.func(args)
-    except AttributeError as exc:
-        sys.stderr.write(f'\n{cli_bcolors.FAIL}error: {exc}{cli_bcolors.ENDC}\n\n')
+    except AttributeError:
         parser.print_help(sys.stderr)
         sys.exit(2)
     except CLIError as cli_exc:
