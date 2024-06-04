@@ -1,3 +1,5 @@
+import configparser
+import importlib.util
 from typing import List, Union
 from pathlib import Path
 import yaml
@@ -42,6 +44,8 @@ class Schema:
         silent (bool): Suppress verbose output (default = None).
     """
 
+    supported_list = f"{cli_bcolors.OKBLUE}YAML (r/w), JSON (r/w), TOML (r/w), XML (r){cli_bcolors.ENDC}"
+
     def __init__(self,
                  input_files: List[str] = None,
                  input_directories: List[str] = None,
@@ -83,6 +87,7 @@ class Schema:
                 self.input_files.extend(list(dir_path.glob("*.yml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
                 self.input_files.extend(list(dir_path.glob("*.toml")))
+                self.input_files.extend(list(dir_path.glob("*.xml")))
 
         if self.output_files is None:
             self.output_files = list()
@@ -141,6 +146,7 @@ class Schema:
                 self.input_files.extend(list(dir_path.glob("*.yml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
                 self.input_files.extend(list(dir_path.glob("*.toml")))
+                self.input_files.extend(list(dir_path.glob("*.xml")))
 
         for file in self.input_files:
             try:
@@ -329,6 +335,8 @@ class Converter:
         silent (bool): Suppress verbose output (default = None).
     """
 
+    supported_list = f"{cli_bcolors.OKBLUE}YAML (r/w), JSON (r/w), TOML (r/w), INI (r), XML (r){cli_bcolors.ENDC}"
+
     def __init__(self,
                  input_files: List[str] = None,
                  input_directories: List[str] = None,
@@ -341,6 +349,10 @@ class Converter:
         self.output_files = output_files
         self.default_output_type = default_output_type
         self.silent = silent
+        if importlib.util.find_spec('dotenv'):
+            self.supported_list = f"{self.supported_list}, {cli_bcolors.OKBLUE}ENV (r){cli_bcolors.ENDC}"
+        if importlib.util.find_spec('xmltodict'):
+            self.supported_list = f"{self.supported_list}, {cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}"
 
     @staticmethod
     def infer_read_file_type(file_path: str):
@@ -374,6 +386,25 @@ class Converter:
             with input_file.open("rb") as fin:
                 return toml.load(fin)
 
+        if suffix == '.ini':
+            config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+            config.read_file(str(input_file.absolute()))
+
+            return {section_name: dict(config[section_name]) for section_name in config.sections()}
+
+        if suffix == '.xml':
+            if importlib.util.find_spec('xmltodict'):
+                import xmltodict
+
+                with input_file.open("rb") as fin:
+                    return xmltodict.parse(fin, process_namespaces=True)
+
+        if input_file.stem.lower() == '.env' and suffix == '':
+            if importlib.util.find_spec('dotenv'):
+                from dotenv import dotenv_values
+
+                _d = dotenv_values(dotenv_path=str(input_file.absolute()))
+
         try:
             with input_file.open("r") as fin:
                 return json.load(fin)
@@ -389,6 +420,15 @@ class Converter:
         try:
             with input_file.open("rb") as fin:
                 return toml.load(fin)
+        except:
+            pass
+
+        try:
+            if importlib.util.find_spec('xmltodict'):
+                import xmltodict
+
+                with input_file.open("rb") as fin:
+                    return xmltodict.parse(fin, process_namespaces=True)
         except:
             raise ValueError(f"Input file {input_file.name} could not be inferred")
 
@@ -410,6 +450,8 @@ class Converter:
                 self.input_files.extend(list(dir_path.glob("*.yml")))
                 self.input_files.extend(list(dir_path.glob("*.json")))
                 self.input_files.extend(list(dir_path.glob("*.toml")))
+                self.input_files.extend(list(dir_path.glob("*.xml")))
+                self.input_files.extend(list(dir_path.glob("*.ini")))
 
 
         if self.output_files is None:
@@ -438,6 +480,15 @@ class Converter:
                 if suffix == '.toml':
                     with output_file.open("wb") as fout:
                         tomlw.dump(toml_null_stripper(input_data), fout)
+
+                if suffix == '.xml':
+                    if importlib.util.find_spec('xmltodict'):
+                        import xmltodict
+
+                        with output_file.open("wb") as fout:
+                            return xmltodict.unparse(input_data, fout)
+                    else:
+                        raise ImportError("Missing 'xmltodict' dependency")
 
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")

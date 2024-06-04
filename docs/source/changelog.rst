@@ -8,6 +8,26 @@ Changelog
 History
 ==========================
 
+Version 1.2.0 (2024-05-05)
+--------------------------
+
+* Init args now parsed with opening braces ``{{`` and closing braces ``}}``.
+* Opening and closing braces can be defined using environment variables ``RICKLE_OPENING_BRACES`` and ``RICKLE_CLOSING_BRACES``.
+* ``RICKLE_OPENING_BRACES`` and ``RICKLE_CLOSING_BRACES`` can also be passed as init arguments.
+* Added optional INI support.
+* Added optional .ENV support if extras installed ``pip install rickled[dotenv]``.
+* Added optional XML support if extras installed ``pip install rickled[xml]``.
+* Renamed optional extras for twisted, now installed ``pip install rickled[net]``.
+* With added ability to use XML, keys are now cleansed of non alphabetic characters, but kept for serialisation.
+* Added more customisation. Path separator can now be define with init arg ``RICKLE_PATH_SEP`` or environment variable ``RICKLE_PATH_SEP``.
+* Added list type index getter to paths, for example ``/path/to/a_list[0]`` returns first element (if ``a_list`` is of list type)
+* Added static method ``flatten_dict`` to squash a Python dictionary into a thin dictionary with depth of 1.
+* Undo the flattening of a dictionary with static method ``inflate_dict``.
+* Now able to dump to INI file or string using ``to_ini``.
+* When reading INI, dictionaries are automatically inflated, split on ``RICKLE_INI_PATH_SEP`` env var or init arg.
+* Furthermore, ``RICKLE_INI_OPENING_BRACES`` and ``RICKLE_INI_CLOSING_BRACES`` can be set with env var or init arg.
+
+
 Version 1.1.3 (2024-05-05)
 --------------------------
 

@@ -872,6 +872,18 @@ And the we can use paths.
 
 We can even call functions like this, and pass the arguments as parameters.
 
+.. note::
+
+   The path separator can be specified by setting an environment variable "RICKLE_PATH_SEP", for example ``RICKLE_PATH_SEP=.`` for dots, or using the init argument ``RICKLE_PATH_SEP``.
+
+.. code-block:: python
+
+   >> test_rickle = Rickle(yaml, load_lambda=True, RICKLE_PATH_SEP='.')
+
+   >> test_rickle('.path.level_one.level_two.member') == 42
+   True
+
+
 Object Rickler
 ========================
 

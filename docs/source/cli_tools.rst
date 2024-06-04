@@ -223,6 +223,10 @@ Which would have the value ``password``.
 
    The path must always start the slash ``/`` to be valid.
 
+.. note::
+
+   The path separator can be specified by setting an environment variable "RICKLE_PATH_SEP", for example ``RICKLE_PATH_SEP=.`` for dots.
+
 Get
 ---------------------
 

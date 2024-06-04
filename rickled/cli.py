@@ -2,6 +2,7 @@
 # https://patorjk.com/software/taag/
 # Large heading using "Shaded Blocky" font
 # Sub headings using "Small" font
+import importlib.util
 import sys
 import warnings
 from enum import Enum
@@ -77,6 +78,13 @@ def obj_get(args):
                 elif dump_type == 'toml':
                     with open(args.o, 'wb') as fp:
                         tomlw.dump(v, fp)
+                elif dump_type == 'xml':
+                    if importlib.util.find_spec('xmltodict'):
+                        import xmltodict
+                        with open(args.o, 'wb') as fp:
+                            xmltodict.unparse(v, fp)
+                    else:
+                        raise ImportError("Missing 'xmltodict' dependency")
                 else:
                     with open(args.o, 'w') as fp:
                         yaml.safe_dump(v, fp)
@@ -87,6 +95,12 @@ def obj_get(args):
                     print(json.dumps(v))
                 elif dump_type == 'toml':
                     print(tomlw.dumps(v))
+                elif dump_type == 'xml':
+                    if importlib.util.find_spec('xmltodict'):
+                        import xmltodict
+                        print(xmltodict.unparse(v, pretty=True))
+                    else:
+                        raise ImportError("Missing 'xmltodict' dependency")
                 else:
                     print(yaml.safe_dump(v))
 
@@ -108,6 +122,8 @@ def obj_set(args):
                     r.to_json(output=args.o)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.o)
+                elif dump_type == 'xml':
+                    r.to_xml(output=args.o)
                 else:
                     r.to_yaml(output=args.o)
             else:
@@ -115,6 +131,8 @@ def obj_set(args):
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
+                elif dump_type == 'xml':
+                    print(r.to_xml())
                 else:
                     print(r.to_yaml())
     except Exception as exc:
@@ -133,6 +151,8 @@ def obj_del(args):
                     r.to_json(output=args.o)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.o)
+                elif dump_type == 'xml':
+                    r.to_xml(output=args.o)
                 else:
                     r.to_yaml(output=args.o)
             else:
@@ -140,6 +160,8 @@ def obj_del(args):
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
+                elif dump_type == 'xml':
+                    print(r.to_xml())
                 else:
                     print(r.to_yaml())
     except Exception as exc:
@@ -225,6 +247,8 @@ def obj_func(args):
                         print(v.to_json())
                     elif dump_type == 'toml':
                         print(v.to_toml())
+                    elif dump_type == 'xml':
+                        print(v.to_xml())
                     else:
                         print(v.to_yaml())
                 elif isinstance(v, dict):
@@ -232,6 +256,10 @@ def obj_func(args):
                         print(json.dumps(v))
                     elif dump_type == 'toml':
                         print(tomlw.dumps(v))
+                    elif dump_type == 'xml':
+                        if importlib.util.find_spec('xmltodict'):
+                            import xmltodict
+                            print(xmltodict.unparse(input_dict=v, pretty=True))
                     else:
                         print(yaml.safe_dump(v))
                 else:
@@ -296,6 +324,19 @@ def gen(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_GEN)
 
 def main():
+
+    supported_list = f"""
+- {cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}INI (r){cli_bcolors.ENDC}"""
+
+    if importlib.util.find_spec('dotenv'):
+        supported_list = f"{supported_list}\n- {cli_bcolors.OKBLUE}ENV (r){cli_bcolors.ENDC}"
+    if importlib.util.find_spec('xmltodict'):
+        supported_list = f"{supported_list}\n- {cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}"
+
+
     parser = argparse.ArgumentParser(
         prog='rickle',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -311,9 +352,7 @@ def main():
 {cli_bcolors.HEADER}YAML (+JSON, TOML...) tools for Python{cli_bcolors.ENDC} (version {ver}).
 ---------------------------------------------------------------------------------------------
 Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
-- {cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC}
-- {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC}
-- {cli_bcolors.OKBLUE}TOML{cli_bcolors.ENDC}
+{supported_list}
 ---------------------------------------------------------------------------------------------
 """,
         epilog=f"""
@@ -344,7 +383,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
                                         help=f'{cli_bcolors.OKBLUE}Converting{cli_bcolors.ENDC} files to or from YAML',
                                         description=f"""
 
-{cli_bcolors.HEADER}Tool for converting files to or from YAML{cli_bcolors.ENDC}.
+{cli_bcolors.HEADER}Tool for converting files to or from YAML{cli_bcolors.ENDC}. Supported file types: {Converter.supported_list}
     """, )
 
     parser_conv.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to convert",
@@ -515,36 +554,37 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
     # ███████  █  ███████  ███  ████    ███  ███████
     # ██      ██        █  ████  ████  ████        █
 
+    if importlib.util.find_spec('dotenv'):
 
-    parser_serve = subparsers.add_parser('serve',
-                                         help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
-                                         description=f"""
+        parser_serve = subparsers.add_parser('serve',
+                                             help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
+                                             description=f"""
+    
+        {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
+            """,
+                                             )
 
-    {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
-        """,
-                                         )
-
-    parser_serve.add_argument('-i', type=str,
-                              help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
-                              metavar='file')
-    # TODO implement config
-    # parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
-    #                           default=None, metavar='config')
-    parser_serve.add_argument('-a', type=str, help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC}",
-                              default='', metavar='address')
-    parser_serve.add_argument('-p', type=int, help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number",
-                              default=8080, metavar='port')
-    parser_serve.add_argument('-k', type=str, help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
-                              default=None, metavar='privkey')
-    parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
-                              default=None, metavar='cert')
-    parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
-    parser_serve.add_argument('-s', action='store_true',
-                              help=f"Serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data", )
-    parser_serve.add_argument('-t', type=str,
-                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
-                            default='json', metavar='type')
-    parser_serve.set_defaults(func=serve)
+        parser_serve.add_argument('-i', type=str,
+                                  help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
+                                  metavar='file')
+        # TODO implement config
+        # parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
+        #                           default=None, metavar='config')
+        parser_serve.add_argument('-a', type=str, help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC}",
+                                  default='', metavar='address')
+        parser_serve.add_argument('-p', type=int, help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number",
+                                  default=8080, metavar='port')
+        parser_serve.add_argument('-k', type=str, help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
+                                  default=None, metavar='privkey')
+        parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
+                                  default=None, metavar='cert')
+        parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
+        parser_serve.add_argument('-s', action='store_true',
+                                  help=f"Serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data", )
+        parser_serve.add_argument('-t', type=str,
+                                help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
+                                default='json', metavar='type')
+        parser_serve.set_defaults(func=serve)
 
     #################### SCHEMA #####################
     # ░░      ░░░      ░░  ░░░░  ░        ░  ░░░░  ░░      ░░
@@ -558,7 +598,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
                                           help=f'Generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
                                           description=f"""
 
-    {cli_bcolors.HEADER}Tool for generating and checking schemas of YAML files{cli_bcolors.ENDC}.
+    {cli_bcolors.HEADER}Tool for generating and checking schemas of YAML files{cli_bcolors.ENDC}. Supported file types: {Schema.supported_list}
         """,
                                           )
 

@@ -1,10 +1,12 @@
+from collections import defaultdict
+
 from .__version__ import __version__, __date__
 import os
 import json
 import copy
 import warnings
 from typing import Union, TypeVar
-from io import TextIOWrapper, BytesIO
+from io import TextIOWrapper, BytesIO, StringIO
 import yaml
 import base64
 import types
@@ -13,6 +15,10 @@ import inspect
 from functools import partial
 import uuid
 import sys
+from pathlib import Path
+import importlib.util
+import configparser
+from collections import namedtuple
 import tomli_w as tomlw
 
 try:
@@ -251,44 +257,104 @@ class BaseRickle:
         Raises:
             ValueError: If the given base object can not be handled. Also raises if YAML key is already member of Rickle.
     """
-    def _iternalize(self, dictionary : dict, deep : bool, **init_args):
-        for k, v in dictionary.items():
-            self._check_kw(k)
-            if isinstance(v, dict):
-                self.__dict__.update({k: BaseRickle(base=v, deep=deep, strict=self.__strict, **init_args)})
-                continue
-            if isinstance(v, list) and deep:
-                new_list = list()
-                for i in v:
-                    if isinstance(i, dict):
-                        new_list.append(BaseRickle(base=i, deep=deep, strict=self.__strict, **init_args))
+
+    @staticmethod
+    def flatten_dict(dictionary, path_sep: str = None, list_brackets: tuple = ('{', '}')):
+        def __flatten_dict(d, parent_path: str = None, sep: str = None):
+
+            values = list()
+            if isinstance(d, dict):
+                for k, v in d.items():
+                    if isinstance(v, dict):
+                        value = __flatten_dict(d=v, parent_path=f'{parent_path}{sep}{k}', sep=sep)
+                        values.extend(value)
+                    elif isinstance(v, list):
+                        value = __flatten_dict(d=v, parent_path=f'{parent_path}{sep}{k}', sep=sep)
+                        values.extend(value)
                     else:
-                        new_list.append(i)
-                self.__dict__.update({k: new_list})
-                continue
+                        values.append({f'{parent_path}{sep}{k}': v})
+            if isinstance(d, list):
+                for i, val in enumerate(d):
+                    if isinstance(val, dict):
+                        value = __flatten_dict(d=val, parent_path=f'{parent_path}{sep}{list_brackets[0]}{i}{list_brackets[1]}', sep=sep)
+                        values.extend(value)
+                    elif isinstance(val, list):
+                        value = __flatten_dict(d=val, parent_path=f'{parent_path}{sep}{list_brackets[0]}{i}{list_brackets[1]}', sep=sep)
+                        values.extend(value)
+                    else:
+                        values.append({f'{parent_path}{sep}{list_brackets[0]}{i}{list_brackets[1]}': val})
+            return values
 
-            self.__dict__.update({k:v})
+        list_dicts = __flatten_dict(d=dictionary, parent_path='', sep=path_sep)
+        flattened_dict = dict()
+        for d in list_dicts:
+            flattened_dict.update(d)
+        return flattened_dict
 
-    def __init__(self, base : Union[dict,str,TextIOWrapper,list] = None, deep : bool = False, strict: bool = True, **init_args):
-        self.__meta_info = dict()
-        self.__strict = strict
+    @staticmethod
+    def inflate_dict(flat_dict: dict, path_sep: str = None, list_brackets: tuple = ('{', '}')):
+        Node = namedtuple('Node', ['key', 'struc_type'])
+
+        def unravel(key, path_sep: str = None, list_brackets: tuple = ('{', '}')):
+
+            if key.startswith(path_sep):
+                key = key[1:]
+            keys = key.split(path_sep)
+
+            _list = list()
+            for k in keys:
+                m = re.match(f'\\{list_brackets[0]}(\\d+)\\{list_brackets[1]}', k)
+                if m:
+                    _list.append(Node(key=int(m.group(1)), struc_type='list'))
+                else:
+                    _list.append(Node(key=k, struc_type='dict'))
+
+            return _list
+
+        main_d = dict()
+        lists = dict()
+        for key, value in flat_dict.items():
+            d = main_d
+
+            keys = unravel(key, path_sep=path_sep, list_brackets=list_brackets)
+
+            for i, k in enumerate(keys[:-1]):
+                if k.struc_type == 'dict':
+                    if k.key not in d:
+                        d[k.key] = list() if keys[i + 1].struc_type == 'list' else dict()
+                    d = d[k.key]
+                if k.struc_type == 'list':
+
+                    f = '/'.join([str(p.key) for p in keys[:i + 1]])
+                    if f in lists:
+                        _ = lists[f]
+                    else:
+                        _ = list() if keys[i + 1].struc_type == 'list' else dict()
+                        if isinstance(_, list):
+                            lists[f] = _
+                        d.insert(k.key, _)
+                    d = _
+
+            if isinstance(d, dict):
+                d[keys[-1].key] = value
+            if isinstance(d, list):
+                d.insert(keys[-1].key, value)
+
+        return main_d
+
+    def __create_dict_from_string(self, base: str, **init_args):
+
         stringed = ''
-        if base is None:
-            return
-        if isinstance(base, dict):
-            self._iternalize(base, deep, **init_args)
-            return
+        file_ext = ''
 
-        if isinstance(base, TextIOWrapper):
-            stringed = base.read()
-        elif isinstance(base, list):
-            for file in base:
-                if os.path.isfile(file):
-                    with open(file, 'r') as f:
-                        stringed = f'{stringed}\n{f.read()}'
+        if Path(base).is_file():
+            file_path = Path(base)
+            file_ext = file_path.suffix
 
-        elif os.path.isfile(base):
-            with open(base, 'r') as f:
+            # handle dotenv
+            if file_path.stem == '.env':
+                file_ext = '.env'
+            with file_path.open(mode='r', encoding=init_args.get('encoding', 'utf-8')) as f:
                 stringed = f.read()
         elif isinstance(base, str):
             try:
@@ -296,10 +362,13 @@ class BaseRickle:
                 try:
                     parsed = parse_url(base)
                     if all([parsed.scheme, parsed.host]):
-                        response = requests.get(url=base,)
-                        dict_data = response.json()
-                        self._iternalize(dict_data, deep, **init_args)
-                        return
+                        response = requests.get(url=base, )
+                        if response.status_code == 200:
+                            _d = response.json()
+                            self.__input_type = "url"
+                            return _d
+                        else:
+                            raise ValueError(f"Non-200 status {response.status_code} returned for URL {base}")
                 except:
                     pass
             except (ImportError, ModuleNotFoundError):
@@ -309,41 +378,191 @@ class BaseRickle:
 
         if not init_args is None:
             for k, v in init_args.items():
-                _k = f'_|{k}|_'
+                _k = "{opening}{key}{closing}".format(
+                    opening=os.getenv("RICKLE_OPENING_BRACES", init_args.get('RICKLE_OPENING_BRACES', "{{")),
+                    key=k,
+                    closing=os.getenv("RICKLE_CLOSING_BRACES", init_args.get('RICKLE_CLOSING_BRACES', "}}"))
+                )
                 stringed = stringed.replace(_k, json.dumps(v))
 
         error_list = list()
+
+        if file_ext.lower() in ["yaml", "yml"]:
+            try:
+                _d = yaml.safe_load(stringed)
+                self.__input_type = "yaml"
+                return _d
+            except Exception as exc:
+                error_list.append(f"YAML: {exc}")
+        if file_ext.lower() in ["json"]:
+            try:
+                _d = json.loads(stringed)
+                self.__input_type = "json"
+                return _d
+            except Exception as exc:
+                error_list.append(f"JSON: {exc}")
+        if file_ext.lower() in ["toml"]:
+            try:
+                _d = toml.loads(stringed)
+                self.__input_type = "toml"
+                return _d
+            except Exception as exc:
+                error_list.append(f"TOML: {exc}")
+        if file_ext.lower() in ["ini"]:
+            try:
+                config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+                config.read_string(stringed)
+
+                _d = {section_name: dict(config[section_name]) for section_name in config.sections()}
+                self.__input_type = "ini"
+
+                _d = BaseRickle.inflate_dict(flat_dict=_d, path_sep=os.getenv("RICKLE_INI_PATH_SEP",
+                                                                              init_args.get('RICKLE_INI_PATH_SEP', ".")),
+                                             list_brackets=(os.getenv("RICKLE_INI_OPENING_BRACES",
+                                                                      init_args.get('RICKLE_INI_OPENING_BRACES', "{")),
+                                                            os.getenv("RICKLE_INI_CLOSING_BRACES",
+                                                                      init_args.get('RICKLE_INI_CLOSING_BRACES', "}"))))
+
+                return _d
+            except Exception as exc:
+                error_list.append(f"INI: {exc}")
+        if file_ext.lower() == ".env":
+            try:
+                if importlib.util.find_spec('dotenv'):
+                    from io import StringIO
+                    from dotenv import dotenv_values
+
+                    _d = dotenv_values(stream=StringIO(stringed))
+                    self.__input_type = "env"
+                    return _d
+            except Exception as exc:
+                error_list.append(f"ENV: {exc}")
+        if file_ext.lower() == "xml":
+            try:
+                if importlib.util.find_spec('xmltodict'):
+                    import xmltodict
+
+                    _d = xmltodict.parse(stringed, process_namespaces=init_args.get('process_namespaces', False))
+                    self.__input_type = "xml"
+                    return _d
+            except Exception as exc:
+                error_list.append(f"XML: {exc}")
+
+        # Brute force it
         try:
-            dict_data = yaml.safe_load(stringed)
-            self._iternalize(dict_data, deep, **init_args)
-            return
+            _d = yaml.safe_load(stringed)
+            self.__input_type = "yaml"
+            return _d
         except Exception as exc:
             error_list.append(f"YAML: {exc}")
         try:
-            dict_data = json.loads(stringed)
-            self._iternalize(dict_data, deep, **init_args)
-            return
+            _d = json.loads(stringed)
+            self.__input_type = "json"
+            return _d
         except Exception as exc:
             error_list.append(f"JSON: {exc}")
         try:
-            dict_data = toml.loads(stringed)
-            self._iternalize(dict_data, deep, **init_args)
-            return
+            _d = toml.loads(stringed)
+            self.__input_type = "toml"
+            return _d
         except Exception as exc:
             error_list.append(f"TOML: {exc}")
+        try:
+            config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+            config.read_string(stringed)
 
+            _d = {section_name: dict(config[section_name]) for section_name in config.sections()}
+            self.__input_type = "ini"
+
+            _d = BaseRickle.inflate_dict(flat_dict=_d, path_sep=os.getenv("RICKLE_INI_PATH_SEP",
+                                                                          init_args.get('RICKLE_INI_PATH_SEP', ".")),
+                                         list_brackets=(os.getenv("RICKLE_INI_OPENING_BRACES",
+                                                                  init_args.get('RICKLE_INI_OPENING_BRACES', "{")),
+                                                        os.getenv("RICKLE_INI_CLOSING_BRACES",
+                                                                  init_args.get('RICKLE_INI_CLOSING_BRACES', "}"))))
+
+            return _d
+        except Exception as exc:
+            error_list.append(f"INI: {exc}")
+        try:
+            if importlib.util.find_spec('dotenv'):
+                from io import StringIO
+                from dotenv import dotenv_values
+
+                _d = dotenv_values(stream=StringIO(stringed))
+                self.__input_type = "env"
+                return _d
+        except Exception as exc:
+            error_list.append(f"ENV: {exc}")
+        try:
+            if importlib.util.find_spec('xmltodict'):
+                import xmltodict
+
+                _d = xmltodict.parse(stringed, process_namespaces=init_args.get('process_namespaces', False))
+                self.__input_type = "xml"
+                return _d
+        except Exception as exc:
+            error_list.append(f"XML: {exc}")
 
         for error in error_list:
             print(error)
-        raise ValueError('Base object could not be internalized, type {} not handled'.format(type(base)))
+
+        raise ValueError("Unable to infer data type")
+
+
+    def _iternalize(self, dictionary : dict, deep : bool, **init_args):
+        for k, v in dictionary.items():
+            _k = self._check_kw(k)
+            if isinstance(v, dict):
+                self.__dict__.update({_k: BaseRickle(base=v, deep=deep, strict=self.__strict, **init_args)})
+                continue
+            if isinstance(v, list) and deep:
+                new_list = list()
+                for i in v:
+                    if isinstance(i, dict):
+                        new_list.append(BaseRickle(base=i, deep=deep, strict=self.__strict, **init_args))
+                    else:
+                        new_list.append(i)
+                self.__dict__.update({_k: new_list})
+                continue
+
+            self.__dict__.update({_k: v})
+
+    def __init__(self, base: Union[dict, str, TextIOWrapper, list] = None,
+                 deep: bool = False,
+                 strict: bool = True,
+                 **init_args):
+        self.__meta_info = dict()
+        self.__strict = strict
+        self.__input_type = None
+        self.__allowed_chars_pat = re.compile('[^a-zA-Z_]')
+        self.__keys_map = dict()
+        self.__path_sep = os.getenv("RICKLE_PATH_SEP", init_args.get('RICKLE_PATH_SEP', "/"))
+
+        if base is None:
+            return
+
+        if isinstance(base, dict):
+            self._iternalize(base, deep=deep, **init_args)
+            self.__input_type = 'dict'
+            return
+
+        if isinstance(base, TextIOWrapper):
+            _d = self.__create_dict_from_string(base.read(), **init_args)
+            self._iternalize(_d, deep=deep, **init_args)
+            return
+
+        if isinstance(base, str):
+            _d = self.__create_dict_from_string(base, **init_args)
+            self._iternalize(_d, deep=deep, **init_args)
 
     def __repr__(self):
         keys = self.__dict__
-        items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__meta_info') )
+        items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys if not str(k).__contains__(self.__class__.__name__) and not str(k).endswith('__meta_info'))
         return "{}({})".format(type(self).__name__, ", ".join(items))
 
     def __str__(self):
-        return self.to_yaml_string()
+        return self.to_yaml()
 
     def __eq__(self, other):
         return repr(self) == repr(other)
@@ -406,17 +625,17 @@ class BaseRickle:
             parent_path = ''
         values = list()
         if key in dictionary:
-            values = [f'{parent_path}/{key}']
+            values = [f'{parent_path}{self.__path_sep}{key}']
         for k, v in dictionary.items():
             if isinstance(v, BaseRickle):
                 try:
-                    value = self.__search_path(key=key, dictionary=v.dict(),  parent_path=f'{parent_path}/{k}')
+                    value = self.__search_path(key=key, dictionary=v.dict(),  parent_path=f'{parent_path}{self.__path_sep}{k}')
                     values.extend(value)
                 except StopIteration:
                     continue
             if isinstance(v, dict):
                 try:
-                    value = self.__search_path(key=key, dictionary=v,  parent_path=f'{parent_path}/{k}')
+                    value = self.__search_path(key=key, dictionary=v,  parent_path=f'{parent_path}{self.__path_sep}{k}')
                     values.extend(value)
                 except StopIteration:
                     continue
@@ -424,7 +643,7 @@ class BaseRickle:
             return values
         raise StopIteration
 
-    def search_path(self, key : str) -> list:
+    def search_path(self, key: str) -> list:
         """
         Search the current Rickle for all paths that match the search key. Returns empty list if nothing is found.
 
@@ -439,8 +658,7 @@ class BaseRickle:
         except StopIteration:
             return list()
 
-
-    def __call__(self, path : str, **kwargs):
+    def __call__(self, path: str, **kwargs):
         """
         Rickle objects can be queried via a path string.
 
@@ -448,6 +666,7 @@ class BaseRickle:
             '/' => root.
             '/name' => member.
             '/path/to/name?param=1' => lambda/function.
+            '/name[0]' => for lists.
             If '?' is in path the inline parameters are used and kwargs are ignored.
 
         Args:
@@ -457,12 +676,12 @@ class BaseRickle:
             Any: Value of node of function.
         """
 
-        if not path.startswith('/'):
-            raise KeyError('Missing root path /')
-        if path == '/':
+        if not path.startswith(self.__path_sep):
+            raise KeyError(f'Missing root path {self.__path_sep}')
+        if path == self.__path_sep:
             return self
 
-        path_list = path.split('/')
+        path_list = path.split(self.__path_sep)
 
         current_node = self
 
@@ -473,10 +692,14 @@ class BaseRickle:
             if current_node is None:
                 raise NameError(f'The path {path} could not be traversed')
 
+        list_index_match = re.match(r'.+\[(\d+)\]', path_list[-1])
+        if list_index_match and isinstance(current_node, list):
+            return current_node[int(list_index_match.group(1))]
+
         if '?' in path_list[-1]:
             import ast
             args_string = path_list[-1].split('?')[-1]
-            args = {a.split('=')[0] : a.split('=')[1] for a in args_string.split('&')}
+            args = {a.split('=')[0]: a.split('=')[1] for a in args_string.split('&')}
             type_guessed_args = dict()
             for n, v in args.items():
                 v_stripped = v.strip()
@@ -515,6 +738,12 @@ class BaseRickle:
         if self.__strict and name in dir(self):
             raise ValueError(f"Unable to add key '{name}', reserved keyword in Rickle. Use strict=False.")
 
+        clean_name = self.__allowed_chars_pat.sub('', name)
+        if clean_name != name:
+            self.__keys_map[clean_name] = name
+
+        return clean_name
+
     def _recursive_search(self, dictionary, key):
         if key in dictionary:
             return dictionary[key]
@@ -546,7 +775,7 @@ class BaseRickle:
                 continue
             yield key, d[key]
 
-    def get(self, key : str, default=None, do_recursive : bool = False):
+    def get(self, key: str, default=None, do_recursive: bool = False):
         """
         Acts as a regular get from a dictionary but can employ a recursive search of structure and returns the first found key-value pair.
 
@@ -562,7 +791,7 @@ class BaseRickle:
             obj: value found, or None for nothing found.
         """
         try:
-            if '/' in key:
+            if self.__path_sep in key:
                 v = self(key)
                 return v
             if do_recursive:
@@ -589,15 +818,15 @@ class BaseRickle:
             value: Any Python like value that can be deserialised.
         """
 
-        if '/' in key and not key.startswith('/'):
-            raise KeyError('Missing root path /')
-        if not '/' in key:
-            key = f"/{key}"
+        if self.__path_sep in key and not key.startswith(self.__path_sep):
+            raise KeyError(f'Missing root path {self.__path_sep}')
+        if not self.__path_sep in key:
+            key = f"{self.__path_sep}{key}"
 
-        if key == '/':
+        if key == self.__path_sep:
             raise NameError('Can not set a value to self')
 
-        path_list = key.split('/')
+        path_list = key.split(self.__path_sep)
 
         current_node = self
 
@@ -612,15 +841,15 @@ class BaseRickle:
         current_node.__dict__.update({path_list[-1]: value})
 
     def remove(self, key: str):
-        if '/' in key and not key.startswith('/'):
-            raise KeyError('Missing root path /')
-        if not '/' in key:
-            key = f"/{key}"
+        if self.__path_sep in key and not key.startswith(self.__path_sep):
+            raise KeyError(f'Missing root path {self.__path_sep}')
+        if not self.__path_sep in key:
+            key = f"{self.__path_sep}{key}"
 
-        if key == '/':
+        if key == self.__path_sep:
             raise NameError('Can not remove self')
 
-        path_list = key.split('/')
+        path_list = key.split(self.__path_sep)
 
         current_node = self
 
@@ -678,6 +907,8 @@ class BaseRickle:
         for key, value in self.__dict__.items():
             if self.__eval_name(key) or str(key).endswith('__meta_info'):
                 continue
+            if serialised and key in self.__keys_map.keys():
+                key = self.__keys_map[key]
             if isinstance(value, BaseRickle) or isinstance(value, Rickle):
                 d[key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
@@ -713,13 +944,14 @@ class BaseRickle:
                 return False
         return False
 
-    def to_yaml(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False):
+    def to_yaml(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """
         Does a self dump to a YAML file or returns as string.
 
         Args:
             output (str, TextIOWrapper): File path or stream (default = None).
             serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+            encoding (str): Output stream encoding (default = 'utf-8').
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -729,20 +961,21 @@ class BaseRickle:
 
         if output:
             if isinstance(output, TextIOWrapper):
-                yaml.safe_dump(self_as_dict, output)
+                yaml.safe_dump(self_as_dict, stream=output, encoding=encoding)
             elif isinstance(output, str):
-                with open(output, 'w', encoding='utf-8') as fs:
+                with open(output, 'w', encoding=encoding) as fs:
                     yaml.safe_dump(self_as_dict, fs)
         else:
-            return yaml.safe_dump(self_as_dict, None)
+            return yaml.safe_dump(self_as_dict, stream=None, encoding=encoding)
 
-    def to_json(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False):
+    def to_json(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """
         Does a self dump to a JSON file or returns as string.
 
         Args:
             output (str, TextIOWrapper): File path or stream (default = None).
             serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+            encoding (str): Output stream encoding (default = 'utf-8').
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -753,18 +986,19 @@ class BaseRickle:
             if isinstance(output, TextIOWrapper):
                 json.dump(self_as_dict, output)
             elif isinstance(output, str):
-                with open(output, 'w', encoding='utf-8') as fs:
+                with open(output, 'w', encoding=encoding) as fs:
                     json.dump(self_as_dict, fs)
         else:
             return json.dumps(self_as_dict)
 
-    def to_toml(self, output: Union[str, BytesIO] = None, serialised: bool = False):
+    def to_toml(self, output: Union[str, BytesIO] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """
         Does a self dump to a TOML file or returns as string.
 
         Args:
-            output (str, TextIOWrapper): File path or stream (default = None).
+            output (str, BytesIO): File path or stream (default = None).
             serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+            encoding (str): Output stream encoding (default = 'utf-8').
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -777,10 +1011,84 @@ class BaseRickle:
             if isinstance(output, BytesIO):
                 tomlw.dump(self_as_dict, output)
             elif isinstance(output, str):
-                with open(output, 'wb', encoding='utf-8') as fs:
+                with open(output, 'wb', encoding=encoding) as fs:
                     tomlw.dump(self_as_dict, fs)
         else:
             return tomlw.dumps(self_as_dict)
+
+    def to_xml(self, output: Union[str, BytesIO] = None, serialised: bool = False, encoding: str = 'utf-8'):
+        """
+        Does a self dump to a XML file or returns as string.
+
+        Args:
+            output (str, BytesIO): File path or stream (default = None).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+            encoding (str): Output stream encoding (default = 'utf-8').
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
+            IO stream "output" needs to be BytesIO object
+        """
+        if importlib.util.find_spec('xmltodict'):
+            import xmltodict
+
+            self_as_dict = self.dict(serialised=serialised)
+
+            if output:
+                if isinstance(output, BytesIO):
+                    xmltodict.unparse(input_dict=self_as_dict, output=output, encoding=encoding, pretty=True)
+                elif isinstance(output, str):
+                    with open(output, 'wb', encoding=encoding) as fs:
+                        xmltodict.unparse(input_dict=self_as_dict, output=fs, encoding=encoding, pretty=True)
+            else:
+                return xmltodict.unparse(input_dict=self_as_dict, encoding=encoding, pretty=True)
+        else:
+            raise ModuleNotFoundError("Missing 'xmltodict' package!")
+
+    def to_ini(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8', path_sep: str = None):
+        """
+        Flattens self into a thin dict and does a dump to INI string or file.
+
+        Args:
+            output (str, TextIOWrapper): File path or stream (default = None).
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+            encoding (str): Output stream encoding (default = 'utf-8').
+            path_sep (str): For flattened dictionary, use path separator or default (default = None).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
+            IO stream "output" needs to be BytesIO object
+
+        """
+        self_as_dict = self.dict(serialised=serialised)
+        _path_sep = path_sep if path_sep else self.__path_sep
+        flattened_dict = BaseRickle.flatten_dict(dictionary=self_as_dict, path_sep=_path_sep)
+
+        _path_sep = path_sep if path_sep else self.__path_sep
+
+        ini_dict = defaultdict(dict)
+        for k, v in flattened_dict.items():
+            splits = k.split(_path_sep)
+            sect = _path_sep.join(splits[:-1])
+            sect = _path_sep if sect == '' else sect
+            ini_dict[sect][splits[-1]] = v
+
+        output_ini = configparser.ConfigParser()
+        output_ini.read_dict(ini_dict)
+
+        if output:
+            if isinstance(output, TextIOWrapper):
+                output_ini.write(output)
+            elif isinstance(output, str):
+                with open(output, 'w', encoding=encoding) as fs:
+                    output_ini.write(fs)
+        else:
+            out = StringIO()
+            output_ini.write(out)
+            out.seek(0)
+
+            return out.read()
+
 
     def to_yaml_file(self, file_path : str, serialised : bool = False):
         """
@@ -1045,6 +1353,8 @@ class Rickle(BaseRickle):
         for key, value in self.__dict__.items():
             if self.__eval_name(key):
                 continue
+            if serialised and key in self.__keys_map.keys():
+                key = self.__keys_map[key]
             if serialised and key in self.__meta_info.keys():
                 d[key] = self.__meta_info[key]
             # Revisit this at some later point

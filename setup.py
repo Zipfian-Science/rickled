@@ -46,8 +46,9 @@ setup(
     install_requires=pipreq,
     package_dir={'.': 'rickled'},
     extras_require={
-        'twisted':  ['twisted'],
-        'pyopenssl':  ['pyopenssl']
+        'net':  ['twisted', 'pyopenssl'],
+        'xml':  ['xmltodict'],
+        'dotenv':  ['python-dotenv'],
     },
     entry_points={
         'console_scripts': [

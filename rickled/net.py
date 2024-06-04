@@ -4,12 +4,7 @@ import warnings
 import json
 
 import yaml
-
 import tomli_w as tomlw
-if sys.version_info < (3, 11):
-    import tomli as toml
-else:
-    import tomllib as toml
 
 from rickled import Rickle, toml_null_stripper
 
@@ -17,17 +12,9 @@ try:
     from twisted.web import server, resource
     from twisted.internet import reactor, endpoints, ssl
     from twisted.python import log
-except ModuleNotFoundError as exc:
-    warnings.warn('Required Python package not found.', ImportWarning)
-except ImportError as exc:
-    warnings.warn('Required Python package "twisted" not found.', ImportWarning)
-
-try:
     from twisted.internet import ssl
-except ModuleNotFoundError as exc:
+except (ImportError, ModuleNotFoundError):
     warnings.warn('Required Python package not found.', ImportWarning)
-except ImportError as exc:
-    warnings.warn('Required Python package "pyopenssl" not found.', ImportWarning)
 
 
 class HttpResource(resource.Resource):
