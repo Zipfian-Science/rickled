@@ -8,7 +8,7 @@ Changelog
 History
 ==========================
 
-Version 1.2.0 (2024-05-05)
+Version 2.0.0 (2024-05-05)
 --------------------------
 
 * Init args now parsed with opening braces ``{{`` and closing braces ``}}``.

@@ -18,7 +18,6 @@ import sys
 from pathlib import Path
 import importlib.util
 import configparser
-from collections import namedtuple
 import tomli_w as tomlw
 
 try:
@@ -31,7 +30,7 @@ if sys.version_info < (3, 11):
 else:
     import tomllib as toml
 
-from rickled.tools import toml_null_stripper
+from rickled.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini
 
 class ObjectRickler:
     """
@@ -259,88 +258,37 @@ class BaseRickle:
     """
 
     @staticmethod
-    def flatten_dict(dictionary, path_sep: str = None, list_brackets: tuple = ('{', '}')):
-        def __flatten_dict(d, parent_path: str = None, sep: str = None):
+    def flatten_dict(dictionary, path_sep: str = None, list_brackets: tuple = ('(', ')')):
+        """
+        Flattens a deepl structure python dictionary into a shallow (or 'thin') dictionary of depth 1.
 
-            values = list()
-            if isinstance(d, dict):
-                for k, v in d.items():
-                    if isinstance(v, dict):
-                        value = __flatten_dict(d=v, parent_path=f'{parent_path}{sep}{k}', sep=sep)
-                        values.extend(value)
-                    elif isinstance(v, list):
-                        value = __flatten_dict(d=v, parent_path=f'{parent_path}{sep}{k}', sep=sep)
-                        values.extend(value)
-                    else:
-                        values.append({f'{parent_path}{sep}{k}': v})
-            if isinstance(d, list):
-                for i, val in enumerate(d):
-                    if isinstance(val, dict):
-                        value = __flatten_dict(d=val, parent_path=f'{parent_path}{sep}{list_brackets[0]}{i}{list_brackets[1]}', sep=sep)
-                        values.extend(value)
-                    elif isinstance(val, list):
-                        value = __flatten_dict(d=val, parent_path=f'{parent_path}{sep}{list_brackets[0]}{i}{list_brackets[1]}', sep=sep)
-                        values.extend(value)
-                    else:
-                        values.append({f'{parent_path}{sep}{list_brackets[0]}{i}{list_brackets[1]}': val})
-            return values
+        Notes:
+            Dictionary can only contain types str, bool, int, float, dict, list. Any other types won't be expanded upon.
 
-        list_dicts = __flatten_dict(d=dictionary, parent_path='', sep=path_sep)
-        flattened_dict = dict()
-        for d in list_dicts:
-            flattened_dict.update(d)
-        return flattened_dict
+        Args:
+            dictionary (dict): Input dictionary.
+            path_sep (str): Path separator.
+            list_brackets (tuple): Tuple of strings for list index values (default = ('(', ')')).
+
+        Returns:
+            dict: Flattened to depth 1.
+        """
+        return flatten_dict(dictionary=dictionary, path_sep=path_sep, list_brackets=list_brackets)
 
     @staticmethod
-    def inflate_dict(flat_dict: dict, path_sep: str = None, list_brackets: tuple = ('{', '}')):
-        Node = namedtuple('Node', ['key', 'struc_type'])
+    def inflate_dict(flat_dict: dict, path_sep: str = None, list_brackets: tuple = ('(', ')')):
+        """
+        Does reverse operation of ``flatten_dict`` and inflates a shallow dictionary.
 
-        def unravel(key, path_sep: str = None, list_brackets: tuple = ('{', '}')):
+        Args:
+            flat_dict (dict): Input dictionary, can be any dict (won't have an effect).
+            path_sep (str): Path separator.
+            list_brackets (tuple): Tuple of strings for list index values (default = ('(', ')')).
 
-            if key.startswith(path_sep):
-                key = key[1:]
-            keys = key.split(path_sep)
-
-            _list = list()
-            for k in keys:
-                m = re.match(f'\\{list_brackets[0]}(\\d+)\\{list_brackets[1]}', k)
-                if m:
-                    _list.append(Node(key=int(m.group(1)), struc_type='list'))
-                else:
-                    _list.append(Node(key=k, struc_type='dict'))
-
-            return _list
-
-        main_d = dict()
-        lists = dict()
-        for key, value in flat_dict.items():
-            d = main_d
-
-            keys = unravel(key, path_sep=path_sep, list_brackets=list_brackets)
-
-            for i, k in enumerate(keys[:-1]):
-                if k.struc_type == 'dict':
-                    if k.key not in d:
-                        d[k.key] = list() if keys[i + 1].struc_type == 'list' else dict()
-                    d = d[k.key]
-                if k.struc_type == 'list':
-
-                    f = '/'.join([str(p.key) for p in keys[:i + 1]])
-                    if f in lists:
-                        _ = lists[f]
-                    else:
-                        _ = list() if keys[i + 1].struc_type == 'list' else dict()
-                        if isinstance(_, list):
-                            lists[f] = _
-                        d.insert(k.key, _)
-                    d = _
-
-            if isinstance(d, dict):
-                d[keys[-1].key] = value
-            if isinstance(d, list):
-                d.insert(keys[-1].key, value)
-
-        return main_d
+        Returns:
+            dict: Inflated dictionary.
+        """
+        return inflate_dict(flat_dict=flat_dict, path_sep=path_sep, list_brackets=list_brackets)
 
     def __create_dict_from_string(self, base: str, **init_args):
 
@@ -387,42 +335,39 @@ class BaseRickle:
 
         error_list = list()
 
-        if file_ext.lower() in ["yaml", "yml"]:
+        if file_ext.lower() in [".yaml", ".yml"]:
             try:
                 _d = yaml.safe_load(stringed)
                 self.__input_type = "yaml"
                 return _d
             except Exception as exc:
                 error_list.append(f"YAML: {exc}")
-        if file_ext.lower() in ["json"]:
+        if file_ext.lower() in [".json"]:
             try:
                 _d = json.loads(stringed)
                 self.__input_type = "json"
                 return _d
             except Exception as exc:
                 error_list.append(f"JSON: {exc}")
-        if file_ext.lower() in ["toml"]:
+        if file_ext.lower() in [".toml"]:
             try:
                 _d = toml.loads(stringed)
                 self.__input_type = "toml"
                 return _d
             except Exception as exc:
                 error_list.append(f"TOML: {exc}")
-        if file_ext.lower() in ["ini"]:
+        if file_ext.lower() in [".ini"]:
             try:
                 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
                 config.read_string(stringed)
 
-                _d = {section_name: dict(config[section_name]) for section_name in config.sections()}
+                path_sep = os.getenv("RICKLE_INI_PATH_SEP", init_args.get('RICKLE_INI_PATH_SEP', "."))
+                list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("),
+                                 os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+
+                _d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
+
                 self.__input_type = "ini"
-
-                _d = BaseRickle.inflate_dict(flat_dict=_d, path_sep=os.getenv("RICKLE_INI_PATH_SEP",
-                                                                              init_args.get('RICKLE_INI_PATH_SEP', ".")),
-                                             list_brackets=(os.getenv("RICKLE_INI_OPENING_BRACES",
-                                                                      init_args.get('RICKLE_INI_OPENING_BRACES', "{")),
-                                                            os.getenv("RICKLE_INI_CLOSING_BRACES",
-                                                                      init_args.get('RICKLE_INI_CLOSING_BRACES', "}"))))
-
                 return _d
             except Exception as exc:
                 error_list.append(f"INI: {exc}")
@@ -433,16 +378,18 @@ class BaseRickle:
                     from dotenv import dotenv_values
 
                     _d = dotenv_values(stream=StringIO(stringed))
+
                     self.__input_type = "env"
                     return _d
             except Exception as exc:
                 error_list.append(f"ENV: {exc}")
-        if file_ext.lower() == "xml":
+        if file_ext.lower() == ".xml":
             try:
                 if importlib.util.find_spec('xmltodict'):
                     import xmltodict
 
                     _d = xmltodict.parse(stringed, process_namespaces=init_args.get('process_namespaces', False))
+
                     self.__input_type = "xml"
                     return _d
             except Exception as exc:
@@ -471,16 +418,13 @@ class BaseRickle:
             config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
             config.read_string(stringed)
 
-            _d = {section_name: dict(config[section_name]) for section_name in config.sections()}
+            path_sep = os.getenv("RICKLE_INI_PATH_SEP", init_args.get('RICKLE_INI_PATH_SEP', "."))
+            list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("),
+                             os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+
+            _d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
+
             self.__input_type = "ini"
-
-            _d = BaseRickle.inflate_dict(flat_dict=_d, path_sep=os.getenv("RICKLE_INI_PATH_SEP",
-                                                                          init_args.get('RICKLE_INI_PATH_SEP', ".")),
-                                         list_brackets=(os.getenv("RICKLE_INI_OPENING_BRACES",
-                                                                  init_args.get('RICKLE_INI_OPENING_BRACES', "{")),
-                                                        os.getenv("RICKLE_INI_CLOSING_BRACES",
-                                                                  init_args.get('RICKLE_INI_CLOSING_BRACES', "}"))))
-
             return _d
         except Exception as exc:
             error_list.append(f"INI: {exc}")
@@ -490,6 +434,7 @@ class BaseRickle:
                 from dotenv import dotenv_values
 
                 _d = dotenv_values(stream=StringIO(stringed))
+
                 self.__input_type = "env"
                 return _d
         except Exception as exc:
@@ -499,6 +444,7 @@ class BaseRickle:
                 import xmltodict
 
                 _d = xmltodict.parse(stringed, process_namespaces=init_args.get('process_namespaces', False))
+
                 self.__input_type = "xml"
                 return _d
         except Exception as exc:
@@ -538,6 +484,7 @@ class BaseRickle:
         self.__allowed_chars_pat = re.compile('[^a-zA-Z_]')
         self.__keys_map = dict()
         self.__path_sep = os.getenv("RICKLE_PATH_SEP", init_args.get('RICKLE_PATH_SEP', "/"))
+        self.__init_args = init_args
 
         if base is None:
             return
@@ -666,7 +613,7 @@ class BaseRickle:
             '/' => root.
             '/name' => member.
             '/path/to/name?param=1' => lambda/function.
-            '/name[0]' => for lists.
+            '/name/[0]' => for lists.
             If '?' is in path the inline parameters are used and kwargs are ignored.
 
         Args:
@@ -688,13 +635,16 @@ class BaseRickle:
         for node_name in path_list[1:]:
             if '?' in node_name:
                 node_name = node_name.split('?')[0]
-            current_node = current_node.get(node_name)
+
+            list_index_match = re.match(r'\[(\d+)\]', node_name)
+            if list_index_match and isinstance(current_node, list):
+                return current_node[int(list_index_match.group(1))]
+            else:
+                current_node = current_node.get(node_name)
             if current_node is None:
                 raise NameError(f'The path {path} could not be traversed')
 
-        list_index_match = re.match(r'.+\[(\d+)\]', path_list[-1])
-        if list_index_match and isinstance(current_node, list):
-            return current_node[int(list_index_match.group(1))]
+
 
         if '?' in path_list[-1]:
             import ast
@@ -841,6 +791,12 @@ class BaseRickle:
         current_node.__dict__.update({path_list[-1]: value})
 
     def remove(self, key: str):
+        """
+        Removes using path.
+
+        Args:
+            key (str): Path to key-value to be removed.
+        """
         if self.__path_sep in key and not key.startswith(self.__path_sep):
             raise KeyError(f'Missing root path {self.__path_sep}')
         if not self.__path_sep in key:
@@ -890,7 +846,7 @@ class BaseRickle:
 
         return keys
 
-    def dict(self, serialised : bool = False):
+    def dict(self, serialised: bool = False):
         """
         Deconstructs the whole object into a Python dictionary.
 
@@ -923,7 +879,7 @@ class BaseRickle:
                 d[key] = value
         return d
 
-    def has(self, key : str, deep=False) -> bool:
+    def has(self, key: str, deep=False) -> bool:
         """
         Checks whether the key exists in the object.
 
@@ -1045,7 +1001,8 @@ class BaseRickle:
         else:
             raise ModuleNotFoundError("Missing 'xmltodict' package!")
 
-    def to_ini(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8', path_sep: str = None):
+    def to_ini(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8',
+               path_sep: str = None, list_brackets: tuple = None):
         """
         Flattens self into a thin dict and does a dump to INI string or file.
 
@@ -1054,6 +1011,7 @@ class BaseRickle:
             serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
             encoding (str): Output stream encoding (default = 'utf-8').
             path_sep (str): For flattened dictionary, use path separator or default (default = None).
+            list_brackets (tuple): Tuple of strings, defining opening and closing brackets of list indexes (default = None).
 
         Notes:
             Functions and lambdas are always given in serialised form.
@@ -1061,20 +1019,15 @@ class BaseRickle:
 
         """
         self_as_dict = self.dict(serialised=serialised)
-        _path_sep = path_sep if path_sep else self.__path_sep
-        flattened_dict = BaseRickle.flatten_dict(dictionary=self_as_dict, path_sep=_path_sep)
+        _path_sep = path_sep if path_sep else os.getenv("RICKLE_INI_PATH_SEP", self.__init_args.get('RICKLE_INI_PATH_SEP', "."))
 
-        _path_sep = path_sep if path_sep else self.__path_sep
+        if list_brackets is None:
+            list_brackets = (
+                os.getenv("RICKLE_INI_OPENING_BRACES", self.__init_args.get('RICKLE_INI_OPENING_BRACES', "(")),
+                os.getenv("RICKLE_INI_CLOSING_BRACES", self.__init_args.get('RICKLE_INI_CLOSING_BRACES', ")"))
+            )
 
-        ini_dict = defaultdict(dict)
-        for k, v in flattened_dict.items():
-            splits = k.split(_path_sep)
-            sect = _path_sep.join(splits[:-1])
-            sect = _path_sep if sect == '' else sect
-            ini_dict[sect][splits[-1]] = v
-
-        output_ini = configparser.ConfigParser()
-        output_ini.read_dict(ini_dict)
+        output_ini = unparse_ini(dictionary=self_as_dict, path_sep=_path_sep, list_brackets=list_brackets)
 
         if output:
             if isinstance(output, TextIOWrapper):
@@ -1088,73 +1041,6 @@ class BaseRickle:
             out.seek(0)
 
             return out.read()
-
-
-    def to_yaml_file(self, file_path : str, serialised : bool = False):
-        """
-        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_yaml`` instead.
-        Does a self dump to a YAML file.
-
-        Args:
-            file_path (str): File path.
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
-
-        Notes:
-            Functions and lambdas are always given in serialised form.
-        """
-        self_as_dict = self.dict(serialised=serialised)
-        with open(file_path, 'w', encoding='utf-8') as fs:
-            yaml.safe_dump(self_as_dict, fs)
-
-    def to_yaml_string(self, serialised : bool = False):
-        """
-        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_yaml`` instead.
-        Dumps self to YAML string.
-
-        Args:
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
-
-        Notes:
-            Functions and lambdas are always given in serialised form.
-
-        Returns:
-            str: YAML representation.
-        """
-        self_as_dict = self.dict(serialised=serialised)
-        return yaml.safe_dump(self_as_dict, None)
-
-    def to_json_file(self, file_path: str, serialised : bool = False):
-        """
-        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_json`` instead.
-        Does a self dump to a JSON file.
-
-        Args:
-            file_path (str): File path.
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
-
-        Notes:
-            Functions and lambdas are always given in serialised form.
-        """
-        self_as_dict = self.dict(serialised=serialised)
-        with open(file_path, 'w', encoding='utf-8') as fs:
-            json.dump(self_as_dict, fs)
-
-    def to_json_string(self, serialised : bool = False):
-        """
-        (DEPRECATED) After version 1.5.0 this will be removed, use ``to_json`` instead.
-        Dumps self to YAML string.
-
-        Args:
-            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
-
-        Notes:
-            Functions and lambdas are always given in serialised form.
-
-        Returns:
-            str: JSON representation.
-        """
-        self_as_dict = self.dict(serialised=serialised)
-        return json.dumps(self_as_dict)
 
     def meta(self, name):
         """

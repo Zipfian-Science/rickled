@@ -85,6 +85,11 @@ def obj_get(args):
                             xmltodict.unparse(v, fp)
                     else:
                         raise ImportError("Missing 'xmltodict' dependency")
+                elif dump_type == 'ini':
+                    if isinstance(v, dict):
+                        Rickle(v).to_ini(args.o)
+                    else:
+                        raise CLIError("Can only dump dictionary type to INI", cli_tool=CLIError.CLITool.OBJ_GET)
                 else:
                     with open(args.o, 'w') as fp:
                         yaml.safe_dump(v, fp)
@@ -98,9 +103,15 @@ def obj_get(args):
                 elif dump_type == 'xml':
                     if importlib.util.find_spec('xmltodict'):
                         import xmltodict
+
                         print(xmltodict.unparse(v, pretty=True))
                     else:
                         raise ImportError("Missing 'xmltodict' dependency")
+                elif dump_type == 'ini':
+                    if isinstance(v, dict):
+                        print(Rickle(v).to_ini())
+                    else:
+                        raise CLIError("Can only dump dictionary type to INI", cli_tool=CLIError.CLITool.OBJ_GET)
                 else:
                     print(yaml.safe_dump(v))
 
@@ -124,6 +135,8 @@ def obj_set(args):
                     r.to_toml(output=args.o)
                 elif dump_type == 'xml':
                     r.to_xml(output=args.o)
+                elif dump_type == 'ini':
+                    r.to_ini(output=args.o)
                 else:
                     r.to_yaml(output=args.o)
             else:
@@ -133,6 +146,8 @@ def obj_set(args):
                     print(r.to_toml())
                 elif dump_type == 'xml':
                     print(r.to_xml())
+                elif dump_type == 'ini':
+                    print(r.to_ini())
                 else:
                     print(r.to_yaml())
     except Exception as exc:
@@ -153,6 +168,8 @@ def obj_del(args):
                     r.to_toml(output=args.o)
                 elif dump_type == 'xml':
                     r.to_xml(output=args.o)
+                elif dump_type == 'ini':
+                    r.to_ini(output=args.o)
                 else:
                     r.to_yaml(output=args.o)
             else:
@@ -162,6 +179,8 @@ def obj_del(args):
                     print(r.to_toml())
                 elif dump_type == 'xml':
                     print(r.to_xml())
+                elif dump_type == 'ini':
+                    print(r.to_ini())
                 else:
                     print(r.to_yaml())
     except Exception as exc:
@@ -249,6 +268,8 @@ def obj_func(args):
                         print(v.to_toml())
                     elif dump_type == 'xml':
                         print(v.to_xml())
+                    elif dump_type == 'ini':
+                        print(v.to_ini())
                     else:
                         print(v.to_yaml())
                 elif isinstance(v, dict):
@@ -256,6 +277,8 @@ def obj_func(args):
                         print(json.dumps(v))
                     elif dump_type == 'toml':
                         print(tomlw.dumps(v))
+                    elif dump_type == 'ini':
+                        print(Rickle(v).to_ini())
                     elif dump_type == 'xml':
                         if importlib.util.find_spec('xmltodict'):
                             import xmltodict
@@ -329,7 +352,7 @@ def main():
 - {cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}
 - {cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}
 - {cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}
-- {cli_bcolors.OKBLUE}INI (r){cli_bcolors.ENDC}"""
+- {cli_bcolors.OKBLUE}INI (r/w){cli_bcolors.ENDC}"""
 
     if importlib.util.find_spec('dotenv'):
         supported_list = f"{supported_list}\n- {cli_bcolors.OKBLUE}ENV (r){cli_bcolors.ENDC}"
@@ -554,7 +577,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
     # ███████  █  ███████  ███  ████    ███  ███████
     # ██      ██        █  ████  ████  ████        █
 
-    if importlib.util.find_spec('dotenv'):
+    if importlib.util.find_spec('twisted'):
 
         parser_serve = subparsers.add_parser('serve',
                                              help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',

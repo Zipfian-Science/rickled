@@ -6,8 +6,128 @@
 Rickled Tools
 **************************
 
+Functions
+=====================
+
+Flatten dictionaries
+---------------------
+
+The ``flatten_dict`` function takes a Python dictionary and makes a thin (shallow) dictionary suitable for lower dimension structures like INI.
+
+.. code-block:: python
+   :linenos:
+
+   input_dict = {
+      'settings': {
+         'credentials': {
+            'password': 'ken sent me',
+            'user': 'larry'
+         },
+         'nodes': [
+            'us-west',
+            'us-central',
+            'us-east',
+         ]
+      }
+   }
+
+When using the flatten function:
+
+.. code-block:: python
+
+   flatten_dict(input_dict, path_sep='.', list_brackets=('(', ')'))
+
+This will result in the following dictionary:
+
+.. code-block:: python
+
+   {'settings.credentials.password': 'ken sent me',
+    'settings.credentials.user': 'larry',
+    'settings.nodes.(0)': 'us-west',
+    'settings.nodes.(1)': 'us-central',
+    'settings.nodes.(2)': 'us-east'}
+
+.. autofunction:: rickled.tools.flatten_dict
+
+Flatten dictionaries
+---------------------
+
+This in turn can be undone using the ``inflate_dict`` function.
+
+.. code-block:: python
+   :linenos:
+
+   flat_dict = {
+      'settings.credentials.password': 'ken sent me',
+      'settings.credentials.user': 'larry',
+      'settings.nodes.(0).name': 'US West',
+      'settings.nodes.(0).key': 'us-west',
+      'settings.nodes.(1).name': 'US Central',
+      'settings.nodes.(1).key': 'us-central',
+      'settings.nodes.(2).name': 'US East',
+      'settings.nodes.(2).key': 'us-east'
+    }
+
+When using the inflate function:
+
+.. code-block:: python
+
+   flatten_dict(input_dict, path_sep='.', list_brackets=('(', ')'))
+
+Will result in the following dictionary:
+
+.. code-block:: python
+
+   {
+      'settings': {
+         'credentials': {
+            'password': 'ken sent me', 'user': 'larry'
+          },
+          'nodes': [
+            {'name': 'US West', 'key': 'us-west'},
+            {'name': 'US Central', 'key': 'us-central'},
+            {'name': 'US East', 'key': 'us-east'}
+          ]
+      }
+   }
+
+.. autofunction:: rickled.tools.inflate_dict
+
+INI parsing helpers
+-------------------
+
+.. autofunction:: rickled.tools.parse_ini
+
+.. autofunction:: rickled.tools.unparse_ini
+
+
+Other
+-------------------
+
+.. autofunction:: rickled.tools.toml_null_stripper
+
 Converter
 =====================
+
+The converter is a tool to essentially load a file into a Python dictionary and then dump that dictionary into the target format.
+Consider the following YAML file for conversion:
+
+.. code-block:: yaml
+   :linenos:
+   :caption: conf.yaml
+   :name: conf-yaml
+
+    settings:
+         credentials:
+            password: ken sent me
+            user: larry
+         nodes:
+            - us-west
+            - us-central
+            - us-east
+
+
+
 .. autoclass:: rickled.tools.Converter
    :members:
 
