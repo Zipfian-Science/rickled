@@ -2,18 +2,21 @@
 # https://patorjk.com/software/taag/
 # Large heading using "Shaded Blocky" font
 # Sub headings using "Small" font
+import importlib.util
+import os
 import sys
 import warnings
 from enum import Enum
+from io import StringIO
 
 import rickled.__version__ as ver
 import argparse
-from rickled.tools import cli_bcolors
+from rickled.tools import cli_bcolors, unparse_ini
 from rickled.tools import Schema
 from rickled.tools import Converter
 from rickled.tools import toml_null_stripper
 
-from rickled import Rickle
+from rickled import Rickle, UnsafeRickle
 import re
 import json
 import yaml
@@ -47,25 +50,41 @@ class CLIError(Exception):
 
 def conv(args):
     try:
-        Converter(input_files=args.i,
-                  output_files=args.o,
-                  input_directories=args.d,
-                  default_output_type=args.t,
-                  silent=args.s).do_convert()
+        if args.i:
+            Converter(input_files=args.i,
+                      output_files=args.o,
+                      input_directories=args.d,
+                      default_output_type=args.t,
+                      silent=args.s).do_convert()
+        elif args.x:
+            data = sys.stdin.read()
+
+            converted = Converter.convert_string(input_string=data, input_type=args.x, output_type=args.t)
+
+            print(converted)
+        else:
+            raise CLIError(message='Incorrect usage of CLI tool, refer to documentation', cli_tool=CLIError.CLITool.CONV)
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.CONV)
 
 def obj_get(args):
     try:
         if args:
-            r = Rickle(args.i, load_lambda=args.l)
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+
+            r = Rickle(_input, load_lambda=args.l)
+
             v = r.get(args.key)
             dump_type = args.t.lower()
 
             if isinstance(v, Rickle):
-                v = toml_null_stripper(v.dict())
+                v = v.dict()
             if isinstance(v, dict):
-                v = toml_null_stripper(v)
+                v = v
             elif v is None:
                 v = ''
 
@@ -76,7 +95,28 @@ def obj_get(args):
                         json.dump(v, fp)
                 elif dump_type == 'toml':
                     with open(args.o, 'wb') as fp:
-                        tomlw.dump(v, fp)
+                        tomlw.dump(toml_null_stripper(v), fp)
+                elif dump_type == 'xml':
+                    if importlib.util.find_spec('xmltodict'):
+                        import xmltodict
+                        with open(args.o, 'wb') as fp:
+                            xmltodict.unparse(v, fp)
+                    else:
+                        raise ImportError("Missing 'xmltodict' dependency")
+                elif dump_type == 'ini':
+                    if isinstance(v, dict):
+                        path_sep = os.getenv("RICKLE_INI_PATH_SEP", ".")
+                        list_brackets = (
+                            os.getenv("RICKLE_INI_OPENING_BRACES", "("), os.getenv("RICKLE_INI_CLOSING_BRACES", ")")
+                        )
+                        v = toml_null_stripper(v)
+                        output_ini = unparse_ini(dictionary=v, path_sep=path_sep, list_brackets=list_brackets)
+
+                        with open(args.o, 'w') as fp:
+                            output_ini.write(fp)
+
+                    else:
+                        raise CLIError("Can only dump dictionary type to INI", cli_tool=CLIError.CLITool.OBJ_GET)
                 else:
                     with open(args.o, 'w') as fp:
                         yaml.safe_dump(v, fp)
@@ -86,7 +126,30 @@ def obj_get(args):
                 if dump_type == 'json':
                     print(json.dumps(v))
                 elif dump_type == 'toml':
-                    print(tomlw.dumps(v))
+                    print(tomlw.dumps(toml_null_stripper(v)))
+                elif dump_type == 'xml':
+                    if importlib.util.find_spec('xmltodict'):
+                        import xmltodict
+
+                        print(xmltodict.unparse(v, pretty=True))
+                    else:
+                        raise ImportError("Missing 'xmltodict' dependency")
+                elif dump_type == 'ini':
+                    if isinstance(v, dict):
+                        path_sep = os.getenv("RICKLE_INI_PATH_SEP", ".")
+                        list_brackets = (
+                            os.getenv("RICKLE_INI_OPENING_BRACES", "("), os.getenv("RICKLE_INI_CLOSING_BRACES", ")")
+                        )
+                        v = toml_null_stripper(v)
+                        output_ini = unparse_ini(dictionary=v, path_sep=path_sep, list_brackets=list_brackets)
+
+                        out = StringIO()
+                        output_ini.write(out)
+                        out.seek(0)
+
+                        print(out.read())
+                    else:
+                        raise CLIError("Can only dump dictionary type to INI", cli_tool=CLIError.CLITool.OBJ_GET)
                 else:
                     print(yaml.safe_dump(v))
 
@@ -99,7 +162,11 @@ def obj_get(args):
 def obj_set(args):
     try:
         if args:
-            r = Rickle(args.i)
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            r = Rickle(_input, load_lambda=args.l)
             r.set(args.key, args.value)
             dump_type = args.t.lower()
 
@@ -108,6 +175,10 @@ def obj_set(args):
                     r.to_json(output=args.o)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.o)
+                elif dump_type == 'xml':
+                    r.to_xml(output=args.o)
+                elif dump_type == 'ini':
+                    r.to_ini(output=args.o)
                 else:
                     r.to_yaml(output=args.o)
             else:
@@ -115,6 +186,10 @@ def obj_set(args):
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
+                elif dump_type == 'xml':
+                    print(r.to_xml())
+                elif dump_type == 'ini':
+                    print(r.to_ini())
                 else:
                     print(r.to_yaml())
     except Exception as exc:
@@ -124,7 +199,11 @@ def obj_set(args):
 def obj_del(args):
     try:
         if args:
-            r = Rickle(args.i)
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            r = Rickle(_input, load_lambda=args.l)
             r.remove(args.key)
             dump_type = args.t.lower()
 
@@ -133,6 +212,10 @@ def obj_del(args):
                     r.to_json(output=args.o)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.o)
+                elif dump_type == 'xml':
+                    r.to_xml(output=args.o)
+                elif dump_type == 'ini':
+                    r.to_ini(output=args.o)
                 else:
                     r.to_yaml(output=args.o)
             else:
@@ -140,6 +223,10 @@ def obj_del(args):
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
+                elif dump_type == 'xml':
+                    print(r.to_xml())
+                elif dump_type == 'ini':
+                    print(r.to_ini())
                 else:
                     print(r.to_yaml())
     except Exception as exc:
@@ -148,7 +235,11 @@ def obj_del(args):
 def obj_type(args):
     try:
         if args:
-            r = Rickle(args.i, load_lambda=args.l)
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            r = Rickle(_input, load_lambda=args.l)
             v = r.get(args.key)
             print(type(v))
     except Exception as exc:
@@ -157,7 +248,11 @@ def obj_type(args):
 def obj_search(args):
     try:
         if args:
-            r = Rickle(args.i, load_lambda=args.l)
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            r = Rickle(_input, load_lambda=args.l)
             paths = r.search_path(args.key)
             for p in paths:
                 print(p)
@@ -201,7 +296,11 @@ def obj_func(args):
     try:
         re_pat = re.compile(r"(.+?)=(.+)")
         if args:
-            r = Rickle(args.i, load_lambda=args.l)
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            r = UnsafeRickle(_input, load_lambda=args.l)
             dump_type = args.t.lower()
 
             params = dict()
@@ -225,6 +324,10 @@ def obj_func(args):
                         print(v.to_json())
                     elif dump_type == 'toml':
                         print(v.to_toml())
+                    elif dump_type == 'xml':
+                        print(v.to_xml())
+                    elif dump_type == 'ini':
+                        print(v.to_ini())
                     else:
                         print(v.to_yaml())
                 elif isinstance(v, dict):
@@ -232,6 +335,12 @@ def obj_func(args):
                         print(json.dumps(v))
                     elif dump_type == 'toml':
                         print(tomlw.dumps(v))
+                    elif dump_type == 'ini':
+                        print(Rickle(v).to_ini())
+                    elif dump_type == 'xml':
+                        if importlib.util.find_spec('xmltodict'):
+                            import xmltodict
+                            print(xmltodict.unparse(input_dict=v, pretty=True))
                     else:
                         print(yaml.safe_dump(v))
                 else:
@@ -248,7 +357,18 @@ def serve(args):
         return
 
     try:
-        rick = Rickle(args.i)
+        if args.x:
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            rick = UnsafeRickle(_input, load_lambda=args.l)
+        else:
+            if args.i:
+                _input = args.i
+            else:
+                _input = sys.stdin.read()
+            rick = Rickle(_input, load_lambda=args.l)
 
         if args.b:
             import webbrowser
@@ -277,11 +397,23 @@ def serve(args):
 
 def check(args):
     try:
-        Schema(input_files=args.i,
-               input_directories=args.d,
-               schema=args.c,
-               output_dir=args.o,
-               silent=args.s).do_validation()
+        if args.i:
+            Schema(input_files=args.i,
+                   input_directories=args.d,
+                   schema=args.c,
+                   output_dir=args.o,
+                   silent=args.s).do_validation()
+        else:
+            data = sys.stdin.read()
+            input_data = Converter.infer_read_string_type(data)
+
+            schema = Converter.infer_read_file_type(args.c)
+
+            passed = Schema.schema_validation(input_data, schema, no_print=args.s)
+
+            result = f"{cli_bcolors.OKGREEN}OK{cli_bcolors.ENDC}" if passed else f"{cli_bcolors.FAIL}FAIL{cli_bcolors.ENDC}"
+            print(f"{cli_bcolors.OKBLUE}Input{cli_bcolors.ENDC} -> {result}")
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_CHECK)
 
@@ -296,6 +428,19 @@ def gen(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_GEN)
 
 def main():
+
+    supported_list = f"""
+- {cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}
+- {cli_bcolors.OKBLUE}INI (r/w){cli_bcolors.ENDC}"""
+
+    if importlib.util.find_spec('dotenv'):
+        supported_list = f"{supported_list}\n- {cli_bcolors.OKBLUE}ENV (r){cli_bcolors.ENDC}"
+    if importlib.util.find_spec('xmltodict'):
+        supported_list = f"{supported_list}\n- {cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}"
+
+
     parser = argparse.ArgumentParser(
         prog='rickle',
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -311,9 +456,7 @@ def main():
 {cli_bcolors.HEADER}YAML (+JSON, TOML...) tools for Python{cli_bcolors.ENDC} (version {ver}).
 ---------------------------------------------------------------------------------------------
 Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
-- {cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC}
-- {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC}
-- {cli_bcolors.OKBLUE}TOML{cli_bcolors.ENDC}
+{supported_list}
 ---------------------------------------------------------------------------------------------
 """,
         epilog=f"""
@@ -344,17 +487,20 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
                                         help=f'{cli_bcolors.OKBLUE}Converting{cli_bcolors.ENDC} files to or from YAML',
                                         description=f"""
 
-{cli_bcolors.HEADER}Tool for converting files to or from YAML{cli_bcolors.ENDC}.
+{cli_bcolors.HEADER}Tool for converting files to or from YAML{cli_bcolors.ENDC}. Supported file types: {Converter.supported_list}
     """, )
 
     parser_conv.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to convert",
-                             nargs='+', metavar='input')
+                             nargs='+', metavar='input', default=None)
     parser_conv.add_argument('-d', type=str, help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of input files",
                              default=None, nargs='+', metavar='dir')
     parser_conv.add_argument('-o', type=str, help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} names",
-                             nargs='+', metavar='output')
-    parser_conv.add_argument('-t', type=str, help=f"default output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (JSON, YAML)",
+                             nargs='+', metavar='output', default=None)
+    parser_conv.add_argument('-t', type=str, help=f"default output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (JSON, YAML, etc.)",
                              default='yaml', metavar='type')
+    parser_conv.add_argument('-x', type=str,
+                             help=f"input {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML, etc.)",
+                             default=None, metavar='xtype')
     parser_conv.add_argument('-s', action='store_true', help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
 
     parser_conv.set_defaults(func=conv)
@@ -376,7 +522,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
                                        )
 
     parser_obj.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC} to read/modify",
-                            metavar='input', required=True)
+                            metavar='input', default=None)
     parser_obj.add_argument('-o', type=str, help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} to save modified",
                             metavar='output', required=False)
     parser_obj.add_argument('-t', type=str,
@@ -515,36 +661,45 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
     # ███████  █  ███████  ███  ████    ███  ███████
     # ██      ██        █  ████  ████  ████        █
 
+    if importlib.util.find_spec('twisted'):
 
-    parser_serve = subparsers.add_parser('serve',
-                                         help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
-                                         description=f"""
+        parser_serve = subparsers.add_parser('serve',
+                                             help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
+                                             description=f"""
+    
+        {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
+            """,
+                                             )
 
-    {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
-        """,
-                                         )
+        parser_serve.add_argument('-i', type=str,
+                                  help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
+                                  metavar='file', default=None)
+        # TODO implement config
+        # parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
+        #                           default=None, metavar='config')
+        parser_serve.add_argument('-a', type=str, help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC}",
+                                  default='', metavar='address')
+        parser_serve.add_argument('-p', type=int, help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number",
+                                  default=8080, metavar='port')
+        parser_serve.add_argument('-k', type=str, help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
+                                  default=None, metavar='privkey')
+        parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
+                                  default=None, metavar='cert')
+        parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
+        parser_serve.add_argument('-s', action='store_true',
+                                  help=f"Serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data",  default=False)
+        parser_serve.add_argument('-t', type=str,
+                                help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
+                                default='json', metavar='type')
 
-    parser_serve.add_argument('-i', type=str,
-                              help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
-                              metavar='file')
-    # TODO implement config
-    # parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
-    #                           default=None, metavar='config')
-    parser_serve.add_argument('-a', type=str, help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC}",
-                              default='', metavar='address')
-    parser_serve.add_argument('-p', type=int, help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number",
-                              default=8080, metavar='port')
-    parser_serve.add_argument('-k', type=str, help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
-                              default=None, metavar='privkey')
-    parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
-                              default=None, metavar='cert')
-    parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
-    parser_serve.add_argument('-s', action='store_true',
-                              help=f"Serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data", )
-    parser_serve.add_argument('-t', type=str,
-                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
-                            default='json', metavar='type')
-    parser_serve.set_defaults(func=serve)
+        parser_serve.add_argument('-l', action='store_true',
+                                  help=f"Load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} true (UNSAFE)", default=False)
+
+        parser_serve.add_argument('-x', action='store_true',
+                                  help=f"Load {cli_bcolors.OKBLUE}UnsafeRickle{cli_bcolors.ENDC} (VERY UNSAFE)",
+                                  default=False)
+
+        parser_serve.set_defaults(func=serve)
 
     #################### SCHEMA #####################
     # ░░      ░░░      ░░  ░░░░  ░        ░  ░░░░  ░░      ░░
@@ -558,7 +713,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
                                           help=f'Generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
                                           description=f"""
 
-    {cli_bcolors.HEADER}Tool for generating and checking schemas of YAML files{cli_bcolors.ENDC}.
+    {cli_bcolors.HEADER}Tool for generating and checking schemas of YAML files{cli_bcolors.ENDC}. Supported file types: {Schema.supported_list}
         """,
                                           )
 

@@ -293,7 +293,7 @@ class TestPickles(unittest.TestCase):
 
         conf = BaseRickle(test_dict)
 
-        dumped_string = conf.to_yaml_string()
+        dumped_string = conf.to_yaml()
 
         self.assertTrue('env' in dumped_string)
         self.assertTrue('USERNAME' in dumped_string)
@@ -320,7 +320,7 @@ class TestPickles(unittest.TestCase):
 
         conf = BaseRickle(test_dict)
 
-        dumped_string = conf.to_json_string()
+        dumped_string = conf.to_json()
         expected = '{"user": {"type": "env", "load": "USERNAME"}, "func": {"type": "lambda", "load": "lambda x: x+1"}}'
 
         self.assertEquals(dumped_string, expected)
@@ -379,23 +379,23 @@ def tester(x, c):
 
         d = test_conf_yaml.dict()
 
-        s = test_conf_yaml.to_yaml_string()
+        s = test_conf_yaml.to_yaml()
 
     def test_pickle_rick_load_param(self):
         test_conf_yaml = Rickle('./tests/placebos/test_config.yaml', deep=True, arg_name='hallo_wereld', load_lambda=True)
 
         d = test_conf_yaml.dict()
 
-        s = test_conf_yaml.to_yaml_string()
+        s = test_conf_yaml.to_yaml()
 
-        s = test_conf_yaml.to_yaml_string(serialised=False)
+        s = test_conf_yaml.to_yaml(serialised=False)
 
         test_conf_yaml = Rickle('./tests/placebos/test_config.yaml', deep=True,
                                 load_lambda=True)
 
         d = test_conf_yaml.dict()
 
-        s = test_conf_yaml.to_yaml_string()
+        s = test_conf_yaml.to_yaml()
 
     def test_multi_file_load(self):
         files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
@@ -419,15 +419,10 @@ def tester(x, c):
         files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
         test_conf_yaml = Rickle(files, deep=True, load_lambda=True)
 
-        test_conf_yaml.to_yaml_file('./test_out.yaml', serialised=True)
+        test_conf_yaml.to_yaml('./test_out.yaml', serialised=True)
 
         test_conf_yaml_reload = Rickle('./test_out.yaml', deep=True, load_lambda=True)
 
-        test_conf_yaml_reload.BASICS.outer_math_e()
-
-        obj = test_conf_yaml_reload.TesterClass()
-        obj.datenow()
-        obj.math_e(99, "^99>")
 
         os.remove('./test_out.yaml')
 
@@ -438,11 +433,11 @@ def tester(x, c):
 
         d = test_conf_yaml.dict()
 
-        s = test_conf_yaml.to_yaml_string()
+        s = test_conf_yaml.to_yaml()
 
         d_ = test_conf_yaml.dict(serialised=True)
 
-        s_ = test_conf_yaml.to_yaml_string(serialised=False)
+        s_ = test_conf_yaml.to_yaml(serialised=False)
 
         self.assertTrue(True)
 

@@ -23,6 +23,9 @@ requests = "*"
 twisted = "*"
 tomli = "*"
 tomli-w = "*"
+python-dotenv = "*"
+xmltodict = "*"
+"py.validator" = "*"
 
 [requires]
 python_version = "3"
