@@ -25,13 +25,11 @@ class TestObjectRickler(unittest.TestCase):
     def test_to_rickle(self):
         t = Testing()
 
-        rickler = ObjectRickler()
-
-        d = rickler.deconstruct(t)
+        d = ObjectRickler.deconstruct(t)
 
         self.assertTrue(True)
 
-        rick = rickler.to_rickle(t, load_lambda=True)
+        rick = ObjectRickler.to_rickle(t, load_lambda=True)
 
         s = rick.testing_function(a='Jack', b='Sally', c='Justin?')
 
@@ -41,9 +39,7 @@ class TestObjectRickler(unittest.TestCase):
 
         t = Testing()
 
-        rickler = ObjectRickler()
-
-        d = rickler.deconstruct(t)
+        d = ObjectRickler.deconstruct(t)
 
         d['testing_function_new'] = {'name' : 'testing_function_new',
                                      'type' : 'function',
@@ -55,7 +51,7 @@ class TestObjectRickler(unittest.TestCase):
 
         del d['testing_function']
 
-        y = rickler.to_yaml_string(t)
+        y = rickler.to_yaml(t)
 
         r = Rickle(d, deep=True, load_lambda=True)
 

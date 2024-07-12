@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Rickled Tools
+Helper tools
 **************************
 
 Functions
@@ -15,7 +15,6 @@ Flatten dictionaries
 The ``flatten_dict`` function takes a Python dictionary and makes a thin (shallow) dictionary suitable for lower dimension structures like INI.
 
 .. code-block:: python
-   :linenos:
 
    input_dict = {
       'settings': {
@@ -49,10 +48,11 @@ This will result in the following dictionary:
 
 .. autofunction:: rickled.tools.flatten_dict
 
-Flatten dictionaries
+Inflate dictionaries
 ---------------------
 
-This in turn can be undone using the ``inflate_dict`` function.
+Flattened dictionaries in turn can be undone using the ``inflate_dict`` function.
+This will recursively built deeper structures as encoded in the keys.
 
 .. code-block:: python
    :linenos:
@@ -96,6 +96,8 @@ Will result in the following dictionary:
 INI parsing helpers
 -------------------
 
+The INI helpers transform ``ConfigParser`` objects into Python dictionaries or vice versa and use among other the inflate and flatten functions.
+
 .. autofunction:: rickled.tools.parse_ini
 
 .. autofunction:: rickled.tools.unparse_ini
@@ -114,17 +116,38 @@ Consider the following YAML file for conversion:
 
 .. code-block:: yaml
    :linenos:
-   :caption: conf.yaml
    :name: conf-yaml
 
-    settings:
-         credentials:
-            password: ken sent me
-            user: larry
-         nodes:
-            - us-west
-            - us-central
-            - us-east
+   settings:
+      credentials:
+         password: ken sent me
+         user: larry
+      nodes:
+         - us-west
+         - us-central
+         - us-east
+
+
+When using the ``convert_string`` method, the input YAML string can be converted to, for example, XML.
+
+.. code-block:: python
+
+   Converter.convert_string(input_string=input, input_type='yaml', output_type='xml')
+
+.. code-block:: xml
+   :linenos:
+   :name: conf-xml
+
+   <?xml version="1.0" encoding="utf-8"?>
+   <settings>
+           <credentials>
+                   <password>ken sent me</password>
+                   <user>larry</user>
+           </credentials>
+           <nodes>us-west</nodes>
+           <nodes>us-central</nodes>
+           <nodes>us-east</nodes>
+   </settings>
 
 
 

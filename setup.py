@@ -49,6 +49,7 @@ setup(
         'net':  ['twisted', 'pyopenssl'],
         'xml':  ['xmltodict'],
         'dotenv':  ['python-dotenv'],
+        'validators':  ["py.validator;python_version>'3.7'"],
     },
     entry_points={
         'console_scripts': [

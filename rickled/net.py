@@ -1,3 +1,4 @@
+import importlib.util
 import sys
 import traceback
 import warnings
@@ -42,26 +43,36 @@ class HttpResource(resource.Resource):
         request.setResponseCode(200)
         try:
             if isinstance(content, Rickle):
-                response = content.dict(self.serialised)
-                if self.output_type == 'json':
-                    request.setHeader(b"content-type", b"application/json")
-                    response = content.to_json(serialised=self.serialised)
+                if self.output_type == 'yaml':
+                    request.setHeader(b"content-type", b"application/yaml")
+                    response = content.to_yaml(serialised=self.serialised)
                 elif self.output_type == 'toml':
                     request.setHeader(b"content-type", b"application/toml")
                     response = content.to_toml(serialised=self.serialised)
+                elif self.output_type == 'xml' and importlib.util.find_spec('xmltodict'):
+                    request.setHeader(b"content-type", b"text/xml")
+                    response = content.to_xml(serialised=self.serialised)
                 else:
-                    request.setHeader(b"content-type", b"application/yaml")
-                    response = content.to_yaml(serialised=self.serialised)
-            elif isinstance(content, dict) or isinstance(content, list):
-                if self.output_type == 'json':
                     request.setHeader(b"content-type", b"application/json")
-                    response = json.dumps(content)
-                elif self.output_type == 'toml':
-                    request.setHeader(b"content-type", b"application/toml")
-                    response = tomlw.dumps(toml_null_stripper(content))
-                else:
+                    response = content.to_json(serialised=self.serialised)
+            elif isinstance(content, dict) or isinstance(content, list):
+                if self.output_type == 'yaml':
                     request.setHeader(b"content-type", b"application/yaml")
                     response = yaml.safe_dump(content)
+                elif self.output_type == 'toml':
+                    request.setHeader(b"content-type", b"application/toml")
+                    if isinstance(content, dict):
+                        content = toml_null_stripper(content)
+                    response = tomlw.dumps(content)
+                elif self.output_type == 'xml' and importlib.util.find_spec('xmltodict'):
+                    import xmltodict
+                    request.setHeader(b"content-type", b"text/xml")
+                    if isinstance(content, list):
+                        raise ValueError("List can not be dumped as XML.")
+                    response = xmltodict.unparse(input_dict=content, pretty=True)
+                else:
+                    request.setHeader(b"content-type", b"application/json")
+                    response = json.dumps(content)
             elif isinstance(content, bytes):
                 request.setHeader(b"content-type", b"application/x-binary")
                 return content

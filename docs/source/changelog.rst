@@ -26,6 +26,10 @@ Version 2.0.0 (2024-05-05)
 * Now able to dump to INI file or string using ``to_ini``.
 * When reading INI, dictionaries are automatically inflated, split on ``RICKLE_INI_PATH_SEP`` env var or init arg.
 * Furthermore, ``RICKLE_INI_OPENING_BRACES`` and ``RICKLE_INI_CLOSING_BRACES`` can be set with env var or init arg.
+* Removed unsafe code and usage into separate class, ``UnsafeRickle``.
+* Added optional schema validator if extras installed (only for Python>3.8) ``pip install rickled[validators]``.
+* Adding ability to pipe into CLI tool, i.e. perform ``cat file.json | rickle conv -x json -t yaml``.
+
 
 
 Version 1.1.3 (2024-05-05)

@@ -369,156 +369,6 @@ Here we have a file ``db_conf.yaml`` again, but this time we are loading the val
 
 Note that we can define a default value. The default is always None, so no exception is raised if the env var does not exist.
 
-Add lambdas
----------------------
-
-Another extension that could potentially be very useful is adding lambdas to a ``rickle``. This is not without security risks.
-If lambdas are loaded that you did not author yourself and do not know what they do, they can do anything.
-
-A ``rickle`` can be loaded without lambdas or functions by passing the ``load_lambda`` argument at creation.
-But this is not a foolproof safety measure. Even with ``load_lambda=False``, if you load other sources such as API results or other files, they can reference other calls that do execute the lambda functions.
-
-The safest way to load unknown sources is to not load them. However, you can always define the following ENV variable:
-
-``RICKLE_SAFE_LOAD=1``
-
-Again, the best way to load lambdas is to load what you trust.
-
-Example of a lambda:
-
-.. code-block:: yaml
-   :linenos:
-
-   datenow:
-      type: lambda
-      import:
-         - "from datetime import datetime as dd"
-      load: "print(dd.utcnow().strftime('%Y-%m-%d'))"
-
-The lambda can be used by calling ``datenow()``. Lambdas can also have arguments:
-
-.. code-block:: yaml
-   :linenos:
-
-   datenow:
-      type: lambda
-      args:
-         message: Hello World
-      import:
-         - "from datetime import datetime as dd"
-      load: "print(dd.utcnow().strftime('%Y-%m-%d'), message)"
-
-And can be used as ``datenow(message='Hello friend')``.
-
-.. _sect-ext-usage-functions:
-
-Add functions
----------------------
-
-Functions are a further extension to lambdas. They allow self referencing to the ``rickle``, and are multi line blocks.
-
-.. code-block:: yaml
-   :linenos:
-
-   get_area:
-      type: function
-      name: get_area
-      args:
-         x: 10
-         y: 10
-         z: null
-         f: 0.7
-      import:
-         - math
-      load: >
-         def get_area(x, y, z, f):
-            if not z is None:
-               area = (x * y) + (x * z) + (y * z)
-               area = 2 * area
-            else:
-               area = x * y
-            return math.floor(area * f)
-
-And then the function can be called as follows.
-
-.. code-block:: python
-   :linenos:
-
-   rick = Rickle('test.yaml', load_lambda=True)
-   rick.get_area(x=52, y=34.9, z=10, f=0.8)
-
-A self reference to the ``rickle`` can also be added.
-
-.. code-block:: yaml
-   :linenos:
-
-   const:
-      f: 0.7
-   get_area:
-      type: function
-      name: get_area
-      is_method: true
-      args:
-         x: 10
-         y: 10
-         z: null
-      import:
-         - math
-      load: >
-         def get_area(self, x, y, z):
-            if not z is None:
-               area = (x * y) + (x * z) + (y * z)
-               area = 2 * area
-            else:
-               area = x * y
-            return math.floor(area * self.const.f)
-
-In this example ``rickle.const.f`` is used in the function.
-
-This will only work if the attribute referred to is found on the same level. The following example won't work.
-
-.. code-block:: yaml
-   :linenos:
-
-   const:
-      f: 0.7
-   one_higher:
-      get_area:
-         type: function
-         name: get_area
-         is_method: true
-         args:
-            x: 10
-            y: 10
-            z: null
-         import:
-            - math
-         load: >
-            def get_area(self, x, y, z):
-               if not z is None:
-                  area = (x * y) + (x * z) + (y * z)
-                  area = 2 * area
-               else:
-                  area = x * y
-               return math.floor(area * self.const.f)
-
-.. code-block:: python
-   :linenos:
-
-   rick = Rickle('test.yaml', load_lambda=True)
-   rick.one_higher.get_area(x=52, y=34.9, z=10, f=0.8)
-
-This will result in an AttributeError:
-
-.. code-block:: python
-
-   >> Traceback (most recent call last):
-   >>   File ".\Zipfian Science\rickled\tests\unittest\test_advanced.py", line 183, in test_self_reference
-   >>     area = r.functions.get_area(x=10, y=10, z=10)
-   >>   File "<string>", line 1, in <lambda>
-   >>   File "<string>", line 7, in get_area3ee93073e2f441af9f6a9acac3e21635
-   >> AttributeError: 'Rickle' object has no attribute 'const'
-
 
 Add CSV
 ---------------------
@@ -648,6 +498,16 @@ This will load the data as binary.
 
 The data in the file can also be loaded on function call, same as with the ``add_api_json_call``. This is done with the ``hot_load: true`` property.
 
+.. note::
+
+    To use the ``hot_load`` functionality, the Rickle object needs to be initialised with ``load_lambda=True``.
+
+.. warning::
+
+    Using ``load_lambda=True`` and ``hot_load`` could come with potential security risks as the ``eval`` function is used to execute code.
+    Code injection is a high risk and this advanced usage is only recommend when a high level of trust in the source is established.
+    Do not blindly load files with ``load_lambda=True``.
+
 Add from REST API
 ---------------------
 
@@ -712,6 +572,16 @@ This example will load the results hot off the press.
 
 Notice how it is called with parentheses because it is now a function (``hot_load=true``).
 
+.. note::
+
+    To use the ``hot_load`` functionality, the Rickle object needs to be initialised with ``load_lambda=True``.
+
+.. warning::
+
+    Using ``load_lambda=True`` and ``hot_load`` could come with potential security risks as the ``eval`` function is used to execute code.
+    Code injection is a high risk and this advanced usage is only recommend when a high level of trust in the source is established.
+    Do not blindly load files with ``load_lambda=True``.
+
 Add base 64 encoded
 ---------------------
 
@@ -741,6 +611,49 @@ Useful when loading up a documentation page.
 This will GET the HTML. ``params`` and ``headers`` can also be given, same as with the API call.
 
 As with the API call, a ``hot_load`` property will load the page on call.
+
+.. note::
+
+    To use the ``hot_load`` functionality, the Rickle object needs to be initialised with ``load_lambda=True``.
+
+.. warning::
+
+    Using ``load_lambda=True`` and ``hot_load`` could come with potential security risks as the ``eval`` function is used to execute code.
+    Code injection is a high risk and this advanced usage is only recommend when a high level of trust in the source is established.
+    Do not blindly load files with ``load_lambda=True``.
+
+
+Unsafe usage
+========================
+
+.. warning::
+
+   In order to add functions, module imports, or lambdas to Rickle objects,
+   the strings are evaluated using ``exec`` and ``eval`` functions, exposing major security holes. Using UnsafeRickles are
+   only advised for advanced usage and with extreme care.
+
+Another extension that could potentially be very useful is adding Python functions or lambdas to a ``rickle``.
+This is not without security risks. If lambdas are loaded that you did not author yourself and do not know what they do,
+they can do anything.
+
+In order to use this very unsafe method, the environment variable ``RICKLE_UNSAFE_LOAD`` must be set AND
+the init argument ``load_lambda`` has to be passed.
+
+.. code-block:: text
+   :caption: .env
+   :linenos:
+
+   RICKLE_UNSAFE_LOAD=1
+
+
+
+A ``rickle`` can be loaded without lambdas or functions by passing the ``load_lambda=False`` argument at creation.
+But this is not a foolproof safety measure. Even with ``load_lambda=False``, if you load other sources such as API results or other files,
+they can reference other calls that do execute the lambda functions.
+This is why the double step is needed, the init arg along with the env var ``RICKLE_UNSAFE_LOAD=1``.
+
+The safest way to load unknown sources is to not load them.
+Always only load what you trust, and more specifically what you wrote.
 
 Import Python modules
 ---------------------
@@ -796,13 +709,157 @@ Whole new classes can be defined. This will have a type and will be initialised 
 
 .. code-block:: python
 
-   >> rick = Rickle('test.yaml')
+   >> rick = UnsafeRickle('test.yaml', load_lambda=True)
 
    >> rick.TesterClass.datenow()
    '1991-02-20'
 
    >> print(type(rick.TesterClass))
    '<class "TesterClass">'
+
+
+
+Add lambdas
+---------------------
+
+Lambdas instead of functions.
+
+Example of a lambda:
+
+.. code-block:: yaml
+   :linenos:
+
+   datenow:
+      type: lambda
+      import:
+         - "from datetime import datetime as dd"
+      load: "print(dd.utcnow().strftime('%Y-%m-%d'))"
+
+The lambda can be used by calling ``datenow()``. Lambdas can also have arguments:
+
+.. code-block:: yaml
+   :linenos:
+
+   datenow:
+      type: lambda
+      args:
+         message: Hello World
+      import:
+         - "from datetime import datetime as dd"
+      load: "print(dd.utcnow().strftime('%Y-%m-%d'), message)"
+
+And can be used as ``datenow(message='Hello friend')``.
+
+.. _sect-ext-usage-functions:
+
+Add functions
+---------------------
+
+Functions are a further extension to lambdas. They allow self referencing to the ``rickle``, and are multi line blocks.
+
+.. code-block:: yaml
+   :linenos:
+
+   get_area:
+      type: function
+      name: get_area
+      args:
+         x: 10
+         y: 10
+         z: null
+         f: 0.7
+      import:
+         - math
+      load: >
+         def get_area(x, y, z, f):
+            if not z is None:
+               area = (x * y) + (x * z) + (y * z)
+               area = 2 * area
+            else:
+               area = x * y
+            return math.floor(area * f)
+
+And then the function can be called as follows.
+
+.. code-block:: python
+   :linenos:
+
+   rick = UnsafeRickle('test.yaml', load_lambda=True)
+   rick.get_area(x=52, y=34.9, z=10, f=0.8)
+
+A self reference to the ``rickle`` can also be added.
+
+.. code-block:: yaml
+   :linenos:
+
+   const:
+      f: 0.7
+   get_area:
+      type: function
+      name: get_area
+      is_method: true
+      args:
+         x: 10
+         y: 10
+         z: null
+      import:
+         - math
+      load: >
+         def get_area(self, x, y, z):
+            if not z is None:
+               area = (x * y) + (x * z) + (y * z)
+               area = 2 * area
+            else:
+               area = x * y
+            return math.floor(area * self.const.f)
+
+In this example ``rickle.const.f`` is used in the function.
+
+This will only work if the attribute referred to is found on the same level. The following example won't work.
+
+.. code-block:: yaml
+   :linenos:
+
+   const:
+      f: 0.7
+   one_higher:
+      get_area:
+         type: function
+         name: get_area
+         is_method: true
+         args:
+            x: 10
+            y: 10
+            z: null
+         import:
+            - math
+         load: >
+            def get_area(self, x, y, z):
+               if not z is None:
+                  area = (x * y) + (x * z) + (y * z)
+                  area = 2 * area
+               else:
+                  area = x * y
+               return math.floor(area * self.const.f)
+
+.. code-block:: python
+   :linenos:
+
+   rick = UnsafeRickle('test.yaml', load_lambda=True)
+   rick.one_higher.get_area(x=52, y=34.9, z=10, f=0.8)
+
+This will result in an AttributeError:
+
+.. code-block:: python
+
+   >> Traceback (most recent call last):
+   >>   File "./Zipfian Science/rickled/tests/unittest/test_advanced.py", line 183, in test_self_reference
+   >>     area = r.functions.get_area(x=10, y=10, z=10)
+   >>   File "<string>", line 1, in <lambda>
+   >>   File "<string>", line 7, in get_area3ee93073e2f441af9f6a9acac3e21635
+   >> AttributeError: 'UnsafeRickle('test.yaml', load_lambda=True)' object has no attribute 'const'
+
+
 
 Paths and searching
 ========================
