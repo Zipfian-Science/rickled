@@ -53,6 +53,8 @@ def toml_null_stripper(dictionary: dict) -> dict:
     for k, v in dictionary.items():
         if isinstance(v, dict):
             v = toml_null_stripper(v)
+        if isinstance(v, list):
+            v = [toml_null_stripper(vv) for vv in v]
         if v not in (u"", None, {}):
             new_dict[k] = v
     return new_dict
@@ -269,6 +271,7 @@ class Schema:
 
         if isinstance(schema, str):
             self.schema = Converter.infer_read_file_type(schema)
+
         else:
             self.schema = schema
 
@@ -328,7 +331,7 @@ class Schema:
                     with output_file.open("wb") as fout:
                         tomlw.dump(toml_null_stripper(schema), fout)
                 else:
-                    raise ValueError(f"Cannot dump to format {suffix}")
+                    raise ValueError(f"Cannot dump to format {suffix}, only supported {Schema.supported_list}")
 
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
@@ -479,10 +482,13 @@ class Schema:
         Returns:
             bool: True if the object conforms.
         """
+        if not 'type' in schema.keys():
+            raise ValueError(f'No type defined in {str(schema)}!')
 
         def _check_type(object_value, schema_info, is_nullable):
 
-
+            if not 'type' in schema_info.keys():
+                raise ValueError(f'No type defined in {str(schema_info)}!')
             schema_type = schema_info['type'].lower().strip()
             object_type = type(object_value).__name__
             object_type_matches = False

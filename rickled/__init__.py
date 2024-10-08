@@ -1,6 +1,5 @@
-from collections import defaultdict
-
 from .__version__ import __version__, __date__
+from collections import OrderedDict
 import os
 import json
 import copy
@@ -32,6 +31,7 @@ else:
 
 from rickled.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings
 
+yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
 
 class BaseRickle:
     """
@@ -676,7 +676,6 @@ class BaseRickle:
         Notes:
             Functions and lambdas are always given in serialised form.
         """
-
         self_as_dict = self.dict(serialised=serialised)
 
         if output:

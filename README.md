@@ -5,6 +5,8 @@
 [![Downloads](https://static.pepy.tech/badge/rickled/month)](https://pepy.tech/project/rickled)
 [![General badge](https://img.shields.io/badge/Coverage-75+-<COLOR>.svg)](https://zipfian.science/docs/rickle/coverage/index.html)
 
+---
+
 ```
 ██████╗ ██╗ ██████╗██╗  ██╗██╗     ███████╗
 ██╔══██╗██║██╔════╝██║ ██╔╝██║     ██╔════╝
@@ -15,47 +17,72 @@
                                            
 by Zipfian Science                               
 ```
-`rickle` is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON data. Here's a brief summary of its key features:
+
+---
+
+`rickle` is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON (and TOML, INI, XML, .ENV) data. Here's a brief summary of its key features:
 
 1. **Serialization**: `rickle` allows you to easily serialize Python objects to YAML format. This is particularly useful for converting Python data structures into a human-readable and easily shareable format.
 
-2. **Schema Validation**: It provides the capability to validate YAML and JSON data against predefined schemas. This ensures that your data adheres to a specific structure or format, helping to maintain data consistency.
+2. **Schema Validation**: It provides the capability to validate YAML (and JSON, etc.) data against predefined schemas. This ensures that your data adheres to a specific structure or format, helping to maintain data consistency.
 
 3. **Schema Generation**: You can generate schema definitions from existing YAML (or JSON) files. This is helpful when you want to formalize the structure of your data or for documentation purposes.
 
-4. **Conversion between YAML and JSON**: `rickle` offers seamless conversion between YAML and JSON formats. This facilitates data interchange between systems that use different serialization formats.
+4. **Conversion**: `rickle` offers seamless conversion between YAML, JSON, INI, XML, and .ENV formats. This facilitates data interchange between systems that use different serialization formats.
 
-5. **Simple Web Server**: One unique feature of `rickle` is its ability to create a basic web server from a YAML file. This means you can define endpoints, routes, and data sources purely by writing it as a YAML file, making it easy to prototype web services without extensive coding, or to create mock REST APIs.
+5. **Simple Web Server**: An experimental unique feature of `rickle` is its ability to create a basic web server from a YAML (or JSON, TOML, XML, INI) file. This means you can define endpoints, routes, and data sources purely by writing it as a YAML/etc. file, making it easy to prototype web services without extensive coding, or to create mock REST APIs, or even to serve configuration files as REST APIs. 
 
-In summary, `rickle` is a powerful utility for working with YAML and JSON data in Python. 
+`rickle` is a powerful utility for working with configuration data in Python. 
 It simplifies tasks like serialization, schema validation, schema generation, format conversion, 
-and even enables quick web server prototyping using YAML configuration files. 
+and even enables quick web server prototyping. 
 This tool is valuable for developers and data engineers working 
 with structured data in a flexible and efficient manner.
-
+---
 # Usage
 
 For usage examples see [examples](https://zipfian.science/docs/rickle/examples.html) page. 
 Documentation can be [found here](https://zipfian.science/docs/rickle/index.html). 
 
-## Install
+## 1. Install
 
-First install the tool (Python version >= 3.7):
+First install the tool (Python version >= 3.7*):
+
+*Installing `rickled[validators]` only supported from >= 3.8
 
 ```bash script
 $ pip install rickled
 ```
+---
+### 1.1 Extras
 
 Optionally the twisted web server can be installed alongside for the `serve` functionality.
 
 ```bash script
-$ pip install rickled[twisted]
+$ pip install rickled[net]
 ```
 
-Furthermore, if SSL support is needed:
+For expanded schema validators.
 
 ```bash script
-$ pip install rickled[twisted,pyopenssl]
+$ pip install rickled[validators]
+```
+
+For xml support.
+
+```bash script
+$ pip install rickled[xml]
+```
+
+For .env file support.
+
+```bash script
+$ pip install rickled[dotenv]
+```
+
+For a fully featured install.
+
+```bash script
+$ pip install rickled[net,dotenv,xml,validators]
 ```
 
 Check if the installation succeeded:
@@ -63,12 +90,14 @@ Check if the installation succeeded:
 ```bash script
 $ rickle --help
 ```
-
-## Schema tools
+---
+## 2. Schema tools
 
 Two main schema tools exist, the `check` and the `gen` tools.
 
-### Schema `check`
+---
+
+### 2.1 Schema `check`
 
 For checking the schema of input files, the `check` tool is used.
 
@@ -80,7 +109,15 @@ $ rickle schema check --help
 $ rickle schema check -i test.yaml -c schema.yaml 
 ```
 
-### Schema `gen`
+OR
+
+```bash script
+$ cat test.yaml | rickle schema check -c schema.yaml 
+```
+
+---
+
+### 2.2 Schema `gen`
 
 Schema files can be generated from YAML files with the `gen` tool.
 
@@ -94,8 +131,17 @@ $ rickle schema gen -i test.yaml
 
 This will generate a schema file called `test.schema.yaml`.
 
+OR
 
-## Conversion tools
+```bash script
+$ cat test.yaml | rickle schema gen -t json
+```
+
+This will generate a schema and print the output, in this example in JSON.
+
+---
+
+## 3. Conversion tools
 
 `rickle` can also be used for bulk conversion from YAML to JSON or the other way around.
 
@@ -113,9 +159,116 @@ For each input file the output file can be defined and the path suffix is used t
 
 Alternatively the type can be specified with the `-t` flag.
 
-## Serving via HTTP(s)
+---
 
-A nifty little use of this Python tool is the ability to host a webserver, using a YAML file.
+## 4. `jq` like functions
+
+Certain `jq` like functionality can be achieved using `rickle`. This includes the ability to `get`, `set`, `del`, and `search`
+document paths. This is done using the object tool `obj`.
+
+To see more:
+
+```bash script
+$ rickle obj --help
+```
+```bash script
+$ rickle obj get --help
+```
+```bash script
+$ rickle obj set --help
+```
+```bash script
+$ rickle obj del --help
+```
+```bash script
+$ rickle obj search --help
+```
+
+---
+
+### 4.1 Paths
+
+To get to a specific value, a path is traversed. This path looks much like a Unix or web path.
+To get the whole document, `/` is used. Expanding the path would look something like this: 
+
+```yaml
+path:
+  to:
+    value: "hello world"
+```
+The path `/path/to/value` would yield the string `hello world`.
+
+```yaml
+path:
+  to:
+    value: "hello world"
+    values:
+      - one
+      - two
+      - three
+```
+
+Working with lists is possible with indices, for example `/path/to/values/[0]` would yield the string `one`. 
+And the path `/path/to` would yield:
+
+```yaml
+value: "hello world"
+values:
+  - one
+  - two
+  - three
+```
+
+> **_NOTE:_**  It is possible to change the path separator by setting the env variable `RICKLE_PATH_SEP`.
+
+---
+
+### 4.2 Get
+
+```bash script
+$ rickle obj -i test.yaml get /
+```
+
+OR
+
+```bash script
+$ cat test.yaml | rickle obj get /
+```
+
+This will output the entire test.yaml. If the path, using the above example with path `/path/to/values/[0]`, the output will 
+simply be `one`.
+
+---
+
+### 4.2 Set
+
+```bash script
+$ rickle obj -i test.yaml set /path/to/values/[1] foo
+```
+
+OR
+
+```bash script
+$ cat test.yaml | rickle obj set /path/to/values/[1] foo
+```
+
+will output the following: 
+
+```yaml
+path:
+  to:
+    value: "hello world"
+    values:
+      - one
+      - foo
+      - three
+```
+
+---
+
+## 5. Serving via HTTP(s)
+
+A nifty little use of this Python tool is the ability to host a webserver, using a YAML (or other) file.
  
 ```bash script
 $ rickle serve --help
@@ -124,8 +277,41 @@ $ rickle serve --help
 ```bash script
 $ rickle serve -f basic_example.yaml
 ```
-
 This will start listening on http://localhost:8080, for requests using `GET`. 
+
+Alternatively serve via ssl:
+
+```bash script
+$ rickle serve -f basic_example.yaml -c ./certificate.crt -k ./privkey.pem
+```
+
+This will start listening on https://localhost:8080. 
+
+Furthermore, define host or port:
+
+```bash script
+$ rickle serve -f basic_example.yaml -a localhost -p 8077
+```
+
+This will start listening on https://localhost:8077. 
+
+Automatically open a new browser tab:
+
+```bash script
+$ rickle serve -f basic_example.yaml -b
+```
+
+Add Python functions to the YAML file (unsafe!):
+
+```bash script
+$ rickle serve -f unsafe_example.yaml -x -l
+```
+
+This will start listening on http://localhost:8080, 
+and if there are Python functions defined in the YAML file, these will be executable. 
+This is a security risk though, and should only be used with caution.
+
+---
 
 # Contributing
 

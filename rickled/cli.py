@@ -419,11 +419,36 @@ def check(args):
 
 def gen(args):
     try:
-        Schema(input_files=args.i,
-               input_directories=args.d,
-               output_files=args.o,
-               silent=args.s,
-               default_output_type=args.t).do_generation()
+        if args.i:
+            Schema(input_files=args.i,
+                   input_directories=args.d,
+                   output_files=args.o,
+                   silent=args.s,
+                   default_output_type=args.t).do_generation()
+        else:
+            data = sys.stdin.read()
+            input_data = Converter.infer_read_string_type(data)
+
+            schema_dict = Schema.generate_schema_from_obj(input_data)
+
+            if args.t:
+                ttype = args.t.lower().strip()
+            else:
+                ttype = 'yaml'
+
+
+            if ttype == 'json':
+                print(json.dumps(schema_dict))
+            elif ttype == 'toml':
+                print(tomlw.dumps(toml_null_stripper(schema_dict)))
+            elif ttype == 'xml' and importlib.util.find_spec('xmltodict'):
+                import xmltodict
+                print(xmltodict.unparse({'schema':schema_dict}, pretty=True))
+            elif ttype == 'ini' or ttype == '.env':
+                raise CLIError(message='INI and .ENV output unsupported for schema generation', cli_tool=CLIError.CLITool.SCHEMA_GEN)
+            else:
+                print(yaml.dump(schema_dict))
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_GEN)
 
