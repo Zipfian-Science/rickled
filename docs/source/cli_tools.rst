@@ -7,6 +7,9 @@ Furthermore, the CLI supports schema validation and generation, enabling quick c
 This functionality is especially useful for ensuring data integrity and for rapid prototyping where adherence to predefined data structures is critical.
 Overall, rickle's CLI makes it a breeze to manage and transform structured data with simple command-line commands.
 
+Getting started
+========================
+
 To see help and usage:
 
 .. code-block:: shell
@@ -42,6 +45,55 @@ The main tools that the ``rickle`` CLI exposes are:
 
 All of which are discussed in the following sections.
 
+Input/Output to tools
+---------------------
+
+All CLI tools support Unix pipes, i.e. the output of the previous command or process will be used as input. For example:
+
+.. code-block:: shell
+
+    cat config.yml | rickle obj get /
+
+.. note::
+
+   On Windows systems the command ``type`` can be used instead of ``cat``.
+
+This is the preferred usage of ``rickle``. Similarly the output can always be piped or redirected:
+
+.. code-block:: shell
+
+    cat config.yaml | rickle obj get /config/database > db_config.yaml
+
+or for example:
+
+.. code-block:: shell
+
+    cat config.yaml | rickle obj get /config/ecr/password | aws ecr get-login-password --password-stdin
+
+For all tools, the input can be a file flagged with ``-i`` and output can be directed to a file with ``-o``:
+
+.. code-block:: shell
+
+    rickle obj -i config.yaml -o db_config.yaml get /config/database
+
+Although this is often a less readable way and is only recommended for when it makes sense to do so.
+
+Output types
+---------------------
+
+For most of the tools the output types can be specified with the ``-t`` flag and can be one of the following strings:
+
+.. hlist::
+   :columns: 1
+
+   * yaml
+   * json
+   * toml
+   * xml
+   * ini
+   * env
+   * list
+
 Conversion tool
 ========================
 
@@ -73,9 +125,21 @@ To convert an input file ``config.json``, use the following:
 
 .. code-block:: shell
 
-    rickle conv -i config.json
+    cat config.json | rickle conv -x JSON
 
-This will create a file ``config.yaml``.
+This will print the converted file ``config.json`` as YAML (default), or if specified ``-t`` type.
+
+.. note::
+
+   Because the input is piped, the input type needs to be explicitly stated using ``-x`` as in the example.
+
+If input is given as ``-i`` flag, the input type can be inferred:
+
+.. code-block:: shell
+
+    rickle conv -i config.json -x json
+
+This will create a file ``config.yaml`` instead of printing.
 
 .. note::
 
@@ -85,9 +149,9 @@ To specify the output type:
 
 .. code-block:: shell
 
-    rickle conv -i config.yaml -t JSON
+    cat config.yaml | rickle conv -t JSON -x YAML
 
-This will create a ``config.json`` file.
+This will create print the converted file.
 
 Glob whole directory
 ---------------------
@@ -419,17 +483,31 @@ To get the path to ``pswd``:
 
     rickle obj -i conf-multi.yaml search pswd
 
-Which will print the path:
+Which will print the path as a YAML list by default (use the type ``-t`` flag for other output):
 
-.. code-block:: text
+.. code-block:: yaml
 
-   /root_node/level_one/pswd
+   - /root_node/level_one/pswd
 
 Where searching for the ``usr`` key:
 
 .. code-block:: shell
 
     rickle obj -i conf-multi.yaml search usr
+
+...prints the following paths:
+
+.. code-block:: yaml
+
+   - /root_node/usr
+   - /root_node/level_one/usr
+   - /root_node/other/usr
+
+To print the values as is (instead of YAML or JSON), use the ``-t`` type ``list``:
+
+.. code-block:: shell
+
+    rickle obj -i conf-multi.yaml -t list search usr
 
 ...prints the following paths:
 

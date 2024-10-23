@@ -50,7 +50,7 @@ class CLIError(Exception):
 
 def conv(args):
     try:
-        if args.i:
+        if args.i or args.d:
             Converter(input_files=args.i,
                       output_files=args.o,
                       input_directories=args.d,
@@ -90,7 +90,10 @@ def obj_get(args):
 
             if args.o:
 
-                if dump_type == 'json':
+                if dump_type == 'yaml':
+                    with open(args.o, 'w') as fp:
+                        yaml.safe_dump(v, fp)
+                elif dump_type == 'json':
                     with open(args.o, 'w') as fp:
                         json.dump(v, fp)
                 elif dump_type == 'toml':
@@ -118,12 +121,12 @@ def obj_get(args):
                     else:
                         raise CLIError("Can only dump dictionary type to INI", cli_tool=CLIError.CLITool.OBJ_GET)
                 else:
-                    with open(args.o, 'w') as fp:
-                        yaml.safe_dump(v, fp)
-
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_GET)
 
             else:
-                if dump_type == 'json':
+                if dump_type == 'yaml':
+                    print(yaml.safe_dump(v))
+                elif dump_type == 'json':
                     print(json.dumps(v))
                 elif dump_type == 'toml':
                     print(tomlw.dumps(toml_null_stripper(v)))
@@ -151,7 +154,7 @@ def obj_get(args):
                     else:
                         raise CLIError("Can only dump dictionary type to INI", cli_tool=CLIError.CLITool.OBJ_GET)
                 else:
-                    print(yaml.safe_dump(v))
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_GET)
 
 
     except Exception as exc:
@@ -171,7 +174,9 @@ def obj_set(args):
             dump_type = args.t.lower()
 
             if args.o:
-                if dump_type == 'json':
+                if dump_type == 'yaml':
+                    r.to_yaml(output=args.o)
+                elif dump_type == 'json':
                     r.to_json(output=args.o)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.o)
@@ -180,9 +185,12 @@ def obj_set(args):
                 elif dump_type == 'ini':
                     r.to_ini(output=args.o)
                 else:
-                    r.to_yaml(output=args.o)
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_SET)
+
             else:
-                if dump_type == 'json':
+                if dump_type == 'yaml':
+                    print(r.to_yaml())
+                elif dump_type == 'json':
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
@@ -191,7 +199,8 @@ def obj_set(args):
                 elif dump_type == 'ini':
                     print(r.to_ini())
                 else:
-                    print(r.to_yaml())
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_SET)
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SET)
 
@@ -208,7 +217,9 @@ def obj_del(args):
             dump_type = args.t.lower()
 
             if args.o:
-                if dump_type == 'json':
+                if dump_type == 'yaml':
+                    r.to_yaml(output=args.o)
+                elif dump_type == 'json':
                     r.to_json(output=args.o)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.o)
@@ -217,9 +228,11 @@ def obj_del(args):
                 elif dump_type == 'ini':
                     r.to_ini(output=args.o)
                 else:
-                    r.to_yaml(output=args.o)
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_DEL)
             else:
-                if dump_type == 'json':
+                if dump_type == 'yaml':
+                    print(r.to_yaml())
+                elif dump_type == 'json':
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
@@ -228,7 +241,8 @@ def obj_del(args):
                 elif dump_type == 'ini':
                     print(r.to_ini())
                 else:
-                    print(r.to_yaml())
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_DEL)
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_DEL)
 
@@ -253,9 +267,22 @@ def obj_search(args):
             else:
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.l)
+
             paths = r.search_path(args.key)
-            for p in paths:
-                print(p)
+
+            dump_type = args.t.lower()
+
+            if dump_type == 'json':
+                print(json.dumps(paths))
+            elif dump_type == 'yaml':
+                print(yaml.safe_dump(paths))
+            elif dump_type == 'list':
+                for p in paths:
+                    print(p)
+            else:
+                raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_SEARCH)
+
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SEARCH)
 

@@ -273,6 +273,7 @@ class BaseRickle:
         self._allowed_chars_pat = re.compile('[^a-zA-Z_]')
         self._keys_map = dict()
         self._path_sep = os.getenv("RICKLE_PATH_SEP", init_args.get('RICKLE_PATH_SEP', "/"))
+
         self._init_args = init_args
 
         if base is None:

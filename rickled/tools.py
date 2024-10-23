@@ -39,25 +39,42 @@ def supported_encodings() -> list:
             supported.append(name.replace("_", "-").strip().lower())
     return supported
 
-def toml_null_stripper(dictionary: dict) -> dict:
+def toml_null_stripper(input: Union[dict, list]):
     """
-    Remove null valued key-value pairs.
+    Remove null valued key-value pairs or list items.
 
     Args:
-        dictionary (dict): Input dictionary.
+        dictionary (dict,list): Input dictionary or list.
 
     Returns:
-        dict: Output dictionary.
+        dict: Output dictionary (or list).
     """
-    new_dict = {}
-    for k, v in dictionary.items():
-        if isinstance(v, dict):
-            v = toml_null_stripper(v)
-        if isinstance(v, list):
-            v = [toml_null_stripper(vv) for vv in v]
-        if v not in (u"", None, {}):
-            new_dict[k] = v
-    return new_dict
+    if isinstance(input, dict):
+        new_dict = dict()
+
+        for k, v in input.items():
+            if isinstance(v, dict):
+                v = toml_null_stripper(v)
+            if isinstance(v, list):
+                v = toml_null_stripper(v)
+            if v not in (u"", None, {}):
+                new_dict[k] = v
+
+        return new_dict
+    elif isinstance(input, list):
+        new_list = list()
+
+        for v in input:
+            if isinstance(v, dict):
+                v = toml_null_stripper(v)
+            if isinstance(v, list):
+                v = [toml_null_stripper(vv) if (isinstance(vv, dict) or isinstance(vv, list)) else vv for vv in v]
+            if v not in (u"", None, {}):
+                new_list.append(v)
+
+        return new_list
+    else:
+        raise TypeError(f"toml_null_stripper can not strip nulls from input type {type(input)}")
 
 
 def parse_ini(config: configparser.ConfigParser, path_sep: str = None, list_brackets: tuple = None):

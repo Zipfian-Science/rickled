@@ -37,7 +37,9 @@ It simplifies tasks like serialization, schema validation, schema generation, fo
 and even enables quick web server prototyping. 
 This tool is valuable for developers and data engineers working 
 with structured data in a flexible and efficient manner.
+
 ---
+
 # Usage
 
 For usage examples see [examples](https://zipfian.science/docs/rickle/examples.html) page. 
@@ -263,6 +265,42 @@ path:
       - foo
       - three
 ```
+
+---
+
+### 4.3 Search
+
+Consider the following:
+
+```yaml
+path:
+  to:
+    key: "hello world"
+  and:
+    another:
+      key: "ok go"
+```
+
+Document paths can be searched:
+
+```bash script
+$ rickle obj -i test.yaml search key
+```
+
+OR
+
+```bash script
+$ cat test.yaml | rickle obj search key
+```
+
+Will output the following (in YAML):
+
+```
+- /path/to/key
+- /path/and/another/key
+```
+
+Different output types are passed with the `-t` flag, including the `list` type to print paths as lines. 
 
 ---
 
