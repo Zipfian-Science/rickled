@@ -19,6 +19,7 @@ if sys.version_info < (3, 11):
 else:
     import tomllib as toml
 
+
 def supported_encodings() -> list:
     """
     A very rudimentary way to figure out the different supported file encodings supported.
@@ -38,6 +39,67 @@ def supported_encodings() -> list:
         else:
             supported.append(name.replace("_", "-").strip().lower())
     return supported
+
+def classify_string(input_string: str):
+    """
+    Try to classify the type from a string. This is done by attempting to load the string as each type.
+    In the cases where the base decoder is not installed a simple Regex match is attempted.
+
+    Args:
+        input_string (str): String to classify.
+
+    Returns:
+        str: The classified type ("json", "yaml", "toml", "xml", "ini", "env", "unknown")
+    """
+
+    try:
+        json.loads(input_string)
+        return "json"
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        yaml.safe_load(input_string)
+        return "yaml"
+    except yaml.YAMLError:
+        pass
+
+    try:
+        toml.loads(input_string)
+        return "toml"
+    except toml.TOMLDecodeError:
+        pass
+
+    if importlib.util.find_spec('xmltodict'):
+        import xmltodict
+        try:
+            xmltodict.parse(input_string, process_namespaces=True)
+            return "xml"
+        except xmltodict.ParsingInterrupted:
+            pass
+    elif input_string.startswith("<") and input_string.endswith(">"):
+        if re.match(r'<\?xml\s+version\s*=\s*["\']1\.\d["\']', input_string) or re.match(r'<[a-zA-Z]', input_string):
+            return "xml"
+
+    config = configparser.ConfigParser()
+    if input_string.strip().startswith("["):
+        try:
+            config.read_string(input_string)
+            return "ini"
+        except configparser.Error:
+            pass
+
+    if importlib.util.find_spec('dotenv'):
+        try:
+            from dotenv import dotenv_values
+            dotenv_values(stream=StringIO(input_string))
+            return "env"
+        except:
+            pass
+    elif re.match(r'^\s*[A-Za-z_][A-Za-z0-9_]*\s*=', input_string):
+        return "env"
+
+    return "unknown"
 
 def toml_null_stripper(input: Union[dict, list]):
     """
@@ -272,7 +334,14 @@ class Schema:
         silent (bool): Suppress verbose output (default = None).
     """
 
-    supported_list = f"{cli_bcolors.OKBLUE}YAML (r/w), JSON (r/w), TOML (r/w), XML (r){cli_bcolors.ENDC}"
+
+    supported_list = [f"{cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}"]
+
+    if importlib.util.find_spec('xmltodict'):
+        supported_list.append(f"{cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}")
+    supported = '- ' + '\n- '.join(supported_list)
 
     def __init__(self,
                  input_files: List[str] = None,
@@ -773,76 +842,91 @@ class Converter:
         silent (bool): Suppress verbose output (default = None).
     """
 
-    supported_list = f"{cli_bcolors.OKBLUE}YAML (r/w), JSON (r/w), TOML (r/w), INI (r/w), XML (r/w), .ENV (r){cli_bcolors.ENDC}"
+    supported_list = [f"{cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}INI (r/w){cli_bcolors.ENDC}"]
+
+    if importlib.util.find_spec('xmltodict'):
+        supported_list.append(f"{cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}")
+    if importlib.util.find_spec('dotenv'):
+        supported_list.append(f"{cli_bcolors.OKBLUE}ENV ({cli_bcolors.WARNING}r{cli_bcolors.OKBLUE}){cli_bcolors.ENDC}")
+    supported = '- ' + '\n- '.join(supported_list)
+
+    supported_output = ['yaml', 'json', 'toml', 'xml', 'ini']
+    supported_input = ['yaml', 'json', 'toml', 'xml', 'ini', 'env']
 
     def __init__(self,
                  input_files: List[str] = None,
-                 input_directories: List[str] = None,
+                 input_directory: str = None,
                  output_files: List[str] = None,
                  default_output_type: str = 'yaml',
-                 silent: bool = False,
+                 verbose: bool = False,
                  ):
         self.input_files = input_files
-        self.input_directories = input_directories
-        self.output_files = output_files
+        self.input_directory = input_directory
+        self.output_files = output_files if output_files else list()
+
+        if not default_output_type.strip().lower() in Converter.supported_output:
+            raise ValueError(f"Output type must be string of value {','.join(Converter.supported_output)}")
+
         self.default_output_type = default_output_type
-        self.silent = silent
-        if importlib.util.find_spec('dotenv'):
-            self.supported_list = f"{self.supported_list}, {cli_bcolors.OKBLUE}ENV (r){cli_bcolors.ENDC}"
-        if importlib.util.find_spec('xmltodict'):
-            self.supported_list = f"{self.supported_list}, {cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}"
+        self.verbose = verbose
 
 
     @staticmethod
-    def convert_string(input_string: str, input_type: str = None, output_type: str = None):
+    def convert_string(input_string: str, output_type: str, input_type: str = None):
         """
         Convert a string from one format to another. Supported input types:
 
         Args:
             input_string (str): Data in input_type format.
+            output_type (str): Output type, either ['yaml', 'json', 'toml', 'xml'].
             input_type (str): Input type, either ['yaml', 'json', 'toml', 'xml', 'env'] (default = None).
-            output_type (str): Output type, either ['yaml', 'json', 'toml', 'xml'] (default = None).
 
         Notes:
-            Output can not be of type .ENV
+            Output can not be of type .ENV .
+            If no input type is given, the type is inferred.
 
         Returns:
             str: Converted string
         """
-        input_type = input_type.strip().lower()
+
         output_type = output_type.strip().lower()
 
-        supported_input = ['yaml', 'json', 'toml', 'xml', 'env']
-        supported_output = ['yaml', 'json', 'toml', 'xml']
         path_sep = os.getenv("RICKLE_INI_PATH_SEP", ".")
         list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("), os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
 
-        if input_type == 'yaml':
-            d = yaml.safe_load(input_string)
-        elif input_type == 'json':
-            d = json.loads(input_string)
-        elif input_type == 'toml':
-            d = toml.loads(input_string)
-        elif input_type == 'xml':
-            if importlib.util.find_spec('xmltodict'):
-                import xmltodict
-                d = xmltodict.parse(input_string, process_namespaces=True)
-            else:
-                raise ValueError('Cannot parse XML without required package xmltodict')
-        elif input_type == 'ini':
-            config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-            config.read_string(input_string)
-
-            d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
-        elif input_type == 'env':
-            if importlib.util.find_spec('dotenv'):
-                from dotenv import dotenv_values
-
-                d = dotenv_values(stream=StringIO(input_string))
-            else:
-                raise ValueError('Cannot parse .ENV without required package dotenv')
+        if input_type is None:
+            d = Converter.infer_read_string_type(input_string)
         else:
-            raise ValueError(f"Input type must be string of value {','.join(supported_input)}")
+            input_type = input_type.strip().lower()
+            if input_type == 'yaml':
+                d = yaml.safe_load(input_string)
+            elif input_type == 'json':
+                d = json.loads(input_string)
+            elif input_type == 'toml':
+                d = toml.loads(input_string)
+            elif input_type == 'xml':
+                if importlib.util.find_spec('xmltodict'):
+                    import xmltodict
+                    d = xmltodict.parse(input_string, process_namespaces=True)
+                else:
+                    raise ValueError('Cannot parse XML without required package xmltodict')
+            elif input_type == 'ini':
+                config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+                config.read_string(input_string)
+
+                d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
+            elif input_type == 'env':
+                if importlib.util.find_spec('dotenv'):
+                    from dotenv import dotenv_values
+
+                    d = dotenv_values(stream=StringIO(input_string))
+                else:
+                    raise ValueError('Cannot parse .ENV without required package dotenv')
+            else:
+                raise ValueError(f"Input type must be string of value {','.join(Converter.supported_input)}")
 
         if output_type == 'yaml':
             return yaml.safe_dump(d)
@@ -868,7 +952,7 @@ class Converter:
         elif output_type == 'env':
             raise ValueError('Conversion to .ENV is unsupported')
         else:
-            raise ValueError(f"Output type must be string of value {','.join(supported_output)}")
+            raise ValueError(f"Output type must be string of value {','.join(Converter.supported_output)}")
 
     @staticmethod
     def infer_read_string_type(string: str):
@@ -1034,27 +1118,27 @@ class Converter:
         """
         Converts all input files to output type(s).
         """
-        if self.input_files is None and self.input_directories is None:
+        if self.input_files is None and self.input_directory is None:
             raise ValueError("Either input_files or input_directories must be defined!")
 
-        if self.input_files is None and not self.input_directories is None:
+        if self.input_files is None and not self.input_directory is None:
             # set output to none as it should not be defined in this scenario
-            self.output_files = None
-            self.input_files = list()
-            for d in self.input_directories:
-                dir_path = Path(d)
-                # TODO extend glo range here if expanding
-                self.input_files.extend(list(dir_path.glob("*.yaml")))
-                self.input_files.extend(list(dir_path.glob("*.yml")))
-                self.input_files.extend(list(dir_path.glob("*.json")))
-                self.input_files.extend(list(dir_path.glob("*.toml")))
-                self.input_files.extend(list(dir_path.glob("*.xml")))
-                self.input_files.extend(list(dir_path.glob("*.ini")))
-                self.input_files.extend(list(dir_path.glob("*.env")))
-
-
-        if self.output_files is None:
             self.output_files = list()
+            self.input_files = list()
+
+            dir_path = Path(self.input_directory)
+
+            known_extensions = ['yaml', 'yml', 'json', 'toml', 'ini']
+            if importlib.util.find_spec('xmltodict'):
+                known_extensions.append('xml')
+            if importlib.util.find_spec('dotenv'):
+                known_extensions.append('env')
+
+            for ext in known_extensions:
+                self.input_files.extend(list(dir_path.glob(f"*.{ext}")))
+
+
+        if len(self.output_files) < 1:
             for input_file in self.input_files:
                 self.output_files.append(f"{os.path.splitext(input_file)[0]}.{self.default_output_type.lower()}")
 
@@ -1085,7 +1169,7 @@ class Converter:
                         import xmltodict
 
                         with output_file.open("wb") as fout:
-                            return xmltodict.unparse(input_data, fout)
+                            xmltodict.unparse(input_data, fout)
                     else:
                         raise ImportError("Missing 'xmltodict' dependency")
 
@@ -1099,10 +1183,10 @@ class Converter:
                     with output_file.open("w") as fout:
                         output_ini.write(fout)
 
-                if not self.silent:
+                if self.verbose:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
                 continue
             except Exception as exc:
-                if not self.silent:
+                if self.verbose:
                     print(f"{cli_bcolors.FAIL}{str(exc)}{cli_bcolors.ENDC}")
                 continue

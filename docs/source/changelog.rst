@@ -8,9 +8,10 @@ Changelog
 History
 ==========================
 
-Version 2.0.0 (2024-05-05)
+Version 1.5.0 (2024-05-05)
 --------------------------
 
+* Major additions and changes, bumped version to ``1.5.0``.
 * Init args now parsed with opening braces ``{{`` and closing braces ``}}``.
 * Opening and closing braces can be defined using environment variables ``RICKLE_OPENING_BRACES`` and ``RICKLE_CLOSING_BRACES``.
 * ``RICKLE_OPENING_BRACES`` and ``RICKLE_CLOSING_BRACES`` can also be passed as init arguments.
@@ -29,6 +30,12 @@ Version 2.0.0 (2024-05-05)
 * Removed unsafe code and usage into separate class, ``UnsafeRickle``.
 * Added optional schema validator if extras installed (only for Python>3.8) ``pip install rickled[validators]``.
 * Adding ability to pipe into CLI tool, i.e. perform ``cat file.json | rickle conv -x json -t yaml``.
+* Added a helper ``classify_string`` to tools to classify a string type.
+* Renaming optional arguments for CLI in order to be more clear on their meaning.
+* ``-i`` becomes ``--input``
+* ``-d`` becomes ``--dir``
+* ``-o`` becomes ``--output``
+* ``-t`` becomes ``--output-type``
 
 
 

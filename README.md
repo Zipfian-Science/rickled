@@ -154,12 +154,17 @@ $ rickle conv --help
 To convert input files (or directories):
 
 ```bash script
-$ rickle conv -i test.yaml -o test.json
+$ rickle conv --input test.yaml --output test.json
 ```
 
 For each input file the output file can be defined and the path suffix is used to infer the desired output type.
+Using input and output will read and write to files. Alternatively:
 
-Alternatively the type can be specified with the `-t` flag.
+```bash script
+$ cat text.yaml | rickle conv --output-type json
+```
+
+The output type can be specified with the `--output-type` flag.
 
 ---
 

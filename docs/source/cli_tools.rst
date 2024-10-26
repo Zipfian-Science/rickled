@@ -70,18 +70,18 @@ or for example:
 
     cat config.yaml | rickle obj get /config/ecr/password | aws ecr get-login-password --password-stdin
 
-For all tools, the input can be a file flagged with ``-i`` and output can be directed to a file with ``-o``:
+For all tools, the input can be a file flagged with ``--input`` and output can be directed to a file with ``--output``:
 
 .. code-block:: shell
 
-    rickle obj -i config.yaml -o db_config.yaml get /config/database
+    rickle obj --input config.yaml --output db_config.yaml get /config/database
 
 Although this is often a less readable way and is only recommended for when it makes sense to do so.
 
 Output types
 ---------------------
 
-For most of the tools the output types can be specified with the ``-t`` flag and can be one of the following strings:
+For most of the tools the output types can be specified with the ``--output-type`` flag and can be one of the following strings:
 
 .. hlist::
    :columns: 1
@@ -93,6 +93,10 @@ For most of the tools the output types can be specified with the ``-t`` flag and
    * ini
    * env
    * list
+
+.. note::
+
+   The default output type for all tools is ``YAML``.
 
 Conversion tool
 ========================
@@ -110,12 +114,18 @@ Which will show the list of available options:
 .. code-block:: text
 
    -h, --help            show this help message and exit
-   -i input [input ...]  input file(s) to convert
-   -d dir [dir ...]      directory(s) of input files
-   -o output [output ...]
-                         output file names
-   -t type               default output file type (JSON, YAML)
-   -s                    suppress verbose output
+   --input INPUT [INPUT ...]
+                        input file(s) to convert
+   --input-directory INPUT_DIRECTORY
+                        directory of input files
+   --output OUTPUT [OUTPUT ...]
+                        output file names, only if --input given
+   --output-type OUTPUT_TYPE
+                        output file type (default = YAML)
+   --input-type INPUT_TYPE
+                        optional input type (type inferred if none)
+   --verbose             verbose output
+
 
 
 Convert YAML to JSON
@@ -125,45 +135,51 @@ To convert an input file ``config.json``, use the following:
 
 .. code-block:: shell
 
-    cat config.json | rickle conv -x JSON
+    cat config.json | rickle conv
 
-This will print the converted file ``config.json`` as YAML (default), or if specified ``-t`` type.
+This will print the converted file ``config.json`` as YAML (which is the default), or if specified ``--output-type`` type.
 
 .. note::
 
-   Because the input is piped, the input type needs to be explicitly stated using ``-x`` as in the example.
+   Because the input is piped, the input type is inferred but can explicitly be defined using the ``--input-type`` option.
 
-If input is given as ``-i`` flag, the input type can be inferred:
+If input is given as ``--input`` flag (or ``--input-directory``), the output will be a file with the same filename (with new extension).
 
 .. code-block:: shell
 
-    rickle conv -i config.json -x json
+    rickle conv --input config.json
 
 This will create a file ``config.yaml`` instead of printing.
 
 .. note::
 
-   The default output format is YAML. Use ``-t`` option for other formats.
+   The default output format is YAML. Use ``--output-type`` option for other formats.
 
 To specify the output type:
 
 .. code-block:: shell
 
-    cat config.yaml | rickle conv -t JSON -x YAML
+    cat config.yaml | rickle conv --output-type JSON
 
 This will create print the converted file.
 
 Glob whole directory
 ---------------------
 
-If the ``-d`` option is used with a directory name, all YAML and JSON files are converted to the same directory.
-The ``-t`` option is needed to specify the format or else ``YAML`` will be the default output format.
+If the ``--input-directory`` option is used with a directory name, all files with an extension are converted to the same directory.
+The ``--output-type`` option is needed to specify the format or else ``YAML`` will be the default output format.
 
 .. code-block:: shell
 
-    rickle conv -d ./configs -t YAML
+    rickle conv --input-directory ./configs --output-type TOML --verbose
 
-This will glob all files in the directory ``./configs``, including JSON and YAML files, and output them as YAML files with the same names.
+This will glob all files in the directory ``./configs``, including TOML files, and output them as TOML files with the same names.
+
+The ``--verbose`` prints a line of the filenames for each conversion.
+
+.. note::
+
+   The file extensions ``yaml``, ``yml``, ``json``, ``toml``, ``ini``, ``xml``, and ``env`` will be globbed.
 
 Define output filenames
 ---------------------
@@ -172,22 +188,22 @@ Input files can have output filenames explicitly defined:
 
 .. code-block:: shell
 
-    rickle conv -i config.yaml -o ./configs/config_dev.json
+    rickle conv --input config.yaml --output ./configs/config_dev.toml
 
-This will convert ``config.yaml`` to type ``JSON`` (because the type is inferred from the file extension)
-with a new name ``config_dev.json`` in the directory ``./configs``.
+This will convert ``config.yaml`` to type ``TOML`` (because the type is inferred from the file extension)
+with a new name ``config_dev.toml`` in the directory ``./configs``.
 
 Multiple files can be converted at once:
 
 .. code-block:: shell
 
-    rickle conv -i config_dev.yaml config_tst.yaml config_prd.yaml -t JSON
+    rickle conv --input config_dev.yaml config_tst.yaml config_prd.yaml --output-type JSON
 
 When specifying the output names, the order of output filenames must match the order of input files:
 
 .. code-block:: shell
 
-    rickle conv -i config_dev.yaml config_prd.yaml -o confDev.json confPrd.json
+    rickle conv --input config_dev.yaml config_prd.yaml --output confDev.json confPrd.json
 
 Troubleshooting Conv
 ---------------------
@@ -300,7 +316,7 @@ For example, getting the value of ``pswd``:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml get /root_node/level_one/pswd
+    cat conf.yaml | rickle obj get /root_node/level_one/pswd
 
 This will output the value to the command line:
 
@@ -312,7 +328,7 @@ Just about any paths value can be printed to the command line:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml get /root_node/level_one
+    cat conf.yaml | rickle obj get /root_node/level_one
 
 This will output:
 
@@ -325,7 +341,7 @@ To output the entire document:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml get /
+    cat conf.yaml | rickle obj get /
 
 Will result in:
 
@@ -344,7 +360,7 @@ Outputting the same in JSON:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml -t JSON get /
+    cat conf.yaml | rickle obj -t JSON get /
 
 .. code-block:: shell
 
@@ -361,7 +377,7 @@ To set a value in a document, the key needs be to a path, along with a value.
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml set /root_node/level_one/pswd **********
+    cat conf.yaml | rickle obj set /root_node/level_one/pswd **********
 
 This will set the ``pswd`` value to ``**********`` and print the whole document with new value to the command line.
 
@@ -380,7 +396,7 @@ For example, the following will output to a file:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml -t JSON -o conf.json set /root_node/level_one/pswd *********
+    cat conf.yaml | rickle obj -t JSON -o conf.json set /root_node/level_one/pswd *********
 
 .. code-block:: json
    :linenos:
@@ -389,11 +405,17 @@ For example, the following will output to a file:
 
     {"root_node": {"level_one": {"usr": "name", "pswd": "*********"}}}
 
+Of course this could also be directed:
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle obj -t JSON > conf.json
+
 A new key-value can be added, for example:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml set /root_node/level_one/email not@home.com
+    cat conf.yaml | rickle obj set /root_node/level_one/email not@home.com
 
 Results in the added key:
 
@@ -409,7 +431,7 @@ This will, however, not work in the following example and result in an error:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml set /root_node/level_one/unknown/email not@home.com
+    cat conf.yaml | rickle obj set /root_node/level_one/unknown/email not@home.com
 
 
 Which results in the error message:
@@ -425,7 +447,7 @@ To remove a value, use the ``del`` option:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml del /root_node/level_one/pswd
+    cat conf.yaml | rickle obj del /root_node/level_one/pswd
 
 Resulting in:
 
@@ -442,7 +464,7 @@ The ``type`` option will print the Python value type, for example:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml type /root_node/level_one/pswd
+    cat conf.yaml | rickle obj type /root_node/level_one/pswd
 
 .. code-block:: text
 
@@ -452,7 +474,7 @@ Or:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml type /root_node/level_one
+    cat conf.yaml | rickle obj type /root_node/level_one
 
 .. code-block:: text
 
@@ -481,7 +503,7 @@ To get the path to ``pswd``:
 
 .. code-block:: shell
 
-    rickle obj -i conf-multi.yaml search pswd
+    cat conf-multi.yaml | rickle obj search pswd
 
 Which will print the path as a YAML list by default (use the type ``-t`` flag for other output):
 
@@ -493,7 +515,7 @@ Where searching for the ``usr`` key:
 
 .. code-block:: shell
 
-    rickle obj -i conf-multi.yaml search usr
+    cat conf-multi.yaml | rickle obj search usr
 
 ...prints the following paths:
 
@@ -507,7 +529,7 @@ To print the values as is (instead of YAML or JSON), use the ``-t`` type ``list`
 
 .. code-block:: shell
 
-    rickle obj -i conf-multi.yaml -t list search usr
+    cat conf-multi.yaml | rickle obj -t list search usr
 
 ...prints the following paths:
 
@@ -569,7 +591,7 @@ To run the function and get the resulting:
 
 .. code-block:: shell
 
-    rickle obj -i get-area.yaml -l func /get_area z:int=10
+    cat get-area.yaml | rickle obj -l func /get_area z:int=10
 
 .. note::
 
@@ -603,7 +625,7 @@ Optionally types can be inferred using the ``-x`` option:
 
 .. code-block:: shell
 
-    rickle obj -i get-area.yaml -l func -x /get_area z=10
+    cat get-area.yaml | rickle obj -l func -x /get_area z=10
 
 Which should infer that ``z`` is an integer.
 
@@ -634,7 +656,7 @@ When running:
 
 .. code-block:: shell
 
-    rickle obj -i list-and-dict.yaml -l func -x /list_and_dict list_of_string="['shrt','looong']" dict_type="{'fifty' : 50}"
+    cat list-and-dict.yaml | rickle obj -l func -x /list_and_dict list_of_string="['shrt','looong']" dict_type="{'fifty' : 50}"
 
 The output would be:
 
@@ -648,7 +670,7 @@ Without using the ``-x`` option to infer the values and explicitly defining them
 
 .. code-block:: shell
 
-    rickle obj -i list-and-dict.yaml -l func /list_and_dict list_of_string:list="['shrt','looong']" dict_type:dict="{'fifty' : 50}"
+    cat list-and-dict.yaml | rickle obj -l func /list_and_dict list_of_string:list="['shrt','looong']" dict_type:dict="{'fifty' : 50}"
 
 Would produce the same results.
 
@@ -661,7 +683,7 @@ The most likely problem to occur is if the path can not be traversed, i.e. the p
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml -t JSON get /path_to_nowhere
+     cat conf.yaml | rickle obj -t JSON get /path_to_nowhere
 
 And this will result in printing nothing (default behaviour).
 

@@ -39,6 +39,11 @@ class HttpResource(resource.Resource):
             request.setHeader(b"content-type", b"text/html")
             response = f"<html><h1>Not Found</h1> {str(exc)}</html>"
             return response.encode("utf-8")
+        except Exception as exc:
+            request.setResponseCode(500)
+            request.setHeader(b"content-type", b"text/html")
+            response = f"<html><h1>Internal Server Error</h1> {str(exc)}</html>"
+            return response.encode("utf-8")
 
         request.setResponseCode(200)
         try:
@@ -92,21 +97,23 @@ class HttpResource(resource.Resource):
 
         return response.encode("utf-8")
 
-def serve_rickle_http(rickle, port: int = 8080, interface: str = '', serialised : bool = False, output_type: str = 'json'):
+def serve_rickle_http(rickle,
+                       port: int = 8080,
+                       interface: str = '',
+                       serialised: bool = False,
+                       output_type: str = 'json',
+                       path_to_private_key: str = None,
+                       path_to_certificate: str = None):
     log.startLogging(sys.stdout)
     site = server.Site(HttpResource(rickle, serialised=serialised, output_type=output_type))
-    reactor.listenTCP(port, site, interface=interface)
-    reactor.run()
 
-def serve_rickle_https(rickle, path_to_private_key: str, path_to_certificate: str, port: int = 8080,
-                       interface: str = '', serialised : bool = False, output_type: str = 'json'):
-    log.startLogging(sys.stdout)
-    ssl_context = ssl.DefaultOpenSSLContextFactory(
-        path_to_private_key,
-        path_to_certificate,
-    )
+    if path_to_private_key and path_to_certificate:
+        ssl_context = ssl.DefaultOpenSSLContextFactory(
+            path_to_private_key,
+            path_to_certificate,
+        )
+        reactor.listenSSL(port, site, ssl_context, interface=interface)
+    else:
+        reactor.listenTCP(port, site, interface=interface)
 
-    site = server.Site(HttpResource(rickle, serialised=serialised, output_type=output_type))
-
-    reactor.listenSSL(port, site, ssl_context, interface=interface)
     reactor.run()
