@@ -108,13 +108,13 @@ $ rickle schema check --help
 ```
 
 ```bash script
-$ rickle schema check -i test.yaml -c schema.yaml 
+$ rickle schema check --input test.yaml --schema schema.yaml 
 ```
 
 OR
 
 ```bash script
-$ cat test.yaml | rickle schema check -c schema.yaml 
+$ cat test.yaml | rickle schema check --schema schema.yaml 
 ```
 
 ---
@@ -128,7 +128,7 @@ $ rickle schema gen --help
 ```
 
 ```bash script
-$ rickle schema gen -i test.yaml
+$ rickle schema gen --input test.yaml
 ```
 
 This will generate a schema file called `test.schema.yaml`.
@@ -136,7 +136,7 @@ This will generate a schema file called `test.schema.yaml`.
 OR
 
 ```bash script
-$ cat test.yaml | rickle schema gen -t json
+$ cat test.yaml | rickle schema gen --output-type json
 ```
 
 This will generate a schema and print the output, in this example in JSON.
@@ -233,7 +233,7 @@ values:
 ### 4.2 Get
 
 ```bash script
-$ rickle obj -i test.yaml get /
+$ rickle obj --input test.yaml get /
 ```
 
 OR
@@ -250,7 +250,7 @@ simply be `one`.
 ### 4.2 Set
 
 ```bash script
-$ rickle obj -i test.yaml set /path/to/values/[1] foo
+$ rickle obj --input test.yaml set /path/to/values/[1] foo
 ```
 
 OR
@@ -289,7 +289,7 @@ path:
 Document paths can be searched:
 
 ```bash script
-$ rickle obj -i test.yaml search key
+$ rickle obj --input test.yaml search key
 ```
 
 OR
@@ -305,7 +305,7 @@ Will output the following (in YAML):
 - /path/and/another/key
 ```
 
-Different output types are passed with the `-t` flag, including the `list` type to print paths as lines. 
+Different output types are passed with the `--output-type` flag, including the `list` type to print paths as lines. 
 
 ---
 
@@ -318,14 +318,21 @@ $ rickle serve --help
 ```
 
 ```bash script
-$ rickle serve -f basic_example.yaml
+$ rickle serve --input basic_example.yaml
 ```
-This will start listening on http://localhost:8080, for requests using `GET`. 
 
-Alternatively serve via ssl:
+OR
 
 ```bash script
-$ rickle serve -f basic_example.yaml -c ./certificate.crt -k ./privkey.pem
+$ cat basic_example.yaml | rickle serve
+```
+
+This will start listening on http://localhost:8080, for requests using `GET`. 
+
+Alternatively serve through SSL:
+
+```bash script
+$ cat basic_example.yaml | rickle serve --certificate ./certificate.crt --private-key ./privkey.pem
 ```
 
 This will start listening on https://localhost:8080. 
@@ -333,26 +340,27 @@ This will start listening on https://localhost:8080.
 Furthermore, define host or port:
 
 ```bash script
-$ rickle serve -f basic_example.yaml -a localhost -p 8077
+$ cat basic_example.yaml | rickle serve --host "0.0.0.0" --port 8077
 ```
 
-This will start listening on https://localhost:8077. 
+This will start listening on https://0.0.0.0:8077. 
 
 Automatically open a new browser tab:
 
 ```bash script
-$ rickle serve -f basic_example.yaml -b
+$ cat basic_example.yaml | rickle serve -b
 ```
 
 Add Python functions to the YAML file (unsafe!):
 
 ```bash script
-$ rickle serve -f unsafe_example.yaml -x -l
+$ export RICKLE_UNSAFE_LOAD=1
+$ cat unsafe_example.yaml | rickle serve --unsafe --load-lambda
 ```
 
 This will start listening on http://localhost:8080, 
 and if there are Python functions defined in the YAML file, these will be executable. 
-This is a security risk though, and should only be used with caution.
+This holds **security risks** though, and should only be used with caution.
 
 ---
 

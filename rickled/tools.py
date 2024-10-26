@@ -343,12 +343,15 @@ class Schema:
         supported_list.append(f"{cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}")
     supported = '- ' + '\n- '.join(supported_list)
 
+    supported_output = ['yaml', 'json', 'toml', 'xml']
+
     def __init__(self,
                  input_files: List[str] = None,
                  input_directories: List[str] = None,
                  schema: Union[str, dict] = None,
                  output_files: List[str] = None,
                  output_dir: str = None,
+                 verbose: bool = False,
                  silent: bool = False,
                  default_output_type: str = 'yaml'
                  ):
@@ -365,6 +368,7 @@ class Schema:
 
         self.output_dir = output_dir
 
+        self.verbose = verbose
         self.silent = silent
         if default_output_type.strip().lower() == 'yml':
             default_output_type = 'yaml'
@@ -417,7 +421,7 @@ class Schema:
                     with output_file.open("wb") as fout:
                         tomlw.dump(toml_null_stripper(schema), fout)
                 else:
-                    raise ValueError(f"Cannot dump to format {suffix}, only supported {Schema.supported_list}")
+                    raise ValueError(f"Cannot dump to format {suffix}, only supported {Schema.supported_output}")
 
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
@@ -453,7 +457,7 @@ class Schema:
             try:
                 input_data = Converter.infer_read_file_type(file)
 
-                passed = Schema.schema_validation(input_data, self.schema, no_print=self.silent)
+                passed = Schema.schema_validation(input_data, self.schema, no_print=not self.verbose)
 
                 if not passed:
                     failed_validation.append(file)
@@ -570,6 +574,8 @@ class Schema:
         """
         if not 'type' in schema.keys():
             raise ValueError(f'No type defined in {str(schema)}!')
+
+        _path_sep = os.getenv("RICKLE_PATH_SEP", "/")
 
         def _check_type(object_value, schema_info, is_nullable):
 
@@ -773,7 +779,7 @@ class Schema:
         new_path = path
         if schema['type'] == 'dict':
             for k, v in schema['schema'].items():
-                new_path = f"{new_path}/{k}"
+                new_path = f"{new_path}{_path_sep}{k}"
                 req = v.get('required', False)
                 nullable = v.get('nullable', False)
                 present = k in obj.keys()
@@ -817,7 +823,7 @@ class Schema:
                 single_type = schema['schema'][0]
 
                 for i in range(obj_length):
-                    new_path = f"{new_path}/[{i}]"
+                    new_path = f"{new_path}{_path_sep}[{i}]"
                     o = obj[i]
                     if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
                         if not no_print:

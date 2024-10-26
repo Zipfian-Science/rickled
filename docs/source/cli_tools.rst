@@ -244,16 +244,23 @@ Which will show the following list of options:
 
    optional arguments:
       -h, --help            show this help message and exit
-      -i input              input file to read/modify
-      -o output             output file to save modified
-      -t type               output type (JSON, YAML)
-      -l                    load lambda types
+      --input INPUT         input file to create object from
+      --output OUTPUT       write to output file
+      --output-type OUTPUT_TYPE
+                            output type (default = YAML)
+      --load-lambda         load lambda types
 
-Using this tool requires input of a YAML or JSON file. This is done with the ``-i`` option.
+Using this tool requires input of a YAML, JSON, TOML (etc.) file. This is done with the ``--input`` option.
 
 .. code-block:: shell
 
-    rickle obj -i config.yaml <VERB>
+    rickle obj --input config.yaml <VERB>
+
+Or
+
+.. code-block:: shell
+
+    cat config.yaml | rickle obj <VERB>
 
 Where ``<VERB>`` can be one of the following:
 
@@ -354,7 +361,7 @@ Will result in:
 
 .. note::
 
-   The default output is always YAML. To change the format, add the ``-t`` option to ``obj``.
+   The default output is always YAML. To change the format, add the ``--output-type`` option to ``obj``.
 
 Outputting the same in JSON:
 
@@ -368,7 +375,7 @@ Outputting the same in JSON:
 
 .. note::
 
-   If the ``-o`` option in ``obj`` is used to output to a file, the result is not printed to screen.
+   If the ``--output`` option in ``obj`` is used to output to a file, the result is not printed to screen.
 
 Set
 ---------------------
@@ -390,13 +397,13 @@ This will set the ``pswd`` value to ``**********`` and print the whole document 
 
 .. note::
 
-   If the ``-o`` option in ``obj`` is used to output to a file, the result is not printed to screen.
+   If the ``--output`` option in ``obj`` is used to output to a file, the result is not printed to screen.
 
 For example, the following will output to a file:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj -t JSON -o conf.json set /root_node/level_one/pswd *********
+    cat conf.yaml | rickle obj --output-type JSON --output conf.json set /root_node/level_one/pswd *********
 
 .. code-block:: json
    :linenos:
@@ -409,7 +416,7 @@ Of course this could also be directed:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj -t JSON > conf.json
+    cat conf.yaml | rickle obj --output-type JSON > conf.json
 
 A new key-value can be added, for example:
 
@@ -468,7 +475,7 @@ The ``type`` option will print the Python value type, for example:
 
 .. code-block:: text
 
-   <class 'str'>
+   str
 
 Or:
 
@@ -478,7 +485,25 @@ Or:
 
 .. code-block:: text
 
-   <class 'rickled.Rickle'>
+   Rickle
+
+Using ``--output-type`` the printed type changes. Available types include ``YAML``, ``JSON``, ``TOML``, ``XML``, and ``python``.
+
+Depending on this type, the value could be:
+
+.. code-block:: text
+
+   Python |    YAML |    JSON |      TOML |            XML |
+   =========================================================
+   str    |     str |  string |    String |      xs:string |
+   int    |     int |  number |   Integer |     xs:integer |
+   float  |   float |  number |     Float |     xs:decimal |
+   bool   | boolean | boolean |   Boolean |     xs:boolean |
+   list   |     seq |   array |     Array |    xs:sequence |
+   dict   |     map |  object | Key/Value | xs:complexType |
+   bytes  |  binary |         |           |                |
+   ---------------------------------------------------------
+   *      |  Python |  object |     Other |         xs:any |
 
 Search
 ---------------------
@@ -505,7 +530,7 @@ To get the path to ``pswd``:
 
     cat conf-multi.yaml | rickle obj search pswd
 
-Which will print the path as a YAML list by default (use the type ``-t`` flag for other output):
+Which will print the path as a YAML list by default (use the type ``--output-type`` flag for other output):
 
 .. code-block:: yaml
 
@@ -525,11 +550,11 @@ Where searching for the ``usr`` key:
    - /root_node/level_one/usr
    - /root_node/other/usr
 
-To print the values as is (instead of YAML or JSON), use the ``-t`` type ``list``:
+To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``list``:
 
 .. code-block:: shell
 
-    cat conf-multi.yaml | rickle obj -t list search usr
+    cat conf-multi.yaml | rickle obj --output-type list search usr
 
 ...prints the following paths:
 
@@ -557,7 +582,7 @@ For using functions, see :ref:`functions <sect-ext-usage-functions>` usage.
 
    optional arguments:
      -h, --help  show this help message and exit
-     -x          infer parameter types
+     --infer          infer parameter types
 
 Where ``key`` is the path to the function
 
@@ -591,11 +616,12 @@ To run the function and get the resulting:
 
 .. code-block:: shell
 
-    cat get-area.yaml | rickle obj -l func /get_area z:int=10
+    export RICKLE_UNSAFE_LOAD=1
+    cat get-area.yaml | rickle obj --load-lambda func /get_area z:int=10
 
 .. note::
 
-   To load the function the ``-l`` flag must be specified. Please see the warning above again before proceeding.
+   To load the function the ``--load-lambda`` flag must be added. Please see the warning above again before proceeding.
    Running unknown code is dangerous and should not be done without fully understanding what the code does.
 
 Which will output:
@@ -621,11 +647,12 @@ The parameter types are:
    * list
    * dict
 
-Optionally types can be inferred using the ``-x`` option:
+Optionally types can be inferred using the ``--infer`` option:
 
 .. code-block:: shell
 
-    cat get-area.yaml | rickle obj -l func -x /get_area z=10
+    export RICKLE_UNSAFE_LOAD=1
+    cat get-area.yaml | rickle obj --load-lambda func -x /get_area z=10
 
 Which should infer that ``z`` is an integer.
 
@@ -656,7 +683,8 @@ When running:
 
 .. code-block:: shell
 
-    cat list-and-dict.yaml | rickle obj -l func -x /list_and_dict list_of_string="['shrt','looong']" dict_type="{'fifty' : 50}"
+    export RICKLE_UNSAFE_LOAD=1
+    cat list-and-dict.yaml | rickle obj --load-lambda func --infer /list_and_dict list_of_string="['shrt','looong']" dict_type="{'fifty' : 50}"
 
 The output would be:
 
@@ -666,11 +694,12 @@ The output would be:
    looong - of length 6
    {"fifty": 50}
 
-Without using the ``-x`` option to infer the values and explicitly defining them:
+Without using the ``--infer`` option to infer the values and explicitly defining them:
 
 .. code-block:: shell
 
-    cat list-and-dict.yaml | rickle obj -l func /list_and_dict list_of_string:list="['shrt','looong']" dict_type:dict="{'fifty' : 50}"
+    export RICKLE_UNSAFE_LOAD=1
+    cat list-and-dict.yaml | rickle obj --load-lambda func /list_and_dict list_of_string:list="['shrt','looong']" dict_type:dict="{'fifty' : 50}"
 
 Would produce the same results.
 
@@ -683,7 +712,7 @@ The most likely problem to occur is if the path can not be traversed, i.e. the p
 
 .. code-block:: shell
 
-     cat conf.yaml | rickle obj -t JSON get /path_to_nowhere
+     cat conf.yaml | rickle obj --output-type JSON get /path_to_nowhere
 
 And this will result in printing nothing (default behaviour).
 
@@ -779,26 +808,30 @@ It will print the following to STDOUT:
 
 .. note::
 
-   This can be suppressed by using the ``-s`` flag.
+   This can be suppressed by using the ``--silent`` flag.
 
-Of course the type can also be defined by either using ``-t``:
+.. note::
+
+   Note that if no output name is given the filename becomes <filename>.schema.<ext>.
+
+Of course the type can also be defined by either using ``--output-type``:
 
 .. code-block:: shell
 
-    rickle schema gen -i my-example.yaml -t JSON
+    rickle schema gen --input my-example.yaml --output-type JSON
 
 Or implicitly with extensions in filenames:
 
 .. code-block:: shell
 
-    rickle schema gen -i my-example.yaml -o my-example.schema.json
+    rickle schema gen --input my-example.yaml --output my-schema.json
 
 Which will result in:
 
 .. code-block:: json
    :linenos:
-   :caption: my-example.schema.json
-   :name: my-example-schema-json
+   :caption: my-schema.json
+   :name: my-schema-json
 
    {
      "type": "dict",
@@ -860,7 +893,7 @@ Example:
 
 .. code-block:: shell
 
-    rickle schema check -i my-example.yaml -c my-example.schema.json
+    cat my-example.yaml | rickle schema check --schema my-example.schema.json
 
 Will print the following if passed:
 
@@ -874,7 +907,15 @@ Or if failed the test:
 
    my-example.yaml -> FAIL
 
-Furthermore a message detailing the failure will be printed, for example:
+.. note::
+
+   If the input is piped and the input fails the check, the program exits with code 1.
+
+Furthermore a message detailing the failure can be printed using ``--verbose`` output, for example:
+
+.. code-block:: shell
+
+    cat my-example.yaml | rickle schema check --schema my-example.schema.json --verbose
 
 .. code-block:: shell
 
@@ -883,17 +924,17 @@ Furthermore a message detailing the failure will be printed, for example:
     In {'key_one': '99', 'key_two': 'text'},
     Path /root/dict_type/key_one
 
-Should output be suppressed, adding the ``-s`` can be used.
-Furthermore, failed input files can be moved to directory using ``-o``:
+Should output be suppressed, adding the ``--silent`` can be used.
+Furthermore, input files that fail the check can be moved to directory using ``--fail-directory``:
 
 .. code-block:: shell
 
-    rickle schema check -i my-example.yaml -c my-example.schema.json -o ./failed -s
+    rickle schema check --input-directory ./configs --schema my-example.schema.json --fail-directory ./failed -s
 
 Serve tool
 ========================
 
-This is a little tool to serve the a YAML or JSON file as a mini API.
+This is a little tool to serve the a YAML or JSON (or TOML, XML, INI) file as a mini API.
 
 Example
 ------------------------
@@ -936,13 +977,13 @@ If running the serve tool with the option ``-b`` a new tab in the browser will b
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b
+   cat mock-example.yaml | rickle serve -b
 
-A port number can be defined specified using ``-p``:
+A port number can be defined specified using ``--port``:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -p 3301
+   cat mock-example.yaml | rickle serve -b --port 3301
 
 Using the given example input file the following JSON data will be returned:
 
@@ -968,7 +1009,7 @@ Using the given example input file the following JSON data will be returned:
 
 .. note::
 
-   The text for ``heavens_gate`` is excluded.
+   The text for ``heavens_gate`` is excluded for space (and your sanity).
 
 Calling ``http://localhost:3301/root/random_joke`` will return (example):
 
@@ -985,13 +1026,13 @@ Furthermore, SSL can be used:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -p 3301 -k .\local.pem -c .\local.crt
+   cat mock-example.yaml | rickle serve -b --port 3301 --private-key .\local.pem --certificate .\local.crt
 
 And finally, if the given YAML or JSON file needs to be given in serialised form, use ``-s``:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -s
+   cat mock-example.yaml | rickle serve -b -s
 
 which will give the following:
 
@@ -1042,11 +1083,11 @@ which will give the following:
      }
    }
 
-Output can also be given as ``application/yaml`` with YAML output using the ``-t`` option:
+Output can also be given as ``application/yaml`` with YAML output using the ``--output-type`` option:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -t YAML
+   cat mock-example.yaml | rickle serve -b --output-type YAML
 
 Which will produce the YAML output:
 
@@ -1067,3 +1108,49 @@ Which will produce the YAML output:
 .. note::
 
    In some browsers, the YAML output will be downloaded as data and not rendered in the browser.
+
+Unsafe usage
+------------------------
+
+.. warning::
+
+   Loading unknown code can be potentially dangerous. Only load files that you are fully aware what the Python code will do once executed.
+   In general, a safe rule of thumb should be: don't load any Python code.
+
+To enabled functions, the environment variable ``RICKLE_UNSAFE_LOAD`` has to be set, and ``--load-lambda`` and ``--unsafe`` passed.
+Using the ``get-area.yaml`` example again:
+
+.. code-block:: yaml
+   :linenos:
+   :caption: get-area.yaml
+   :name: get-area-yaml
+
+    get_area:
+      type: function
+      name: get_area
+      args:
+         x: 10
+         y: 10
+         z: null
+         f: 0.7
+      import:
+         - math
+      load: >
+         def get_area(x, y, z, f):
+            if not z is None:
+               area = (x * y) + (x * z) + (y * z)
+               area = 2 * area
+            else:
+               area = x * y
+            return math.floor(area * f)
+
+.. code-block:: shell
+
+   export RICKLE_UNSAFE_LOAD=1
+   cat get-area.yaml | rickle serve --load-lambda --unsafe
+
+Then the endpoint can be called:
+
+.. code-block:: shell
+
+   curl http://localhost:8080/get_area?x=15&y=5&z=25

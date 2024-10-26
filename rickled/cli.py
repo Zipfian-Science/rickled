@@ -76,15 +76,15 @@ def conv(args):
 def obj_get(args):
     try:
         if args:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
 
-            r = Rickle(_input, load_lambda=args.l)
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
 
             v = r.get(args.key)
-            dump_type = args.t.lower()
+            dump_type = args.OUTPUT_TYPE.lower()
 
             if isinstance(v, Rickle):
                 v = v.dict()
@@ -93,21 +93,21 @@ def obj_get(args):
             elif v is None:
                 v = ''
 
-            if args.o:
+            if args.OUTPUT:
 
                 if dump_type == 'yaml':
-                    with open(args.o, 'w') as fp:
+                    with open(args.OUTPUT, 'w') as fp:
                         yaml.safe_dump(v, fp)
                 elif dump_type == 'json':
-                    with open(args.o, 'w') as fp:
+                    with open(args.OUTPUT, 'w') as fp:
                         json.dump(v, fp)
                 elif dump_type == 'toml':
-                    with open(args.o, 'wb') as fp:
+                    with open(args.OUTPUT, 'wb') as fp:
                         tomlw.dump(toml_null_stripper(v), fp)
                 elif dump_type == 'xml':
                     if importlib.util.find_spec('xmltodict'):
                         import xmltodict
-                        with open(args.o, 'wb') as fp:
+                        with open(args.OUTPUT, 'wb') as fp:
                             xmltodict.unparse(v, fp)
                     else:
                         raise ImportError("Missing 'xmltodict' dependency")
@@ -120,7 +120,7 @@ def obj_get(args):
                         v = toml_null_stripper(v)
                         output_ini = unparse_ini(dictionary=v, path_sep=path_sep, list_brackets=list_brackets)
 
-                        with open(args.o, 'w') as fp:
+                        with open(args.OUTPUT, 'w') as fp:
                             output_ini.write(fp)
 
                     else:
@@ -170,25 +170,25 @@ def obj_get(args):
 def obj_set(args):
     try:
         if args:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            r = Rickle(_input, load_lambda=args.l)
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             r.set(args.key, args.value)
-            dump_type = args.t.lower()
+            dump_type = args.OUTPUT_TYPE.lower()
 
-            if args.o:
+            if args.OUTPUT:
                 if dump_type == 'yaml':
-                    r.to_yaml(output=args.o)
+                    r.to_yaml(output=args.OUTPUT)
                 elif dump_type == 'json':
-                    r.to_json(output=args.o)
+                    r.to_json(output=args.OUTPUT)
                 elif dump_type == 'toml':
-                    r.to_toml(output=args.o)
+                    r.to_toml(output=args.OUTPUT)
                 elif dump_type == 'xml':
-                    r.to_xml(output=args.o)
+                    r.to_xml(output=args.OUTPUT)
                 elif dump_type == 'ini':
-                    r.to_ini(output=args.o)
+                    r.to_ini(output=args.OUTPUT)
                 else:
                     raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_SET)
 
@@ -213,25 +213,25 @@ def obj_set(args):
 def obj_del(args):
     try:
         if args:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            r = Rickle(_input, load_lambda=args.l)
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             r.remove(args.key)
-            dump_type = args.t.lower()
+            dump_type = args.OUTPUT_TYPE.lower()
 
-            if args.o:
+            if args.OUTPUT:
                 if dump_type == 'yaml':
-                    r.to_yaml(output=args.o)
+                    r.to_yaml(output=args.OUTPUT)
                 elif dump_type == 'json':
-                    r.to_json(output=args.o)
+                    r.to_json(output=args.OUTPUT)
                 elif dump_type == 'toml':
-                    r.to_toml(output=args.o)
+                    r.to_toml(output=args.OUTPUT)
                 elif dump_type == 'xml':
-                    r.to_xml(output=args.o)
+                    r.to_xml(output=args.OUTPUT)
                 elif dump_type == 'ini':
-                    r.to_ini(output=args.o)
+                    r.to_ini(output=args.OUTPUT)
                 else:
                     raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_DEL)
             else:
@@ -254,28 +254,95 @@ def obj_del(args):
 def obj_type(args):
     try:
         if args:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            r = Rickle(_input, load_lambda=args.l)
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             v = r.get(args.key)
-            print(type(v))
+
+            yaml_types = {
+                'str': 'str',
+                'int': 'int',
+                'float': 'float',
+                'bool': 'boolean',
+                'list': 'seq',
+                'dict': 'map',
+                'Rickle': 'map',
+                'UnsafeRickle': 'map',
+                'BaseRickle': 'map',
+                'bytes': 'binary'
+            }
+
+            json_types = {
+                'str': 'string',
+                'int': 'number',
+                'float': 'number',
+                'bool': 'boolean',
+                'list': 'array',
+                'dict': 'object',
+                'Rickle': 'object',
+                'UnsafeRickle': 'object',
+                'BaseRickle': 'object',
+            }
+
+            toml_types = {
+                'str': 'String',
+                'int': 'Integer',
+                'float': 'Float',
+                'bool': 'Boolean',
+                'list': 'Array',
+                'dict': 'Key/Value',
+                'Rickle': 'Key/Value',
+                'UnsafeRickle': 'Key/Value',
+                'BaseRickle': 'Key/Value',
+            }
+
+            xml_types = {
+                'str': 'xs:string',
+                'int': 'xs:integer',
+                'float': 'xs:decimal',
+                'bool': 'xs:boolean',
+                'list': 'xs:sequence',
+                'dict': 'xs:complexType',
+                'Rickle': 'xs:complexType',
+                'UnsafeRickle': 'xs:complexType',
+                'BaseRickle': 'xs:complexType',
+            }
+
+            output_type = args.OUTPUT_TYPE.strip().lower()
+
+            python_type = type(v).__name__
+
+            if output_type == 'yaml':
+                print(yaml_types.get(python_type, 'Python'))
+            elif output_type == 'json':
+                print(json_types.get(python_type, 'object'))
+            elif output_type == 'toml':
+                print(toml_types.get(python_type, 'Other'))
+            elif output_type == 'xml':
+                print(xml_types.get(python_type, 'xs:any'))
+            elif output_type in ["ini", "env", "python"]:
+                print(python_type)
+            else:
+                raise CLIError(f"Unsupported output type {output_type}, try YAML, JSON, TOML, XML, or Python",
+                               cli_tool=CLIError.CLITool.OBJ_GET)
+
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_TYPE)
 
 def obj_search(args):
     try:
         if args:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            r = Rickle(_input, load_lambda=args.l)
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
 
             paths = r.search_path(args.key)
 
-            dump_type = args.t.lower()
+            dump_type = args.OUTPUT_TYPE.lower()
 
             if dump_type == 'json':
                 print(json.dumps(paths))
@@ -285,7 +352,7 @@ def obj_search(args):
                 for p in paths:
                     print(p)
             else:
-                raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_SEARCH)
+                raise CLIError(f"Unsupported dump type {dump_type}, only YAML, JSON, and LIST", cli_tool=CLIError.CLITool.OBJ_SEARCH)
 
 
     except Exception as exc:
@@ -328,12 +395,12 @@ def obj_func(args):
     try:
         re_pat = re.compile(r"(.+?)=(.+)")
         if args:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            r = UnsafeRickle(_input, load_lambda=args.l)
-            dump_type = args.t.lower()
+            r = UnsafeRickle(_input, load_lambda=args.LOAD_LAMBDA)
+            dump_type = args.OUTPUT_TYPE.lower()
 
             params = dict()
             if args.params:
@@ -344,7 +411,7 @@ def obj_func(args):
                     if ':' in param_name:
                         param_name, ptype = param_name.split(':')
                         param_value = parse_type(ptype, param_value)
-                    elif args.x:
+                    elif args.infer:
                         param_value = guess_parse(param_value)
 
                     params[param_name] = param_value
@@ -389,73 +456,78 @@ def serve(args):
         return
 
     try:
-        if args.x:
-            if args.i:
-                _input = args.i
+        if args.UNSAFE:
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            rick = UnsafeRickle(_input, load_lambda=args.l, RICKLE_PATH_SEP='/')
+            rick = UnsafeRickle(_input, load_lambda=args.LOAD_LAMBDA, RICKLE_PATH_SEP='/')
         else:
-            if args.i:
-                _input = args.i
+            if args.INPUT:
+                _input = args.INPUT
             else:
                 _input = sys.stdin.read()
-            rick = Rickle(_input, load_lambda=args.l, RICKLE_PATH_SEP='/')
+            rick = Rickle(_input, load_lambda=args.LOAD_LAMBDA, RICKLE_PATH_SEP='/')
 
         if args.b:
             import webbrowser
-            host = 'localhost' if args.a == '' else args.a
-            scheme = 'https' if args.c and args.k else 'http'
-            webbrowser.open(f'{scheme}://{host}:{args.p}', new=2)
+
+            scheme = 'https' if args.CERTIFICATE and args.PRIVATE_KEY else 'http'
+            webbrowser.open(f'{scheme}://{args.HOST}:{args.PORT}', new=2)
 
         serve_rickle_http(rickle=rick,
-                          port=args.p,
-                          interface=args.a,
+                          port=args.PORT,
+                          interface=args.HOST,
                           serialised=args.s,
-                          output_type=args.t,
-                          path_to_certificate=args.c,
-                          path_to_private_key=args.k,
+                          output_type=args.OUTPUT_TYPE,
+                          path_to_certificate=args.CERTIFICATE,
+                          path_to_private_key=args.PRIVATE_KEY,
                         )
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SERVE)
 
 def check(args):
     try:
-        if args.i:
-            Schema(input_files=args.i,
-                   input_directories=args.d,
-                   schema=args.c,
-                   output_dir=args.o,
-                   silent=args.s).do_validation()
+        if args.INPUT:
+            Schema(input_files=args.INPUT,
+                   input_directories=args.INPUT_DIRECTORY,
+                   schema=args.SCHEMA,
+                   output_dir=args.FAIL_DIRECTORY,
+                   verbose=args.VERBOSE,
+                   silent=args.SILENT).do_validation()
         else:
             data = sys.stdin.read()
             input_data = Converter.infer_read_string_type(data)
 
-            schema = Converter.infer_read_file_type(args.c)
+            schema = Converter.infer_read_file_type(args.SCHEMA)
 
-            passed = Schema.schema_validation(input_data, schema, no_print=args.s)
+            passed = Schema.schema_validation(input_data, schema, no_print=not args.VERBOSE)
 
-            result = f"{cli_bcolors.OKGREEN}OK{cli_bcolors.ENDC}" if passed else f"{cli_bcolors.FAIL}FAIL{cli_bcolors.ENDC}"
-            print(f"{cli_bcolors.OKBLUE}Input{cli_bcolors.ENDC} -> {result}")
+            if not args.SILENT:
+                result = f"{cli_bcolors.OKGREEN}OK{cli_bcolors.ENDC}" if passed else f"{cli_bcolors.FAIL}FAIL{cli_bcolors.ENDC}"
+                print(f"{cli_bcolors.OKBLUE}INPUT{cli_bcolors.ENDC} -> {result}")
+
+            if not passed:
+                sys.exit(1)
 
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_CHECK)
 
 def gen(args):
     try:
-        if args.i:
-            Schema(input_files=args.i,
-                   input_directories=args.d,
-                   output_files=args.o,
-                   silent=args.s,
-                   default_output_type=args.t).do_generation()
+        if args.INPUT:
+            Schema(input_files=args.INPUT,
+                   input_directories=args.INPUT_DIRECTORY,
+                   output_files=args.OUTPUT,
+                   silent=args.SILENT,
+                   default_output_type=args.OUTPUT_TYPE).do_generation()
         else:
             data = sys.stdin.read()
             input_data = Converter.infer_read_string_type(data)
 
             schema_dict = Schema.generate_schema_from_obj(input_data)
 
-            ttype = args.t.lower().strip()
+            ttype = args.OUTPUT_TYPE.lower().strip()
 
 
             if ttype == 'yaml':
@@ -556,29 +628,35 @@ Supported formats:
                              type=str,
                              help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to convert",
                              nargs='+',
+                             metavar='',
                              default=None)
     parser_conv.add_argument('--input-directory',
                              dest='INPUT_DIRECTORY',
                              type=str,
+                             metavar='',
                              help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC} of input files",
                              default=None)
     parser_conv.add_argument('--output',
                              dest='OUTPUT',
                              type=str,
+                             metavar='',
                              help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} names, only if --input given",
                              nargs='+',
                              default=None)
     parser_conv.add_argument('--output-type',
                              dest='OUTPUT_TYPE',
                              type=str,
+                             metavar='',
                              help=f"output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (default = YAML)",
                              default='yaml')
     parser_conv.add_argument('--input-type',
                              dest='INPUT_TYPE',
                              type=str,
+                             metavar='',
                              help=f"optional input {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (type inferred if none)",
                              default=None)
     parser_conv.add_argument('--verbose',
+                             '-v',
                              dest='VERBOSE',
                              action='store_true',
                              help=f"{cli_bcolors.OKBLUE}verbose{cli_bcolors.ENDC} output", )
@@ -594,22 +672,36 @@ Supported formats:
 
 
     parser_obj = subparsers.add_parser('obj',
-                                       help=f'Tool for {cli_bcolors.OKBLUE}accessing/manipulating{cli_bcolors.ENDC} YAML files',
+                                       help=f'Tool for reading or editing {cli_bcolors.OKBLUE} objects {cli_bcolors.ENDC}',
                                        formatter_class=argparse.RawTextHelpFormatter,
                                        description=f"""
-
-    {cli_bcolors.HEADER}Tool for accessing/manipulating YAML files{cli_bcolors.ENDC}.
+{cli_bcolors.HEADER}Tool for reading or editing files in different formats{cli_bcolors.ENDC}.
+Input is used to create a Rickle {cli_bcolors.HEADER}object{cli_bcolors.ENDC} which can then be queried and further modified.
         """,
                                        )
 
-    parser_obj.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC} to read/modify",
-                            metavar='input', default=None)
-    parser_obj.add_argument('-o', type=str, help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} to save modified",
-                            metavar='output', required=False)
-    parser_obj.add_argument('-t', type=str,
-                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
-                            default='yaml', metavar='type')
-    parser_obj.add_argument('-l', action='store_true', help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} types",
+    parser_obj.add_argument('--input',
+                            dest='INPUT',
+                            type=str,
+                            metavar='',
+                            help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC} to create object from",
+                            default=None)
+    parser_obj.add_argument('--output',
+                            dest='OUTPUT',
+                            type=str,
+                            metavar='',
+                            help=f"write to {cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC}",
+                            required=False)
+    parser_obj.add_argument('--output-type',
+                            dest='OUTPUT_TYPE',
+                            type=str,
+                            metavar='',
+                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (default = YAML)",
+                            default='yaml')
+    parser_obj.add_argument('--load-lambda',
+                            dest='LOAD_LAMBDA',
+                            action='store_true',
+                            help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} types",
                             default=False)
 
     subparsers_obj = parser_obj.add_subparsers()
@@ -621,14 +713,21 @@ Supported formats:
     #  \___|___| |_|
 
     get_obj_parser = subparsers_obj.add_parser('get',
-                                               help=f'{cli_bcolors.OKBLUE}Getting{cli_bcolors.ENDC} values from YAML files',
+                                               help=f'{cli_bcolors.OKBLUE}Getting{cli_bcolors.ENDC} values from objects',
+                                               formatter_class=argparse.RawTextHelpFormatter,
                                                description=f"""
+{cli_bcolors.HEADER}Tool for getting values from objects{cli_bcolors.ENDC}.
 
-        {cli_bcolors.HEADER}Tool for getting values from YAML files{cli_bcolors.ENDC}.
-            """,
-                                               )
+Examples: 
 
-    get_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to get value",
+    $ cat config.yaml | rickle obj get /path/to
+    $ rickle obj --input conf1.yaml --output-type JSON get /path/to  
+    
+""",)
+
+    get_obj_parser.add_argument('key',
+                                type=str,
+                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} (path) to get value",
                                 metavar='key')
 
     get_obj_parser.set_defaults(func=obj_get)
@@ -640,16 +739,26 @@ Supported formats:
     # |___/___| |_|
 
     set_obj_parser = subparsers_obj.add_parser('set',
-                                               help=f'{cli_bcolors.OKBLUE}Setting{cli_bcolors.ENDC} values in YAML files',
+                                               formatter_class=argparse.RawTextHelpFormatter,
+                                               help=f'{cli_bcolors.OKBLUE}Setting{cli_bcolors.ENDC} values in objects',
                                                description=f"""
+{cli_bcolors.HEADER}Tool for setting values in objects{cli_bcolors.ENDC}.
 
-            {cli_bcolors.HEADER}Tool for setting values in YAML files{cli_bcolors.ENDC}.
-                """,
+Examples: 
+
+    $ cat config.yaml | rickle obj set /path/to new_value
+    $ rickle obj --input conf1.yaml --output-type JSON set /path/to new_value  
+    
+""",
                                                )
 
-    set_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to set value",
+    set_obj_parser.add_argument('key',
+                                type=str,
+                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to set value",
                                 metavar='key')
-    set_obj_parser.add_argument('value', type=str, help=f"{cli_bcolors.OKBLUE}Value{cli_bcolors.ENDC} to set",
+    set_obj_parser.add_argument('value',
+                                type=str,
+                                help=f"{cli_bcolors.OKBLUE}Value{cli_bcolors.ENDC} to set",
                                 metavar='value')
 
     set_obj_parser.set_defaults(func=obj_set)
@@ -661,14 +770,19 @@ Supported formats:
     # |___/|___|____|
 
     del_obj_parser = subparsers_obj.add_parser('del',
-                                               help=f'For {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys in YAML files',
+                                               formatter_class=argparse.RawTextHelpFormatter,
+                                               help=f'For {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys (paths) in objects',
                                                description=f"""
+{cli_bcolors.HEADER}Tool for deleting keys (paths) in objects{cli_bcolors.ENDC}.
 
-                {cli_bcolors.HEADER}Tool for deleting keys in YAML files{cli_bcolors.ENDC}.
-                    """,
-                                               )
+Examples: 
 
-    del_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to delete",
+    $ cat config.yaml | rickle obj del /path/to 
+""",)
+
+    del_obj_parser.add_argument('key',
+                                type=str,
+                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to delete",
                                 metavar='key')
 
     del_obj_parser.set_defaults(func=obj_del)
@@ -680,14 +794,34 @@ Supported formats:
     #   |_|   |_| |_| |___|
 
     type_obj_parser = subparsers_obj.add_parser('type',
+                                                formatter_class=argparse.RawTextHelpFormatter,
                                                 help=f'Printing value {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} ',
                                                 description=f"""
+{cli_bcolors.HEADER}Tool for printing the type of the value for a key in the object{cli_bcolors.ENDC}.
 
-                    {cli_bcolors.HEADER}Tool for checking type of keys in YAML files{cli_bcolors.ENDC}.
-                        """,
-                                                )
+Examples: 
 
-    type_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to check",
+    $ cat config.yaml | rickle obj type /path/to 
+    
+Types depend on --output-type and can be the following:
+
+    Python |    YAML |    JSON |      TOML |            XML |
+    =========================================================
+    str    |     str |  string |    String |      xs:string |
+    int    |     int |  number |   Integer |     xs:integer |
+    float  |   float |  number |     Float |     xs:decimal |
+    bool   | boolean | boolean |   Boolean |     xs:boolean |
+    list   |     seq |   array |     Array |    xs:sequence |
+    dict   |     map |  object | Key/Value | xs:complexType |
+    bytes  |  binary |         |           |                |
+    ---------------------------------------------------------
+    *      |  Python |  object |     Other |         xs:any |
+
+""",)
+
+    type_obj_parser.add_argument('key',
+                                 type=str,
+                                 help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to print value type",
                                  metavar='key')
 
     type_obj_parser.set_defaults(func=obj_type)
@@ -699,14 +833,23 @@ Supported formats:
     # |___/___/_/ \_\_|_\\___|_||_|
 
     search_obj_parser = subparsers_obj.add_parser('search',
-                                                  help=f'For {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} key paths in YAML files',
+                                                  formatter_class=argparse.RawTextHelpFormatter,
+                                                  help=f'For {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} keys (paths) in objects',
                                                   description=f"""
+{cli_bcolors.HEADER}Tool for searching keys in objects{cli_bcolors.ENDC}.
 
-                    {cli_bcolors.HEADER}Tool for searching keys in YAML files{cli_bcolors.ENDC}.
-                        """,
-                                                  )
+Examples: 
 
-    search_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to search",
+    $ cat config.yaml | rickle obj search /path/to 
+    
+Only the following --output-type is allowed: YAML, JSON, and LIST. Using LIST will only print the path(s).
+
+
+""",)
+
+    search_obj_parser.add_argument('key',
+                                   type=str,
+                                   help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to search",
                                    metavar='key')
 
     search_obj_parser.set_defaults(func=obj_search)
@@ -718,18 +861,49 @@ Supported formats:
     # |_|  \___/|_|\_|\___|
 
     func_obj_parser = subparsers_obj.add_parser('func',
-                                                help=f'Executing {cli_bcolors.OKBLUE}function{cli_bcolors.ENDC} defined in YAML files',
+                                                formatter_class=argparse.RawTextHelpFormatter,
+                                                help=f'Executing {cli_bcolors.OKBLUE}functions{cli_bcolors.ENDC} defined in objects',
                                                 description=f"""
+{cli_bcolors.HEADER}Tool for executing functions defined in objects{cli_bcolors.ENDC}.
+To enable unsafe usage, the environment variable {cli_bcolors.WARNING}RICKLE_UNSAFE_LOAD{cli_bcolors.ENDC} must be set and {cli_bcolors.WARNING}--load-lambda{cli_bcolors.ENDC} passed.  
 
-                    {cli_bcolors.HEADER}Tool for executing function defined in YAML files{cli_bcolors.ENDC}.
-                        """,
-                                                )
+Examples: 
 
-    func_obj_parser.add_argument('-x', action='store_true', help=f"{cli_bcolors.OKBLUE}infer parameter{cli_bcolors.ENDC} types",
+    $ export RICKLE_UNSAFE_LOAD=1 
+    $ cat config.yaml | rickle obj --load-lambda func /path/to param1:int=1 param2:str=2 
+    
+Every param needs to have an explicit type, indicated by a colon and the Python type name:
+
+    - int    - str
+    - float  - list
+    - bool   - dict
+    
+Examples: 
+
+    $ cat app.yaml | rickle obj --load-lambda func /path/to things:list="['foo','bar']"
+
+This will pass a list called "things". To automatically infer the types, use -x:
+
+    $ cat app.yaml | rickle obj --load-lambda func /path/to -x things="['foo','bar']"
+
+This will infer input params. 
+
+{cli_bcolors.WARNING}There are major security risks involved in using this functionality!{cli_bcolors.ENDC}
+
+{cli_bcolors.FAIL}{cli_bcolors.BOLD}{cli_bcolors.UNDERLINE}Warning: Only use on trusted sources (files, urls, etc.){cli_bcolors.ENDC}
+""",)
+
+    func_obj_parser.add_argument('--infer',
+                                 action='store_true',
+                                 help=f"{cli_bcolors.OKBLUE}infer parameter{cli_bcolors.ENDC} types",
                                  default=False)
-    func_obj_parser.add_argument('key', type=str, help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} (name) of function",
+    func_obj_parser.add_argument('key',
+                                 type=str,
+                                 help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} (name) of function",
                                  metavar='key')
-    func_obj_parser.add_argument('params', type=str, help=f"{cli_bcolors.OKBLUE}Params{cli_bcolors.ENDC} for function",
+    func_obj_parser.add_argument('params',
+                                 type=str,
+                                 help=f"{cli_bcolors.OKBLUE}Params{cli_bcolors.ENDC} for function",
                                  metavar='params', nargs='+')
 
     func_obj_parser.set_defaults(func=obj_func)
@@ -745,41 +919,100 @@ Supported formats:
     if importlib.util.find_spec('twisted'):
 
         parser_serve = subparsers.add_parser('serve',
-                                             help=f'Serving YAML via {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
+                                             help=f'Serving objects through {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
                                              formatter_class=argparse.RawTextHelpFormatter,
                                              description=f"""
+{cli_bcolors.HEADER}Tool for serving objects through http(s){cli_bcolors.ENDC}.
+By default served as JSON. The path separator is set to / as default. 
+
+Examples: 
+
+    $ cat app.yaml | rickle serve
     
-        {cli_bcolors.HEADER}Tool for serving YAML via http(s){cli_bcolors.ENDC}.
-            """,
-                                             )
+The host and port can be specified:
 
-        parser_serve.add_argument('-i', type=str,
-                                  help=f"{cli_bcolors.OKBLUE}YAML{cli_bcolors.ENDC} or {cli_bcolors.OKBLUE}JSON{cli_bcolors.ENDC} file to serve",
-                                  metavar='file', default=None)
+    $ cat app.yaml | rickle serve --host localhost --port 8087
+
+Adding --private-key and --certificate will serve the object over SSL:
+ 
+    $ cat app.yaml | rickle serve --private-key my_local.pem --certificate my_local.crt
+
+Unsafe usage like functions can be enabled:
+
+    $ export RICKLE_UNSAFE_LOAD=1 
+    $ cat app.yaml | rickle serve --load-lambda --unsafe 
+    
+{cli_bcolors.WARNING}There are major security risks involved in using this functionality!{cli_bcolors.ENDC}
+
+{cli_bcolors.FAIL}{cli_bcolors.BOLD}{cli_bcolors.UNDERLINE}Warning: Only use on trusted sources (files, urls, etc.){cli_bcolors.ENDC}
+""",)
+
+        parser_serve.add_argument('--input',
+                                  dest="INPUT",
+                                  type=str,
+                                  help=f"{cli_bcolors.OKBLUE}input{cli_bcolors.ENDC} file to serve",
+                                  default=None,
+                                  metavar='')
         # TODO implement config
-        # parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
-        #                           default=None, metavar='config')
-        parser_serve.add_argument('-a', type=str, help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC}",
-                                  default='', metavar='address')
-        parser_serve.add_argument('-p', type=int, help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number",
-                                  default=8080, metavar='port')
-        parser_serve.add_argument('-k', type=str, help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
-                                  default=None, metavar='privkey')
-        parser_serve.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}SSL certificate{cli_bcolors.ENDC} file path",
-                                  default=None, metavar='cert')
-        parser_serve.add_argument('-b', action='store_true', help=f"open URL in {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
-        parser_serve.add_argument('-s', action='store_true',
-                                  help=f"Serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data",  default=False)
-        parser_serve.add_argument('-t', type=str,
-                                help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
-                                default='json', metavar='type')
-
-        parser_serve.add_argument('-l', action='store_true',
-                                  help=f"Load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} true (UNSAFE)", default=False)
-
-        parser_serve.add_argument('-x', action='store_true',
-                                  help=f"Load {cli_bcolors.OKBLUE}UnsafeRickle{cli_bcolors.ENDC} (VERY UNSAFE)",
+        # parser_serve.add_argument('--config',
+        #                           dest='CONFIG',
+        #                           type=str,
+        #                           help=f"{cli_bcolors.OKBLUE}config{cli_bcolors.ENDC} file path",
+        #                           default=None,
+        #                           metavar='')
+        parser_serve.add_argument('--host',
+                                  dest='HOST',
+                                  type=str,
+                                  help=f"{cli_bcolors.OKBLUE}host address{cli_bcolors.ENDC} (default = localhost)",
+                                  default='localhost',
+                                  metavar=''
+                                  )
+        parser_serve.add_argument('--port',
+                                  dest="PORT",
+                                  type=int,
+                                  help=f"{cli_bcolors.OKBLUE}port{cli_bcolors.ENDC} number (default = 8080)",
+                                  default=8080,
+                                  metavar='')
+        parser_serve.add_argument('--private-key',
+                                  dest='PRIVATE_KEY',
+                                  type=str,
+                                  help=f"{cli_bcolors.OKBLUE}private key{cli_bcolors.ENDC} file path",
+                                  default=None,
+                                  metavar='')
+        parser_serve.add_argument('--certificate',
+                                  dest='CERTIFICATE',
+                                  type=str,
+                                  help=f"ssl {cli_bcolors.OKBLUE}certificate{cli_bcolors.ENDC} file path",
+                                  default=None,
+                                  metavar='')
+        parser_serve.add_argument('--output-type',
+                                  dest="OUTPUT_TYPE",
+                                  type=str,
+                                  help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (default = JSON)",
+                                  default='json',
+                                  metavar='')
+        parser_serve.add_argument('--load-lambda',
+                                  dest="LOAD_LAMBDA",
+                                  action='store_true',
+                                  help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} true",
                                   default=False)
+
+        parser_serve.add_argument('--unsafe',
+                                  dest="UNSAFE",
+                                  action='store_true',
+                                  help=f"load {cli_bcolors.OKBLUE}UnsafeRickle{cli_bcolors.ENDC} ({cli_bcolors.FAIL}VERY UNSAFE{cli_bcolors.ENDC})",
+                                  default=False,)
+
+        parser_serve.add_argument('--browser',
+                                  '-b',
+                                  action='store_true',
+                                  help=f"open {cli_bcolors.OKBLUE}browser{cli_bcolors.ENDC}", )
+        parser_serve.add_argument('--serialised',
+                                  '-s',
+                                  action='store_true',
+                                  help=f"serve as {cli_bcolors.OKBLUE}serialised{cli_bcolors.ENDC} data (default = false)",
+                                  default=False)
+
 
         parser_serve.set_defaults(func=serve)
 
@@ -795,10 +1028,11 @@ Supported formats:
                                           help=f'Generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
                                           formatter_class=argparse.RawTextHelpFormatter,
                                           description=f"""
+{cli_bcolors.HEADER}Tool for generating and checking schemas of several different formats{cli_bcolors.ENDC}.
 
-    {cli_bcolors.HEADER}Tool for generating and checking schemas of several different formats{cli_bcolors.ENDC}.\nSupported formats: \n{Schema.supported}
-        """,
-                                          )
+Supported formats: 
+{Schema.supported}
+""",)
 
     schema_subparsers = parser_schema.add_subparsers()
 
@@ -809,27 +1043,60 @@ Supported formats:
     #  \___|_||_|___\___|_|\_\
 
     parser_schema_check = schema_subparsers.add_parser('check',
-                                                       help=f'{cli_bcolors.OKBLUE}Checking{cli_bcolors.ENDC} schemas of YAML files',
+                                                       help=f'{cli_bcolors.OKBLUE}Checking{cli_bcolors.ENDC} schemas of files',
+                                                       formatter_class=argparse.RawTextHelpFormatter,
                                                        description=f"""
+{cli_bcolors.HEADER}Tool for checking schemas of files{cli_bcolors.ENDC}.
 
-        {cli_bcolors.HEADER}Tool for checking schemas of YAML files{cli_bcolors.ENDC}.
-            """,
-                                                       )
+Examples: 
+
+    $ cat config.yaml | rickle schema check --schema config.schema.yaml
+    
+Which will print OK or FAIL depending on success. For more detailed output the --verbose option can be used:
+
+    $ cat config.yaml | rickle schema check --schema config.schema.yaml --verbose
+    
+To silence the OK/FAIL output, --silence can be used. If input is piped and the check fails, exit code 1 is returned.
+""",)
 
 
-    parser_schema_check.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to check",
-                                     nargs='+', metavar='input')
-    parser_schema_check.add_argument('-d', type=str, help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to check",
-                                     default=None, nargs='+', metavar='dir')
+    parser_schema_check.add_argument('--input',
+                                     dest='INPUT',
+                                     type=str,
+                                     help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to check",
+                                     nargs='+',
+                                     metavar='')
+    parser_schema_check.add_argument('--input-directory',
+                                     type=str,
+                                     dest='INPUT_DIRECTORY',
+                                     help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to check",
+                                     default=None,
+                                     nargs='+',
+                                     metavar='')
 
-    parser_schema_check.add_argument('-c', type=str, help=f"{cli_bcolors.OKBLUE}schema definition file{cli_bcolors.ENDC} to compare",
-                                     metavar='schema')
+    parser_schema_check.add_argument('--schema',
+                                     dest='SCHEMA',
+                                     type=str,
+                                     help=f"{cli_bcolors.OKBLUE}schema definition file{cli_bcolors.ENDC} to compare",
+                                     metavar='',
+                                     )
 
-    parser_schema_check.add_argument('-o', type=str,
-                                     help=f"{cli_bcolors.OKBLUE}output directory{cli_bcolors.ENDC} to move failed files to",
-                                     metavar='output')
+    parser_schema_check.add_argument('--fail-directory',
+                                     dest='FAIL_DIRECTORY',
+                                     type=str,
+                                     help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC} to move failed files to",
+                                     metavar='')
 
-    parser_schema_check.add_argument('-s', action='store_true', help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
+    parser_schema_check.add_argument('--verbose',
+                                     '-v',
+                                     dest='VERBOSE',
+                                     action='store_true',
+                                     help=f"{cli_bcolors.OKBLUE}verbose{cli_bcolors.ENDC} output", )
+    parser_schema_check.add_argument('--silent',
+                                     '-s',
+                                     dest='SILENT',
+                                     action='store_true',
+                                     help=f"{cli_bcolors.OKBLUE}silence{cli_bcolors.ENDC} outcome", )
 
     parser_schema_check.set_defaults(func=check)
 
@@ -840,26 +1107,49 @@ Supported formats:
     #  \___|___|_|\_|
 
     parser_schema_gen = schema_subparsers.add_parser('gen',
-                                                     help=f'Tool for {cli_bcolors.OKBLUE}generating{cli_bcolors.ENDC} schemas of YAML files',
+                                                     help=f'Tool for {cli_bcolors.OKBLUE}generating{cli_bcolors.ENDC} schemas of files',
+                                                     formatter_class=argparse.RawTextHelpFormatter,
                                                      description=f"""
+{cli_bcolors.HEADER}Tool for generating schemas of files{cli_bcolors.ENDC}.
+Generates schemas from input. 
 
-            {cli_bcolors.HEADER}Tool for generating schemas of YAML files{cli_bcolors.ENDC}.
-                """,
-                                                     )
+Examples: 
 
-    parser_schema_gen.add_argument('-i', type=str, help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to generate from",
-                                   nargs='+', metavar='input')
-    parser_schema_gen.add_argument('-o', type=str,
+    $ cat config.yaml | rickle schema gen  
+    
+If --input or --input-directory are passed the output will be to files. If piped, the output is printed.
+""",)
+
+    parser_schema_gen.add_argument('--input',
+                                   dest='INPUT',
+                                   type=str,
+                                   help=f"{cli_bcolors.OKBLUE}input file{cli_bcolors.ENDC}(s) to generate from",
+                                   nargs='+',
+                                   metavar='')
+    parser_schema_gen.add_argument('--output',
+                                   dest='OUTPUT',
+                                   type=str,
                                    help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC}(s) to write to",
-                                   nargs='+', metavar='output')
-    parser_schema_gen.add_argument('-d', type=str,
+                                   nargs='+',
+                                   metavar='')
+    parser_schema_gen.add_argument('--input-directory',
+                                   dest='INPUT_DIRECTORY',
+                                   type=str,
                                    help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to generate from",
-                                   default=None, nargs='+', metavar='dir')
-    parser_schema_gen.add_argument('-t', type=str,
-                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (JSON, YAML)",
-                            default='yaml', metavar='type')
-    parser_schema_gen.add_argument('-s', action='store_true',
-                                   help=f"{cli_bcolors.OKBLUE}suppress{cli_bcolors.ENDC} verbose output", )
+                                   default=None,
+                                   nargs='+',
+                                   metavar='')
+    parser_schema_gen.add_argument('--output-type',
+                                   dest='OUTPUT_TYPE',
+                                   type=str,
+                                   help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (default = YAML)",
+                                   default='yaml',
+                                   metavar='')
+    parser_schema_gen.add_argument('--silent',
+                                   '-s',
+                                   dest='SILENT',
+                                   action='store_true',
+                                   help=f"{cli_bcolors.OKBLUE}silence{cli_bcolors.ENDC} output", )
 
     parser_schema_gen.set_defaults(func=gen)
 
