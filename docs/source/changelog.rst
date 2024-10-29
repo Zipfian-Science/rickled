@@ -36,6 +36,7 @@ Version 1.5.0 (2024-05-05)
 * ``-d`` becomes ``--dir``
 * ``-o`` becomes ``--output``
 * ``-t`` becomes ``--output-type``
+* Added ``full`` to install extras to install all extras.
 
 
 

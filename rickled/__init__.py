@@ -117,9 +117,9 @@ class BaseRickle:
         if not init_args is None:
             for k, v in init_args.items():
                 _k = "{opening}{key}{closing}".format(
-                    opening=os.getenv("RICKLE_OPENING_BRACES", init_args.get('RICKLE_OPENING_BRACES', "{{")),
+                    opening=init_args.get("RICKLE_OPENING_BRACES", os.getenv('RICKLE_OPENING_BRACES', "{{")),
                     key=k,
-                    closing=os.getenv("RICKLE_CLOSING_BRACES", init_args.get('RICKLE_CLOSING_BRACES', "}}"))
+                    closing=init_args.get("RICKLE_CLOSING_BRACES", os.getenv('RICKLE_CLOSING_BRACES', "}}"))
                 )
                 stringed = stringed.replace(_k, json.dumps(v))
 
@@ -151,9 +151,11 @@ class BaseRickle:
                 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
                 config.read_string(stringed)
 
-                path_sep = os.getenv("RICKLE_INI_PATH_SEP", init_args.get('RICKLE_INI_PATH_SEP', "."))
-                list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("),
-                                 os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+                path_sep = init_args.get('RICKLE_INI_PATH_SEP', os.getenv("RICKLE_INI_PATH_SEP", "."))
+                list_brackets = (
+                    init_args.get("RICKLE_INI_OPENING_BRACES", os.getenv("RICKLE_INI_OPENING_BRACES", "(")),
+                    init_args.get("RICKLE_INI_CLOSING_BRACES", os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+                )
 
                 _d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
 
@@ -208,9 +210,11 @@ class BaseRickle:
             config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
             config.read_string(stringed)
 
-            path_sep = os.getenv("RICKLE_INI_PATH_SEP", init_args.get('RICKLE_INI_PATH_SEP', "."))
-            list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("),
-                             os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+            path_sep = init_args.get('RICKLE_INI_PATH_SEP', os.getenv("RICKLE_INI_PATH_SEP", "."))
+            list_brackets = (
+                init_args.get("RICKLE_INI_OPENING_BRACES", os.getenv("RICKLE_INI_OPENING_BRACES", "(")),
+                init_args.get("RICKLE_INI_CLOSING_BRACES", os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+            )
 
             _d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
 

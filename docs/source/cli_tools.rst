@@ -21,16 +21,16 @@ Which will show the list of available options:
 .. code-block:: text
 
    positional arguments:
-      {conv,obj,serve,schema}
-      conv                Tool for converting files to or from YAML
-      obj                 Tool for accessing/manipulating YAML files
-      serve               Tool for serving YAML via http(s)
-      schema              Tool for generating and checking schemas of
-                          YAML files
+     {conv,obj,serve,schema}
+       conv                Converting files between formats
+       obj                 Tool for reading or editing  objects
+       serve               Serving objects through http(s)
+       schema              Generating and checking schemas of YAML files
 
    optional arguments:
-      -h, --help            show this help message and exit
-      --version, -v         show version number
+     -h, --help            show this help message and exit
+     --version, -v         show version number
+
 
 .. note::
 
@@ -92,7 +92,6 @@ For most of the tools the output types can be specified with the ``--output-type
    * xml
    * ini
    * env
-   * list
 
 .. note::
 
@@ -113,18 +112,14 @@ Which will show the list of available options:
 
 .. code-block:: text
 
-   -h, --help            show this help message and exit
-   --input INPUT [INPUT ...]
-                        input file(s) to convert
-   --input-directory INPUT_DIRECTORY
-                        directory of input files
-   --output OUTPUT [OUTPUT ...]
-                        output file names, only if --input given
-   --output-type OUTPUT_TYPE
-                        output file type (default = YAML)
-   --input-type INPUT_TYPE
-                        optional input type (type inferred if none)
-   --verbose             verbose output
+   optional arguments:
+     -h, --help          show this help message and exit
+     --input  [ ...]     input file(s) to convert
+     --input-directory   directory of input files
+     --output  [ ...]    output file names, only if --input given
+     --output-type       output file type (default = YAML)
+     --input-type        optional input type (type inferred if none)
+     --verbose, -v       verbose output
 
 
 
@@ -161,7 +156,7 @@ To specify the output type:
 
     cat config.yaml | rickle conv --output-type JSON
 
-This will create print the converted file.
+This will output the converted file (in this example as JSON).
 
 Glob whole directory
 ---------------------
@@ -175,7 +170,7 @@ The ``--output-type`` option is needed to specify the format or else ``YAML`` wi
 
 This will glob all files in the directory ``./configs``, including TOML files, and output them as TOML files with the same names.
 
-The ``--verbose`` prints a line of the filenames for each conversion.
+The ``--verbose`` prints a line of the input/output filenames for each conversion.
 
 .. note::
 
@@ -203,7 +198,7 @@ When specifying the output names, the order of output filenames must match the o
 
 .. code-block:: shell
 
-    rickle conv --input config_dev.yaml config_prd.yaml --output confDev.json confPrd.json
+    rickle conv --input config_dev.yaml config_prod.yaml --output conf-dev.json conf-prd.json
 
 Troubleshooting Conv
 ---------------------
@@ -233,24 +228,22 @@ Which will show the following list of options:
 .. code-block:: text
 
    positional arguments:
-      {get,set,del,type,search,func}
-      get                 Tool for getting values from YAML files
-      set                 Tool for setting values in YAML files
-      del                 Tool for deleting keys in YAML files
-      type                Tool for checking type of keys in YAML files
-      search              Tool for searching keys in YAML files
-      func                Tool for executing function defined in YAML
-                          files
+     {get,set,del,type,search,func}
+       get                 Getting values from objects
+       set                 Setting values in objects
+       del                 For deleting keys (paths) in objects
+       type                Printing value type
+       search              For searching keys (paths) in objects
+       func                Executing functions defined in objects
 
    optional arguments:
-      -h, --help            show this help message and exit
-      --input INPUT         input file to create object from
-      --output OUTPUT       write to output file
-      --output-type OUTPUT_TYPE
-                            output type (default = YAML)
-      --load-lambda         load lambda types
+     -h, --help            show this help message and exit
+     --input               input file to create object from
+     --output              write to output file
+     --output-type         output type (default = YAML)
+     --load-lambda         load lambda types
 
-Using this tool requires input of a YAML, JSON, TOML (etc.) file. This is done with the ``--input`` option.
+Using this tool requires input of a YAML, JSON, TOML (etc.) file. This is done with the ``--input`` option or alternatively piped.
 
 .. code-block:: shell
 
@@ -313,6 +306,10 @@ Which would have the value ``password``.
 .. note::
 
    The path separator can be specified by setting an environment variable "RICKLE_PATH_SEP", for example ``RICKLE_PATH_SEP=.`` for dots.
+
+.. code-block:: shell
+
+    export RICKLE_PATH_SEP=.
 
 Get
 ---------------------
@@ -485,7 +482,7 @@ Or:
 
 .. code-block:: text
 
-   Rickle
+   map
 
 Using ``--output-type`` the printed type changes. Available types include ``YAML``, ``JSON``, ``TOML``, ``XML``, and ``python``.
 
@@ -504,6 +501,24 @@ Depending on this type, the value could be:
    bytes  |  binary |         |           |                |
    ---------------------------------------------------------
    *      |  Python |  object |     Other |         xs:any |
+
+Examples:
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle obj --output-type XML type /root_node/level_one
+
+.. code-block:: text
+
+   xs:complexType
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle obj --output-type python type /root_node/level_one
+
+.. code-block:: text
+
+   Rickle
 
 Search
 ---------------------
@@ -564,6 +579,19 @@ To print the values as is (instead of YAML or JSON), use the ``--output-type`` t
    /root_node/level_one/usr
    /root_node/other/usr
 
+The path separator will be used as is set in the env:
+
+.. code-block:: shell
+
+    export RICKLE_PATH_SEP=.
+    cat conf-multi.yaml | rickle obj --output-type list search usr
+
+.. code-block:: text
+
+   .root_node.usr
+   .root_node.level_one.usr
+   .root_node.other.usr
+
 Func
 ---------------------
 
@@ -584,7 +612,8 @@ For using functions, see :ref:`functions <sect-ext-usage-functions>` usage.
      -h, --help  show this help message and exit
      --infer          infer parameter types
 
-Where ``key`` is the path to the function
+Where ``key`` is the path to the function. As a slight but by no means foolproof safe gaurd, it is required to set the environment variable
+``RICKLE_UNSAFE_LOAD=1``. This is not a security measure but an added step to make the user more aware of the risks involved.
 
 For the following example a function ``get_area`` is defined:
 
@@ -652,7 +681,7 @@ Optionally types can be inferred using the ``--infer`` option:
 .. code-block:: shell
 
     export RICKLE_UNSAFE_LOAD=1
-    cat get-area.yaml | rickle obj --load-lambda func -x /get_area z=10
+    cat get-area.yaml | rickle obj --load-lambda func --infer /get_area z=10
 
 Which should infer that ``z`` is an integer.
 
@@ -738,7 +767,26 @@ Schema tools are useful for either generating schema definitions of files or che
 Gen
 ---------------------
 
-For generating a schema from a file, ``gen`` is used. Consider the following example file:
+For generating a schema from a file, ``gen`` is used.
+The gen tool is used for generating schemas from input. This is a useful step to start from, where a developer can then further define the schema.
+
+.. code-block:: shell
+
+    rickle schema gen -h
+
+Prints the following options:
+
+.. code-block:: text
+
+   optional arguments:
+     -h, --help          show this help message and exit
+     --input  [ ...]     input file(s) to generate from
+     --output  [ ...]    output file(s) to write to
+     --input-directory   directory(s) of files to generate from
+     --output-type       output type (default = YAML)
+     --silent, -s        silence output
+
+Consider the following example file:
 
 .. code-block:: yaml
    :linenos:
@@ -764,7 +812,7 @@ Running the ``gen`` tool:
 
 .. code-block:: shell
 
-    rickle schema gen -i my-example.yaml
+    rickle schema gen --input my-example.yaml
 
 will create the file ``my-example.schema.yaml`` as the following:
 
@@ -812,7 +860,7 @@ It will print the following to STDOUT:
 
 .. note::
 
-   Note that if no output name is given the filename becomes <filename>.schema.<ext>.
+   Note that if no output name is given the filename becomes ``<filename>.schema.<ext>``.
 
 Of course the type can also be defined by either using ``--output-type``:
 
@@ -889,6 +937,23 @@ Check
 
 The check tool is used to validate file(s) against a schema.
 
+.. code-block:: shell
+
+    rickle schema check -h
+
+Prints the following options:
+
+.. code-block:: text
+
+   optional arguments:
+     -h, --help          show this help message and exit
+     --input  [ ...]     input file(s) to check
+     --input-directory   directory(s) of files to check
+     --schema            schema definition file to compare
+     --fail-directory    directory to move failed files to
+     --verbose, -v       verbose output
+     --silent, -s        silence output
+
 Example:
 
 .. code-block:: shell
@@ -935,6 +1000,44 @@ Serve tool
 ========================
 
 This is a little tool to serve the a YAML or JSON (or TOML, XML, INI) file as a mini API.
+
+.. note::
+
+   If ``Rickle`` is not installed with ``net`` extras the serve tool will not appear.
+
+.. code-block:: shell
+
+    pip install rickled[net]
+
+
+.. code-block:: shell
+
+    rickle schema check -h
+
+Prints the following options:
+
+.. code-block:: text
+
+   optional arguments:
+     -h, --help        show this help message and exit
+     --input           input file to serve
+     --host            host address (default = localhost)
+     --port            port number (default = 8080)
+     --private-key     private key file path
+     --certificate     ssl certificate file path
+     --output-type     output type (default = JSON)
+     --load-lambda     load lambda true
+     --unsafe          load UnsafeRickle (VERY UNSAFE)
+     --browser, -b     open browser
+     --serialised, -s  serve as serialised data (default = false)
+
+.. note::
+
+   The default output type is set to ``JSON``.
+
+.. note::
+
+   The ``/`` overrides ``RICKLE_PATH_SEP`` as the path separator.
 
 Example
 ------------------------

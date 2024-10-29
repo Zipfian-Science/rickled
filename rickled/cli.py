@@ -490,7 +490,7 @@ def check(args):
     try:
         if args.INPUT:
             Schema(input_files=args.INPUT,
-                   input_directories=args.INPUT_DIRECTORY,
+                   input_directories=[args.INPUT_DIRECTORY],
                    schema=args.SCHEMA,
                    output_dir=args.FAIL_DIRECTORY,
                    verbose=args.VERBOSE,
@@ -517,7 +517,7 @@ def gen(args):
     try:
         if args.INPUT:
             Schema(input_files=args.INPUT,
-                   input_directories=args.INPUT_DIRECTORY,
+                   input_directories=[args.INPUT_DIRECTORY],
                    output_files=args.OUTPUT,
                    silent=args.SILENT,
                    default_output_type=args.OUTPUT_TYPE).do_generation()
@@ -882,9 +882,9 @@ Examples:
 
     $ cat app.yaml | rickle obj --load-lambda func /path/to things:list="['foo','bar']"
 
-This will pass a list called "things". To automatically infer the types, use -x:
+This will pass a list called "things". To automatically infer the types, use --infer:
 
-    $ cat app.yaml | rickle obj --load-lambda func /path/to -x things="['foo','bar']"
+    $ cat app.yaml | rickle obj --load-lambda func /path/to --infer things="['foo','bar']"
 
 This will infer input params. 
 
@@ -1071,7 +1071,6 @@ To silence the OK/FAIL output, --silence can be used. If input is piped and the 
                                      dest='INPUT_DIRECTORY',
                                      help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to check",
                                      default=None,
-                                     nargs='+',
                                      metavar='')
 
     parser_schema_check.add_argument('--schema',
@@ -1096,7 +1095,7 @@ To silence the OK/FAIL output, --silence can be used. If input is piped and the 
                                      '-s',
                                      dest='SILENT',
                                      action='store_true',
-                                     help=f"{cli_bcolors.OKBLUE}silence{cli_bcolors.ENDC} outcome", )
+                                     help=f"{cli_bcolors.OKBLUE}silence{cli_bcolors.ENDC} output", )
 
     parser_schema_check.set_defaults(func=check)
 
@@ -1137,7 +1136,6 @@ If --input or --input-directory are passed the output will be to files. If piped
                                    type=str,
                                    help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to generate from",
                                    default=None,
-                                   nargs='+',
                                    metavar='')
     parser_schema_gen.add_argument('--output-type',
                                    dest='OUTPUT_TYPE',
