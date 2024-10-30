@@ -59,7 +59,7 @@ class TestBasicRickle(unittest.TestCase):
     def test_meta(self):
         self.base_rickle.add("new_added", 6.667)
 
-        self.assertDictEqual(self.base_rickle.meta("new_added"), {'type': 'add', 'value': 6.667})
+        self.assertDictEqual(self.base_rickle.meta("new_added"), {'type': 'attribute', 'value': 6.667})
 
     def test_item_get(self):
         for key in self.expected_dict.keys():

@@ -558,7 +558,10 @@ class BaseRickle:
         if '?' in path_list[-1]:
             raise KeyError(f'Function params "{path_list[-1]}" included in path!')
 
-        current_node.add_attr(path_list[-1], value)
+        if current_node.has(path_list[-1]):
+            current_node[path_list[-1]] = value
+        else:
+            current_node.add(path_list[-1], value)
 
     def remove(self, key: str):
         """
