@@ -1,7 +1,0 @@
-root:
-  link_to_file:
-    type: from_file
-    file_path: './tests/placebos/test_malicious.yaml'
-    load_as_rick: true
-    deep: true
-    load_lambda: true

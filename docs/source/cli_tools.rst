@@ -732,6 +732,20 @@ Without using the ``--infer`` option to infer the values and explicitly defining
 
 Would produce the same results.
 
+cURL alternative
+---------------------
+
+Seeing as a ``Rickle`` can be loaded with the JSON response from a URL, it could be used in a cURL-like manner:
+
+.. code-block:: shell
+
+    rickle obj --output-type json --input https://official-joke-api.appspot.com/random_joke get /
+
+.. code-block:: json
+
+    {"type": "general", "setup": "Why did the girl smear peanut butter on the road?", "punchline": "To go with the traffic jam.", "id": 324}
+
+
 Troubleshooting Obj
 ---------------------
 
@@ -744,6 +758,9 @@ The most likely problem to occur is if the path can not be traversed, i.e. the p
      cat conf.yaml | rickle obj --output-type JSON get /path_to_nowhere
 
 And this will result in printing nothing (default behaviour).
+
+Another likely problem is that the scalar can not be output in the given type.
+I.e. TOML, INI, and XML for example need at least a root node.
 
 2. Set
 

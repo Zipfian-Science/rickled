@@ -84,7 +84,7 @@ $ pip install rickled[dotenv]
 For a fully featured install.
 
 ```bash script
-$ pip install rickled[net,dotenv,xml,validators]
+$ pip install rickled[full]
 ```
 
 Check if the installation succeeded:
