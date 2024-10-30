@@ -456,7 +456,7 @@ class BaseRickle:
 
     def _check_kw(self, name):
         if self._strict and name in dir(self):
-            raise ValueError(f"Unable to add key '{name}', reserved keyword in Rickle. Use strict=False.")
+            raise NameError(f"Unable to add key '{name}', reserved keyword in Rickle. Use strict=False.")
 
         clean_name = self._allowed_chars_pat.sub('', name)
         if clean_name != name:
@@ -826,16 +826,20 @@ class BaseRickle:
         return self._meta_info
 
     def add_attr(self, name, value):
+        warnings.warn(message="'add_attr' will be removed after version 1.4. Use 'add' instead")
+        self.add(name=name, value=value)
+
+    def add(self, name, value):
         """
-        Add a new attribute member to Rick.
+        Add a new key (attribute) and value member to Rick.
 
         Args:
-            name (str): Property name.
-            value (any): Value of new member.
+            name (str): Key / property name.
+            value (any): Value of new key.
         """
         name = self._check_kw(name)
         self.__dict__.update({name: value})
-        self._meta_info[name] = {'type': 'attr', 'value': value}
+        self._meta_info[name] = {'type': 'attribute', 'value': value}
 
 
 class Rickle(BaseRickle):
@@ -859,7 +863,7 @@ class Rickle(BaseRickle):
             if isinstance(v, dict):
                 if 'type' in v.keys():
                     if v['type'] == 'env':
-                        self.add_env_variable(name=k,
+                        self.add_env(name=k,
                                               load=v['load'],
                                               default=v.get('default', None))
                         continue
@@ -867,8 +871,8 @@ class Rickle(BaseRickle):
                         self.add_base64(name=k,
                                         load=v['load'])
                         continue
-                    if v['type'] == 'from_file':
-                        self.add_from_file(name=k,
+                    if v['type'] == 'file' or v['type'] == 'from_file':
+                        self.add_file(name=k,
                                            file_path=v['file_path'],
                                            load_as_rick=v.get('load_as_rick', False),
                                            deep=v.get('deep', False),
@@ -877,15 +881,15 @@ class Rickle(BaseRickle):
                                            encoding=v.get('encoding', 'utf-8'),
                                            hot_load=v.get('hot_load', False))
                         continue
-                    if v['type'] == 'from_csv':
-                        self.add_csv_file(name=k,
+                    if v['type'] == 'csv' or v['type'] == 'from_csv':
+                        self.add_csv(name=k,
                                           file_path=v['file_path'],
                                           fieldnames=v.get('fieldnames', None),
                                           load_as_rick=v.get('load_as_rick', False),
                                           encoding=v.get('encoding', 'utf-8'))
                         continue
                     if v['type'] == 'api_json':
-                        self.add_api_json_call(name=k,
+                        self.add_api_json(name=k,
                                                url=v['url'],
                                                http_verb=v.get('http_verb', 'GET'),
                                                headers=v.get('headers', None),
@@ -1019,6 +1023,10 @@ class Rickle(BaseRickle):
         return d
 
     def add_env_variable(self, name, load, default=None):
+        warnings.warn(message="'add_env_variable' will be removed after version 1.4. Use 'add_env' instead")
+        self.add_env(name=name,load=load,default=default)
+
+    def add_env(self, name, load, default=None):
         """
         Add a new OS ENVIRONMENT VARIABLE to Rick.
 
@@ -1047,6 +1055,16 @@ class Rickle(BaseRickle):
                                  }
 
     def add_csv_file(self,
+                     name,
+                     file_path: str,
+                     fieldnames: list = None,
+                     load_as_rick: bool = False,
+                     encoding: str = 'utf-8'
+                     ):
+        warnings.warn(message="'add_csv_file' will be removed after version 1.4. Use 'add_csv' instead")
+        self.add_csv(name=name,file_path=file_path,fieldnames=fieldnames,load_as_rick=load_as_rick,encoding=encoding)
+
+    def add_csv(self,
                      name,
                      file_path: str,
                      fieldnames: list = None,
@@ -1097,14 +1115,14 @@ class Rickle(BaseRickle):
 
                 self.__dict__.update({name: l})
 
-        self._meta_info[name] = {'type': 'from_csv',
+        self._meta_info[name] = {'type': 'csv',
                                  'file_path': file_path,
                                  'load_as_rick': load_as_rick,
                                  'fieldnames': fieldnames,
                                  'encoding': encoding
                                  }
 
-    def _load_from_file(self,
+    def _load_file(self,
                         file_path: str,
                         load_as_rick: bool = False,
                         deep: bool = False,
@@ -1124,7 +1142,19 @@ class Rickle(BaseRickle):
                 with open(file_path, 'r', encoding=encoding) as fn:
                     return fn.read()
 
-    def add_from_file(self, name,
+    def add_from_file(self,name,
+                      file_path: str,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      is_binary: bool = False,
+                      encoding: str = 'utf-8',
+                      hot_load: bool = False):
+        warnings.warn(message="'add_from_file' will be removed after version 1.4. Use 'add_file' instead")
+        self.add_file(name=name,file_path=file_path,load_as_rick=load_as_rick,deep=deep,load_lambda=load_lambda,
+                      is_binary=is_binary,encoding=encoding,hot_load=hot_load)
+
+    def add_file(self, name,
                       file_path: str,
                       load_as_rick: bool = False,
                       deep: bool = False,
@@ -1154,7 +1184,7 @@ class Rickle(BaseRickle):
             if (encoding in supported_encodings() and Path(file_path).is_file()
                     and self._init_args['load_lambda']):
 
-                _load = f"""lambda self=self: self._load_from_file(file_path='{str(file_path)}',
+                _load = f"""lambda self=self: self._load_file(file_path='{str(file_path)}',
                                               load_as_rick={load_as_rick == True},
                                               deep={deep == True},
                                               load_lambda={load_lambda == True},
@@ -1165,7 +1195,7 @@ class Rickle(BaseRickle):
             else:
                 raise ValueError(f"At 'add_from_file', when trying to add lambda, one or more checks failed")
         else:
-            result = self._load_from_file(file_path=file_path,
+            result = self._load_file(file_path=file_path,
                                           load_as_rick=load_as_rick,
                                           deep=deep,
                                           load_lambda=load_lambda,
@@ -1174,7 +1204,7 @@ class Rickle(BaseRickle):
 
             self.__dict__.update({name: result})
 
-        self._meta_info[name] = {'type': 'from_file',
+        self._meta_info[name] = {'type': 'file',
                                  'file_path': file_path,
                                  'load_as_rick': load_as_rick,
                                  'deep': deep,
@@ -1255,7 +1285,7 @@ class Rickle(BaseRickle):
                                  'hot_load': hot_load
                                  }
 
-    def _load_api_json_call(self,
+    def _load_api_json(self,
                             url: str,
                             http_verb: str = 'GET',
                             headers: dict = None,
@@ -1283,17 +1313,32 @@ class Rickle(BaseRickle):
         else:
             raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
 
-    def add_api_json_call(self, name,
-                          url: str,
-                          http_verb: str = 'GET',
-                          headers: dict = None,
-                          params: dict = None,
-                          body: dict = None,
-                          load_as_rick: bool = False,
-                          deep: bool = False,
-                          load_lambda: bool = False,
-                          expected_http_status: int = 200,
-                          hot_load: bool = False):
+    def add_api_json_call(self,name,
+                      url: str,
+                      http_verb: str = 'GET',
+                      headers: dict = None,
+                      params: dict = None,
+                      body: dict = None,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      expected_http_status: int = 200,
+                      hot_load: bool = False):
+        warnings.warn(message="'add_api_json_call' will be removed after version 1.4. Use 'add_api_json' instead")
+        self.add_api_json(name=name,url=url,http_verb=http_verb,headers=headers,params=params,body=body,
+                          load_as_rick=load_as_rick,deep=deep,load_lambda=load_lambda,
+                          expected_http_status=expected_http_status,hot_load=hot_load)
+    def add_api_json(self, name,
+                      url: str,
+                      http_verb: str = 'GET',
+                      headers: dict = None,
+                      params: dict = None,
+                      body: dict = None,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      expected_http_status: int = 200,
+                      hot_load: bool = False):
         """
         Load a JSON response from a URL and create a Rick from it. This opens up dynamic possibility,
         but with that it also opens up extreme security vulnerabilities. Only ever load JSON objects from trusted sources.
@@ -1325,7 +1370,7 @@ class Rickle(BaseRickle):
                         _body = dict(body) if body else None
                         _headers = dict(headers) if headers else None
                         _params = dict(params) if params else None
-                        _load = f"""lambda self=self: self._load_api_json_call(url='{str(url)}', 
+                        _load = f"""lambda self=self: self._load_api_json(url='{str(url)}', 
                                                         http_verb='{str(http_verb)}', 
                                                         headers={_headers}, 
                                                         params={_params}, 
@@ -1344,7 +1389,7 @@ class Rickle(BaseRickle):
                 raise ValueError(f"At 'add_api_json_call', when trying to add lambda, this happened {exc}")
 
         else:
-            result = self._load_api_json_call(url=url,
+            result = self._load_api_json(url=url,
                                               http_verb=http_verb,
                                               headers=headers,
                                               params=params,
@@ -1377,7 +1422,7 @@ class UnsafeRickle(Rickle):
             if isinstance(v, dict):
                 if 'type' in v.keys():
                     if v['type'] == 'env':
-                        self.add_env_variable(name=k,
+                        self.add_env(name=k,
                                               load=v['load'],
                                               default=v.get('default', None))
                         continue
@@ -1385,8 +1430,8 @@ class UnsafeRickle(Rickle):
                         self.add_base64(name=k,
                                         load=v['load'])
                         continue
-                    if v['type'] == 'from_file':
-                        self.add_from_file(name=k,
+                    if v['type'] == 'file' or v['type'] == 'from_file':
+                        self.add_file(name=k,
                                            file_path=v['file_path'],
                                            load_as_rick=v.get('load_as_rick', False),
                                            deep=v.get('deep', False),
@@ -1395,15 +1440,15 @@ class UnsafeRickle(Rickle):
                                            encoding=v.get('encoding', 'utf-8'),
                                            hot_load=v.get('hot_load', False))
                         continue
-                    if v['type'] == 'from_csv':
-                        self.add_csv_file(name=k,
+                    if v['type'] == 'csv' or v['type'] == 'from_csv':
+                        self.add_csv(name=k,
                                           file_path=v['file_path'],
                                           fieldnames=v.get('fieldnames', None),
                                           load_as_rick=v.get('load_as_rick', False),
                                           encoding=v.get('encoding', 'utf-8'))
                         continue
                     if v['type'] == 'api_json':
-                        self.add_api_json_call(name=k,
+                        self.add_api_json(name=k,
                                                url=v['url'],
                                                http_verb=v.get('http_verb', 'GET'),
                                                headers=v.get('headers', None),

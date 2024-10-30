@@ -1,0 +1,15 @@
+d061: 21 41 11 31  PRandomRange    .bulk   $21,$41,$11,$31
+
+d065: b5 1e        RunBowser       lda     Enemy_State,x           ;if d5 in enemy state is not set
+d067: 29 20                        and     #%00100000              ; then branch elsewhere to run bowser
+d069: f0 14                        beq     BowserControl
+d06b: b5 cf                        lda     Enemy_Y_Position,x      ;otherwise check vertical position
+d06d: c9 e0                        cmp     #$e0                    ;if above a certain point, branch to move defeated bowser
+d06f: 90 9e                        bcc     MoveD_Bowser            ;otherwise proceed to KillAllEnemies
+d071: a2 04        KillAllEnemies  ldx     #$04                    ;start with last enemy slot
+d073: 20 98 c9     KillLoop        jsr     EraseEnemyObject        ;branch to kill enemy objects
+d076: ca                           dex                             ;move onto next enemy slot
+d077: 10 fa                        bpl     KillLoop                ;do this until all slots are emptied
+d079: 8d cb 06                     sta     EnemyFrenzyBuffer       ;empty frenzy buffer
+d07c: a6 08                        ldx     ObjectOffset            ;get enemy object offset and leave
+d07e: 60                           rts

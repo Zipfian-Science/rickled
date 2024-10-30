@@ -37,6 +37,13 @@ Version 1.5.0 (2024-05-05)
 * ``-o`` becomes ``--output``
 * ``-t`` becomes ``--output-type``
 * Added ``full`` to install extras to install all extras.
+* Alternative for ``from_file`` type is now ``file``. Will be deprecated in the future.
+* Alternative for ``from_csv`` type is now ``csv``. Will be deprecated in the future.
+* Deprecating ``add_env_variable`` for ``add_env``.
+* Deprecating ``add_csv_file`` for ``add_csv``.
+* Deprecating ``add_from_file`` for ``add_from``.
+* Deprecating ``add_api_json_call`` for ``add_api_json``.
+* Deprecating ``add_attr`` for ``add``.
 
 
 
