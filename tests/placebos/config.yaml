@@ -18,14 +18,14 @@ root:
     csv_columns:
       type: csv
       file_path: './tests/placebos/test.csv'
-      fieldnames: [A, B, C, D]
+      fieldnames: [ A, B, C, D ]
   file:
     text:
       type: file
       file_path: './tests/placebos/6D6172696F.txt'
     rickle:
       type: file
-      file_path: './tests/placebos/config.json'
+      file_path: './tests/placebos/conv_test.json'
       load_as_rick: true
       deep: true
       load_lambda: true

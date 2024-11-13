@@ -1,7 +1,7 @@
 import unittest
 from rickled import BaseRickle
 
-class TestBasicRickle(unittest.TestCase):
+class TestBaseRickle(unittest.TestCase):
 
     def setUp(self):
         self.expected_dict = {
@@ -9,6 +9,12 @@ class TestBasicRickle(unittest.TestCase):
             'key_three': 'value_three',
         }
         self.base_rickle = BaseRickle(self.expected_dict)
+
+        self.expanded_dict = {
+            "path": {"to": {"value": "expected_value"}},
+            "different_path": {"to": {"value": "different_expected_value"}}
+         }
+        self.expanded_rickle = BaseRickle(self.expanded_dict)
 
     def test_items(self):
         items = list(self.base_rickle.items())
@@ -24,6 +30,13 @@ class TestBasicRickle(unittest.TestCase):
         # Updating an existing key
         self.base_rickle.set("key_one", "new_value")
         self.assertEqual(self.base_rickle.get("key_one"), "new_value")
+
+        # Have to be put
+        with self.assertRaises(NameError):
+            self.base_rickle.set("/key_one/going", "somewhere")
+        # Can not traverse this
+        with self.assertRaises(KeyError):
+            self.base_rickle.set("/key_one/going/nowhere", "slowly")
 
     def test_remove(self):
         self.base_rickle.remove("key_one")
@@ -93,3 +106,45 @@ class TestBasicRickle(unittest.TestCase):
 
         for obj in base_rickle:
             self.assertEquals(obj.message, 'hello world')
+
+    def test_get_by_path(self):
+        result = self.expanded_rickle.get("/path/to/value")
+        self.assertEqual(result, "expected_value", "Failed to get the value by path")
+
+        result = self.expanded_rickle.get("/different_path/to/value")
+        self.assertEqual(result, "different_expected_value", "Failed to get the value by different path")
+
+    def test_search(self):
+        result = self.expanded_rickle.search_path("value")
+        expected_paths = ["/path/to/value", "/different_path/to/value"]
+
+        # Check if all expected paths are in the result
+        for path in expected_paths:
+            self.assertIn(path, result, f"Path {path} not found in search results")
+
+        # Test searching for a term with no matches
+        result = self.expanded_rickle.search_path("nonexistent")
+        self.assertEqual(result, [], "Expected no results for nonexistent search term")
+
+    def test_callable_with_path(self):
+        # Assuming the object can be called like custom_dict("/path/to/value")
+        result = self.expanded_rickle("/path/to/value")
+        self.assertEqual(result, "expected_value", "Failed to retrieve value when called with path")
+
+        # Test calling with a non-existent path
+        with self.assertRaises(NameError):
+            self.expanded_rickle("/nonexistent/path")
+
+    def test_name_clean_up(self):
+        self.base_rickle.add('name_with_numbers1929', 'buy_stock')
+
+        self.assertEqual(self.base_rickle.dict().get('name_with_numbers1929'), 'buy_stock')
+        self.assertEqual(self.base_rickle.name_with_numbers, 'buy_stock')
+        self.assertEqual(self.base_rickle.get('name_with_numbers1929'), 'buy_stock')
+        self.assertEqual(self.base_rickle.get('name_with_numbers'), 'buy_stock')
+
+
+
+
+if __name__ == "__main__":
+    unittest.main()

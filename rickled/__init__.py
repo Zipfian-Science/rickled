@@ -277,6 +277,7 @@ class BaseRickle:
         self._allowed_chars_pat = re.compile('[^a-zA-Z_]')
         self._keys_map = dict()
         self._path_sep = init_args.get('RICKLE_PATH_SEP', os.getenv("RICKLE_PATH_SEP", "/"))
+        self._name_cleanup = init_args.get('RICKLE_NAME_CLEAN_UP', os.getenv("RICKLE_NAME_CLEAN_UP", True))
 
         self._init_args = init_args
 
@@ -458,6 +459,8 @@ class BaseRickle:
         if self._strict and name in dir(self):
             raise NameError(f"Unable to add key '{name}', reserved keyword in Rickle. Use strict=False.")
 
+        if not self._name_cleanup:
+            return name
         clean_name = self._allowed_chars_pat.sub('', name)
         if clean_name != name:
             self._keys_map[clean_name] = name
@@ -517,6 +520,8 @@ class BaseRickle:
             if do_recursive:
                 value = self._recursive_search(self.__dict__, key)
             else:
+                if key in self._keys_map.values():
+                    key = next((k for k, v in self._keys_map.items() if v == key), None)
                 value = self.__dict__.get(key, default)
             return value
         except StopIteration:
@@ -544,19 +549,24 @@ class BaseRickle:
             key = f"{self._path_sep}{key}"
 
         if key == self._path_sep:
-            raise NameError('Can not set a value to self')
+            raise KeyError('Can not set a value to self')
 
         path_list = key.split(self._path_sep)
 
         current_node = self
 
         for node_name in path_list[1:-1]:
+            if not isinstance(current_node, BaseRickle):
+                raise KeyError(f'The path {key} could not be traversed')
             current_node = current_node.get(node_name)
             if current_node is None:
-                raise NameError(f'The path {key} could not be traversed')
+                raise KeyError(f'The path {key} could not be traversed')
 
         if '?' in path_list[-1]:
             raise KeyError(f'Function params "{path_list[-1]}" included in path!')
+
+        if not isinstance(current_node, BaseRickle):
+            raise NameError(f'The path {key} could not be set, try using put')
 
         if current_node.has(path_list[-1]):
             current_node[path_list[-1]] = value
@@ -633,12 +643,13 @@ class BaseRickle:
         """
         d = dict()
         for key, value in self.__dict__.items():
+            actual_key = key
+            if key in self._keys_map.keys():
+                actual_key = self._keys_map[key]
             if self._eval_name(key) or str(key).endswith('_meta_info'):
                 continue
-            if serialised and key in self._keys_map.keys():
-                key = self._keys_map[key]
             if isinstance(value, BaseRickle) or isinstance(value, Rickle):
-                d[key] = value.dict(serialised=serialised)
+                d[actual_key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
@@ -646,9 +657,9 @@ class BaseRickle:
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
-                d[key] = new_list
+                d[actual_key] = new_list
             else:
-                d[key] = value
+                d[actual_key] = value
         return d
 
     def has(self, key: str, deep=False) -> bool:
@@ -825,6 +836,8 @@ class BaseRickle:
             dict: The metadata as a dict.
         """
         if name:
+            if name in self._keys_map.values():
+                name = next((k for k, v in self._keys_map.items() if v == name), None)
             return self._meta_info[name]
         return self._meta_info
 
@@ -995,24 +1008,25 @@ class Rickle(BaseRickle):
         """
         d = dict()
         for key, value in self.__dict__.items():
+            actual_key = key
+            if key in self._keys_map.keys():
+                actual_key = self._keys_map[key]
             if self._eval_name(key):
                 continue
-            if serialised and key in self._keys_map.keys():
-                key = self._keys_map[key]
             if serialised and key in self._meta_info.keys():
-                d[key] = self._meta_info[key]
+                d[actual_key] = self._meta_info[key]
             # Revisit this at some later point
             elif key in self._meta_info.keys() and \
                     self._meta_info[key]['type'] in ['base64']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif key in self._meta_info.keys() and \
-                    self._meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
+                    self._meta_info[key]['type'] in ['file', 'html_page', 'api_json'] and \
                     self._meta_info[key]['hot_load']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif isinstance(value, BaseRickle):
-                d[key] = value.dict(serialised=serialised)
+                d[actual_key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
@@ -1020,9 +1034,9 @@ class Rickle(BaseRickle):
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
-                d[key] = new_list
+                d[actual_key] = new_list
             else:
-                d[key] = value
+                d[actual_key] = value
         return d
 
     def add_env_variable(self, name, load, default=None):
@@ -1065,11 +1079,11 @@ class Rickle(BaseRickle):
                      encoding: str = 'utf-8'
                      ):
         warnings.warn(message="'add_csv_file' will be removed after version 1.4. Use 'add_csv' instead")
-        self.add_csv(name=name,file_path=file_path,fieldnames=fieldnames,load_as_rick=load_as_rick,encoding=encoding)
+        self.add_csv(name=name,file_path_or_str=file_path,fieldnames=fieldnames,load_as_rick=load_as_rick,encoding=encoding)
 
     def add_csv(self,
                      name,
-                     file_path: str,
+                     file_path_or_str: str,
                      fieldnames: list = None,
                      load_as_rick: bool = False,
                      encoding: str = 'utf-8'
@@ -1079,7 +1093,7 @@ class Rickle(BaseRickle):
 
         Args:
             name (str): Property name.
-            file_path (str): File path to load from.
+            file_path_or_str (str): File path to load from, or CSV string.
             fieldnames (list): Column headers (default = None).
             load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as text (default = False).
             encoding (str): If text, encoding can be specified (default = 'utf-8').
@@ -1087,39 +1101,46 @@ class Rickle(BaseRickle):
         """
         name = self._check_kw(name)
         import csv
-        with open(file_path, 'r', encoding=encoding) as file:
-            dialect = csv.Sniffer().sniff(file.read(1024))
-            file.seek(0)
-            l = list()
+        try:
+            if Path(file_path_or_str).exists():
+                stream = Path(file_path_or_str).open()
+        except:
+            stream = StringIO(file_path_or_str)
 
-            if load_as_rick:
-                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+        dialect = csv.Sniffer().sniff(stream.read(1024))
+        stream.seek(0)
+        l = list()
 
-                for row in csv_file:
-                    l.append(dict(row))
+        if load_as_rick:
+            csv_file = csv.DictReader(stream, fieldnames=fieldnames, dialect=dialect)
 
-                self._iternalize({name: l}, deep=True)
-            elif not fieldnames is None:
+            for row in csv_file:
+                l.append(dict(row))
 
-                columns = {c: list() for c in fieldnames}
+            self._iternalize({name: l}, deep=True)
+        elif not fieldnames is None:
 
-                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+            columns = {c: list() for c in fieldnames}
 
-                for row in csv_file:
-                    for k, v in row.items():
-                        columns[k].append(v)
+            csv_file = csv.DictReader(stream, fieldnames=fieldnames, dialect=dialect)
 
-                self._iternalize({name: columns}, deep=False)
-            else:
-                csv_file = csv.reader(file, dialect=dialect)
+            for row in csv_file:
+                for k, v in row.items():
+                    columns[k].append(v)
 
-                for row in csv_file:
-                    l.append(row)
+            self._iternalize({name: columns}, deep=False)
+        else:
+            csv_file = csv.reader(stream, dialect=dialect)
 
-                self.__dict__.update({name: l})
+            for row in csv_file:
+                l.append(row)
+
+            self.__dict__.update({name: l})
+
+        stream.close()
 
         self._meta_info[name] = {'type': 'csv',
-                                 'file_path': file_path,
+                                 'file_path_or_str': file_path_or_str,
                                  'load_as_rick': load_as_rick,
                                  'fieldnames': fieldnames,
                                  'encoding': encoding
@@ -1619,25 +1640,26 @@ class UnsafeRickle(Rickle):
         """
         d = dict()
         for key, value in self.__dict__.items():
+            actual_key = key
+            if key in self._keys_map.keys():
+                actual_key = self._keys_map[key]
             if self._eval_name(key):
                 continue
-            if serialised and key in self._keys_map.keys():
-                key = self._keys_map[key]
             if serialised and key in self._meta_info.keys():
-                d[key] = self._meta_info[key]
+                d[actual_key] = self._meta_info[key]
             # Revisit this at some later point
             elif key in self._meta_info.keys() and \
                     self._meta_info[key]['type'] in ['function', 'class_definition', 'module_import',
                                                      'base64']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif key in self._meta_info.keys() and \
-                    self._meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
+                    self._meta_info[key]['type'] in ['file', 'html_page', 'api_json'] and \
                     self._meta_info[key]['hot_load']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif isinstance(value, BaseRickle):
-                d[key] = value.dict(serialised=serialised)
+                d[actual_key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
@@ -1645,9 +1667,9 @@ class UnsafeRickle(Rickle):
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
-                d[key] = new_list
+                d[actual_key] = new_list
             else:
-                d[key] = value
+                d[actual_key] = value
         return d
 
     def add_module_import(self, name, imports: list):
