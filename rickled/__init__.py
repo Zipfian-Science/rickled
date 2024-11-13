@@ -899,7 +899,7 @@ class Rickle(BaseRickle):
                         continue
                     if v['type'] == 'csv' or v['type'] == 'from_csv':
                         self.add_csv(name=k,
-                                          file_path=v['file_path'],
+                                          file_path_or_str=v['file_path'],
                                           fieldnames=v.get('fieldnames', None),
                                           load_as_rick=v.get('load_as_rick', False),
                                           encoding=v.get('encoding', 'utf-8'))

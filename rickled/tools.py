@@ -1,5 +1,6 @@
 import configparser
 import importlib.util
+from enum import Enum
 from typing import List, Union
 from pathlib import Path
 import yaml
@@ -18,6 +19,30 @@ if sys.version_info < (3, 11):
     import tomli as toml
 else:
     import tomllib as toml
+
+class CLIError(Exception):
+
+    class CLITool(Enum):
+        CONV = 1
+        OBJ = 2
+        SERVE = 3
+        SCHEMA = 4
+        OBJ_GET = 5
+        OBJ_SET = 6
+        OBJ_DEL = 7
+        OBJ_TYPE = 8
+        OBJ_SEARCH = 9
+        OBJ_FUNC = 10
+        SCHEMA_CHECK = 11
+        SCHEMA_GEN = 12
+
+    def __init__(self, message, cli_tool: CLITool):
+        self.message = message
+        self.cli_tool = cli_tool
+
+    def __str__(self):
+        return f"{self.cli_tool} {self.message}"
+
 
 
 def supported_encodings() -> list:
