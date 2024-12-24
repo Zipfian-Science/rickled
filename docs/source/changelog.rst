@@ -44,8 +44,9 @@ Version 1.5.0 (2024-05-05)
 * Deprecating ``add_from_file`` for ``add_from``.
 * Deprecating ``add_api_json_call`` for ``add_api_json``.
 * Deprecating ``add_attr`` for ``add``.
-* New init arg ``RICKLE_NAME_CLEAN_UP`` to skip cleaning key names of unallowed chars.
+* New init arg ``RICKLE_NAME_CLEAN_UP`` to skip cleaning key names of disallowed chars.
 * Fixed logical flaw in ``dict`` where cleaned up keys not being used.
+* Added helper mapping ``get_native_type_name`` to map Python type names to format native names.
 
 
 

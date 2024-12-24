@@ -100,16 +100,18 @@ class BaseRickle:
                 try:
                     parsed = parse_url(base)
                     if all([parsed.scheme, parsed.host]):
-                        response = requests.get(url=base, )
+                        response = requests.get(url=base.strip(), )
                         if response.status_code == 200:
                             _d = response.json()
                             self._input_type = "url"
                             return _d
                         else:
+                            sys.stderr.write(f"Non-200 status {response.status_code} returned for URL {base}")
                             raise ValueError(f"Non-200 status {response.status_code} returned for URL {base}")
                 except:
                     pass
             except (ImportError, ModuleNotFoundError):
+                print("#######################3")
                 pass
 
             stringed = base

@@ -3,7 +3,7 @@ import os
 import sys
 from io import StringIO
 
-from rickled.tools import unparse_ini, CLIError
+from rickled.tools import unparse_ini, CLIError, get_native_type_name
 from rickled.tools import toml_null_stripper
 
 from rickled import Rickle, UnsafeRickle
@@ -199,70 +199,12 @@ def obj_type(args):
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             v = r.get(args.key)
 
-            yaml_types = {
-                'str': 'str',
-                'int': 'int',
-                'float': 'float',
-                'bool': 'boolean',
-                'list': 'seq',
-                'dict': 'map',
-                'Rickle': 'map',
-                'UnsafeRickle': 'map',
-                'BaseRickle': 'map',
-                'bytes': 'binary'
-            }
-
-            json_types = {
-                'str': 'string',
-                'int': 'number',
-                'float': 'number',
-                'bool': 'boolean',
-                'list': 'array',
-                'dict': 'object',
-                'Rickle': 'object',
-                'UnsafeRickle': 'object',
-                'BaseRickle': 'object',
-            }
-
-            toml_types = {
-                'str': 'String',
-                'int': 'Integer',
-                'float': 'Float',
-                'bool': 'Boolean',
-                'list': 'Array',
-                'dict': 'Key/Value',
-                'Rickle': 'Key/Value',
-                'UnsafeRickle': 'Key/Value',
-                'BaseRickle': 'Key/Value',
-            }
-
-            xml_types = {
-                'str': 'xs:string',
-                'int': 'xs:integer',
-                'float': 'xs:decimal',
-                'bool': 'xs:boolean',
-                'list': 'xs:sequence',
-                'dict': 'xs:complexType',
-                'Rickle': 'xs:complexType',
-                'UnsafeRickle': 'xs:complexType',
-                'BaseRickle': 'xs:complexType',
-            }
-
             output_type = args.OUTPUT_TYPE.strip().lower()
 
-            python_type = type(v).__name__
 
-            if output_type == 'yaml':
-                print(yaml_types.get(python_type, 'Python'))
-            elif output_type == 'json':
-                print(json_types.get(python_type, 'object'))
-            elif output_type == 'toml':
-                print(toml_types.get(python_type, 'Other'))
-            elif output_type == 'xml':
-                print(xml_types.get(python_type, 'xs:any'))
-            elif output_type in ["ini", "env", "python"]:
-                print(python_type)
-            else:
+            try:
+                print(get_native_type_name(python_type_name=type(v).__name__, format_type=output_type))
+            except:
                 raise CLIError(f"Unsupported output type {output_type}, try YAML, JSON, TOML, XML, or Python",
                                cli_tool=CLIError.CLITool.OBJ_GET)
 

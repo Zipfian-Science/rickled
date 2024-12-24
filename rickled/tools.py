@@ -43,7 +43,82 @@ class CLIError(Exception):
     def __str__(self):
         return f"{self.cli_tool} {self.message}"
 
+def get_native_type_name(python_type_name: str, format_type: str, default: str = None):
+    """
+    Helper mapping from Python type names to format names.
 
+    Args:
+        python_type_name (str): Python type name.
+        format_type (str): Format type, either  yaml, json, toml, xml, ini, env, or python.
+        default (str): If unmatched return this default (default = None).
+
+    Returns:
+        str: Native name for the given format.
+    """
+    python_type_name = python_type_name.strip()
+    format_type = format_type.lower().strip()
+
+    yaml_types = {
+        'str': 'str',
+        'int': 'int',
+        'float': 'float',
+        'bool': 'boolean',
+        'list': 'seq',
+        'dict': 'map',
+        'Rickle': 'map',
+        'UnsafeRickle': 'map',
+        'BaseRickle': 'map',
+        'bytes': 'binary'
+    }
+
+    json_types = {
+        'str': 'string',
+        'int': 'integer',
+        'float': 'number',
+        'bool': 'boolean',
+        'list': 'array',
+        'dict': 'object',
+        'Rickle': 'object',
+        'UnsafeRickle': 'object',
+        'BaseRickle': 'object',
+    }
+
+    toml_types = {
+        'str': 'String',
+        'int': 'Integer',
+        'float': 'Float',
+        'bool': 'Boolean',
+        'list': 'Array',
+        'dict': 'Key/Value',
+        'Rickle': 'Key/Value',
+        'UnsafeRickle': 'Key/Value',
+        'BaseRickle': 'Key/Value',
+    }
+
+    xml_types = {
+        'str': 'xs:string',
+        'int': 'xs:integer',
+        'float': 'xs:decimal',
+        'bool': 'xs:boolean',
+        'list': 'xs:sequence',
+        'dict': 'xs:complexType',
+        'Rickle': 'xs:complexType',
+        'UnsafeRickle': 'xs:complexType',
+        'BaseRickle': 'xs:complexType',
+    }
+
+    if format_type == 'yaml':
+        return yaml_types.get(python_type_name, default if default else 'Python')
+    elif format_type == 'json':
+        return json_types.get(python_type_name, default if default else 'object')
+    elif format_type == 'toml':
+        return toml_types.get(python_type_name, default if default else 'Other')
+    elif format_type == 'xml':
+        return xml_types.get(python_type_name, default if default else 'xs:any')
+    elif format_type in ["ini", "env", "python"]:
+        return python_type_name
+    else:
+        raise ValueError(f'Unknown format type "{format_type}"')
 
 def supported_encodings() -> list:
     """
@@ -534,13 +609,13 @@ class Schema:
     def _data_types_to_schema(value: Union[list, dict, str, int, float, bool, None]):
         named_schema = OrderedDict({'type': None, 'required': False, 'nullable': True, 'description': None})
         if value == bool:
-            named_schema['type'] = 'bool'
+            named_schema['type'] = 'boolean'
             return named_schema
         if value == str:
-            named_schema['type'] = 'str'
+            named_schema['type'] = 'string'
             return named_schema
         if value == int:
-            named_schema['type'] = 'int'
+            named_schema['type'] = 'integer'
             return named_schema
         if value == float:
             named_schema['type'] = 'float'
@@ -550,14 +625,14 @@ class Schema:
             return named_schema
 
         if isinstance(value, dict) or isinstance(value, OrderedDict):
-            named_schema['type'] = 'dict'
+            named_schema['type'] = 'object'
             named_schema['schema'] = OrderedDict()
             for k, v in value.items():
                 named_schema['schema'][k] = Schema._data_types_to_schema(v)
             return named_schema
 
         if isinstance(value, list):
-            named_schema['type'] = 'list'
+            named_schema['type'] = 'array'
             named_schema['length'] = -1
             named_schema['schema'] = list()
             list_data_types = set([type(v) if not isinstance(v, type) else v for v in value])

@@ -741,6 +741,12 @@ Seeing as a ``Rickle`` can be loaded with the JSON response from a URL, it could
 
     rickle obj --output-type json --input https://official-joke-api.appspot.com/random_joke get /
 
+Or alternatively
+
+.. code-block:: shell
+
+    echo https://official-joke-api.appspot.com/random_joke | rickle obj --output-type json get /
+
 .. code-block:: json
 
     {"type": "general", "setup": "Why did the girl smear peanut butter on the road?", "punchline": "To go with the traffic jam.", "id": 324}
