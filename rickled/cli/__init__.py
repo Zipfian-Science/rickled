@@ -523,6 +523,9 @@ Which will print OK or FAIL depending on success. For more detailed output the -
     $ cat config.yaml | rickle schema check --schema config.schema.yaml --verbose
 
 To silence the OK/FAIL output, --silence can be used. If input is piped and the check fails, exit code 1 is returned.
+
+Can also be validated using {cli_bcolors.OKBLUE}jsonschema{cli_bcolors.ENDC} (if installed) by using --json-schema.
+See {cli_bcolors.UNDERLINE}https://python-jsonschema.readthedocs.io{cli_bcolors.ENDC} for more.
 """, )
 
     parser_schema_check.add_argument('--input',
@@ -561,6 +564,11 @@ To silence the OK/FAIL output, --silence can be used. If input is piped and the 
                                      dest='SILENT',
                                      action='store_true',
                                      help=f"{cli_bcolors.OKBLUE}silence{cli_bcolors.ENDC} output", )
+    parser_schema_check.add_argument('--json-schema',
+                                     '-j',
+                                     dest='JSON_SCHEMA',
+                                     action='store_true',
+                                     help=f"validate as {cli_bcolors.OKBLUE}json schema{cli_bcolors.ENDC}", )
 
     parser_schema_check.set_defaults(func=check)
 
@@ -613,6 +621,11 @@ If --input or --input-directory are passed the output will be to files. If piped
                                    dest='SILENT',
                                    action='store_true',
                                    help=f"{cli_bcolors.OKBLUE}silence{cli_bcolors.ENDC} output", )
+    parser_schema_gen.add_argument('--extras',
+                                   '-e',
+                                   dest='EXTRAS',
+                                   action='store_true',
+                                   help=f"include {cli_bcolors.OKBLUE}extra{cli_bcolors.ENDC} properties", )
 
     parser_schema_gen.set_defaults(func=gen)
 

@@ -68,7 +68,8 @@ def get_native_type_name(python_type_name: str, format_type: str, default: str =
         'Rickle': 'map',
         'UnsafeRickle': 'map',
         'BaseRickle': 'map',
-        'bytes': 'binary'
+        'bytes': 'binary',
+        'NoneType': 'null'
     }
 
     json_types = {
@@ -81,6 +82,7 @@ def get_native_type_name(python_type_name: str, format_type: str, default: str =
         'Rickle': 'object',
         'UnsafeRickle': 'object',
         'BaseRickle': 'object',
+        'NoneType': 'null'
     }
 
     toml_types = {
@@ -432,8 +434,19 @@ class Schema:
         schema (str, dict): The dict definition of schema or path to schema file (default = None).
         output_dir (str): Directory to move output files to (default = None).
         silent (bool): Suppress verbose output (default = None).
+        use_json_schema (bool): If installed and is true, the schema will be validated as a JSON schem (default = False).
+        include_extended_properties (bool): Whether to include "required", "nullable", etc. (default = True).
     """
 
+    JSON_SCHEMA_STRING = "string"
+    JSON_SCHEMA_INTEGER = "integer"
+    JSON_SCHEMA_NUMBER = "number"
+    JSON_SCHEMA_OBJECT = "object"
+    JSON_SCHEMA_ARRAY = "array"
+    JSON_SCHEMA_BOOLEAN = "boolean"
+    JSON_SCHEMA_NULL = "null"
+
+    JSON_SCHEMA_TYPES = ['string', 'integer', 'number', 'object', 'array', 'boolean', 'null']
 
     supported_list = [f"{cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}",
                       f"{cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}",
@@ -453,7 +466,9 @@ class Schema:
                  output_dir: str = None,
                  verbose: bool = False,
                  silent: bool = False,
-                 default_output_type: str = 'yaml'
+                 default_output_type: str = 'yaml',
+                 use_json_schema: bool = False,
+                 include_extended_properties: bool = True
                  ):
         self.input_files = input_files
         self.input_directories = input_directories
@@ -473,6 +488,8 @@ class Schema:
         if default_output_type.strip().lower() == 'yml':
             default_output_type = 'yaml'
         self.default_output_type = default_output_type.strip().lower()
+        self.use_json_schema = use_json_schema
+        self.include_extended_properties = include_extended_properties
 
     def do_generation(self):
         """
@@ -507,7 +524,8 @@ class Schema:
 
                 suffix = output_file.suffix.lower() if output_file.suffix else f".{self.default_output_type}"
 
-                schema = Schema.generate_schema_from_obj(input_data)
+                schema = Schema.generate_schema_from_obj(input_data,
+                                                         include_extended_properties=self.include_extended_properties)
 
                 if suffix == '.yaml':
                     with output_file.open("w") as fout:
@@ -557,7 +575,8 @@ class Schema:
             try:
                 input_data = Converter.infer_read_file_type(file)
 
-                passed = Schema.schema_validation(input_data, self.schema, no_print=not self.verbose)
+                passed = Schema.schema_validation(obj=input_data, schema=self.schema, no_print=not self.verbose,
+                                                  use_json_schema=self.use_json_schema)
 
                 if not passed:
                     failed_validation.append(file)
@@ -606,60 +625,71 @@ class Schema:
 
 
     @staticmethod
-    def _data_types_to_schema(value: Union[list, dict, str, int, float, bool, None]):
-        named_schema = OrderedDict({'type': None, 'required': False, 'nullable': True, 'description': None})
+    def _data_types_to_schema(value: Union[list, dict, str, int, float, bool, None], include_extended_properties: bool = True):
+        if include_extended_properties:
+            named_schema = OrderedDict({'type': None, 'required': False, 'nullable': True, 'description': None})
+        else:
+            named_schema = OrderedDict({'type': None})
         if value == bool:
-            named_schema['type'] = 'boolean'
+            named_schema['type'] = Schema.JSON_SCHEMA_BOOLEAN
             return named_schema
         if value == str:
-            named_schema['type'] = 'string'
+            named_schema['type'] = Schema.JSON_SCHEMA_STRING
             return named_schema
         if value == int:
-            named_schema['type'] = 'integer'
+            named_schema['type'] = Schema.JSON_SCHEMA_INTEGER
             return named_schema
         if value == float:
-            named_schema['type'] = 'float'
+            named_schema['type'] = Schema.JSON_SCHEMA_NUMBER
             return named_schema
         if value is None:
-            named_schema['type'] = 'any'
+            named_schema['type'] = Schema.JSON_SCHEMA_NULL
             return named_schema
 
         if isinstance(value, dict) or isinstance(value, OrderedDict):
-            named_schema['type'] = 'object'
-            named_schema['schema'] = OrderedDict()
+            named_schema['type'] = Schema.JSON_SCHEMA_OBJECT
+            named_schema['properties'] = OrderedDict()
             for k, v in value.items():
-                named_schema['schema'][k] = Schema._data_types_to_schema(v)
+                named_schema['properties'][k] = Schema._data_types_to_schema(v,
+                                                            include_extended_properties=include_extended_properties)
             return named_schema
 
         if isinstance(value, list):
-            named_schema['type'] = 'array'
-            named_schema['length'] = -1
-            named_schema['schema'] = list()
+            named_schema['type'] = Schema.JSON_SCHEMA_ARRAY
+            if include_extended_properties:
+                named_schema['length'] = -1
+                named_schema['min'] = -1
+                named_schema['max'] = -1
+
+            named_schema['items'] = list()
             list_data_types = set([type(v) if not isinstance(v, type) else v for v in value])
 
             if len(list_data_types) > 1:
-                named_schema['schema'].append(Schema._data_types_to_schema(None))
+                named_schema['items'].append(Schema._data_types_to_schema(None,
+                                                            include_extended_properties=include_extended_properties))
             if len(list_data_types) == 1:
-                named_schema['schema'].append(Schema._data_types_to_schema(value[0]))
+                named_schema['items'].append(Schema._data_types_to_schema(value[0],
+                                                            include_extended_properties=include_extended_properties))
             return named_schema
 
     @staticmethod
-    def generate_schema_from_obj(obj):
+    def generate_schema_from_obj(obj, include_extended_properties: bool = True):
         """
         Generate a schema definition from a Python object.
 
         Args:
             obj: Dict like object.
+            include_extended_properties (bool): Whether to include "required", "nullable", etc. (default = True).
 
         Returns:
             dict: Schema detected from obj.
 
         """
         rep = Schema._extract_data_types(obj)
-        return Schema._data_types_to_schema(rep)
+        return Schema._data_types_to_schema(rep, include_extended_properties=include_extended_properties)
 
     @staticmethod
-    def schema_validation(obj, schema: dict, path: str = '', no_print: bool = False) -> bool:
+    def schema_validation(obj, schema: dict, path: str = '', no_print: bool = False, use_json_schema: bool = False) -> bool:
         """
         Validates if obj conforms to schema.
 
@@ -668,14 +698,31 @@ class Schema:
             schema (dict): The schema in dict form.
             path (str): The current path of the object tree (default = 'root').
             no_print (bool): If failures should not be printed (default = False).
+            use_json_schema (bool): If true and jsonschema is installed, performs JSON schema instead (default = False).
 
         Returns:
             bool: True if the object conforms.
         """
+        _path_sep = os.getenv("RICKLE_PATH_SEP", "/")
+
+        if use_json_schema:
+            if importlib.util.find_spec('jsonschema'):
+                from jsonschema import validate
+                from jsonschema.exceptions import ValidationError
+
+                try:
+                    validate(instance=obj, schema=schema)
+                    return True
+                except ValidationError as exc:
+                    if not no_print:
+                        print(
+                            f"{cli_bcolors.FAIL}{exc.message}{cli_bcolors.ENDC} at {cli_bcolors.WARNING}{_path_sep.join(exc.absolute_path)}{cli_bcolors.ENDC} as per {cli_bcolors.OKBLUE}{_path_sep.join(exc.absolute_schema_path)}{cli_bcolors.ENDC}")
+                    return False
+            else:
+                raise ImportError('Could not find package "jsonschema"!')
+
         if not 'type' in schema.keys():
             raise ValueError(f'No type defined in {str(schema)}!')
-
-        _path_sep = os.getenv("RICKLE_PATH_SEP", "/")
 
         def _check_type(object_value, schema_info, is_nullable):
 
@@ -860,9 +907,9 @@ class Schema:
 
                     object_type_matches = is_hash(object_value, algorithm=schema_info.get('algorithm', None))
 
-            if schema_type in ['str', 'int', 'bool', 'float', 'list', 'dict']:
+            if schema_type in Schema.JSON_SCHEMA_TYPES:
 
-                object_type_matches = object_type == schema_type
+                object_type_matches = get_native_type_name(python_type_name=object_type, format_type='json') == schema_type
 
             null_no_type = is_nullable & ((schema_type == 'any') | (object_type == 'NoneType'))
             null_with_type = is_nullable & (schema_type != 'any') & object_type_matches
@@ -877,8 +924,8 @@ class Schema:
             return True
 
         new_path = path
-        if schema['type'] == 'dict':
-            for k, v in schema['schema'].items():
+        if schema['type'] == Schema.JSON_SCHEMA_OBJECT:
+            for k, v in schema['properties'].items():
                 new_path = f"{new_path}{_path_sep}{k}"
                 req = v.get('required', False)
                 nullable = v.get('nullable', False)
@@ -897,12 +944,12 @@ class Schema:
                     return False
 
 
-                if v['type'] in ['dict', 'list']:
+                if v['type'] in [Schema.JSON_SCHEMA_OBJECT, Schema.JSON_SCHEMA_ARRAY]:
                     if not Schema.schema_validation(obj[k], v, path=new_path, no_print=no_print):
                         return False
                 new_path = path
             return True
-        if schema['type'] == 'list':
+        if schema['type'] == Schema.JSON_SCHEMA_ARRAY:
 
             nullable = schema.get('nullable', False)
 
@@ -910,8 +957,9 @@ class Schema:
                 return True
 
             length = schema.get('length', -1)
+            min_ = schema.get('min', -1)
+            max_ = schema.get('max', -1)
             obj_length = len(obj)
-            schema_len = len(schema['schema'])
 
             if length > -1 and obj_length != length:
                 if not no_print:
@@ -919,21 +967,37 @@ class Schema:
                     f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required length {cli_bcolors.OKBLUE}{length}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                 return False
 
-            if schema_len > 0:
-                single_type = schema['schema'][0]
+            if min_ > -1 and obj_length < min_:
+                if not no_print:
+                    print(
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required minimum length {cli_bcolors.OKBLUE}{min_}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                return False
 
-                for i in range(obj_length):
-                    new_path = f"{new_path}{_path_sep}[{i}]"
-                    o = obj[i]
-                    if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
-                        if not no_print:
-                            print(
-                            f"Type '{o}' == {cli_bcolors.FAIL}'{type(o).__name__}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
-                        return False
-                    if single_type['type'] in ['dict', 'list']:
-                        if not Schema.schema_validation(o, single_type, path=new_path, no_print=no_print):
+            if max_ > -1 and obj_length > max_:
+                if not no_print:
+                    print(
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required maximum length {cli_bcolors.OKBLUE}{max_}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                return False
+
+
+            if 'items' in schema.keys():
+                schema_len = len(schema['items'])
+
+                if schema_len > 0:
+                    single_type = schema['items'][0]
+
+                    for i in range(obj_length):
+                        new_path = f"{new_path}{_path_sep}[{i}]"
+                        o = obj[i]
+                        if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
+                            if not no_print:
+                                print(
+                                f"Type '{o}' == {cli_bcolors.FAIL}'{type(o).__name__}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                             return False
-                    new_path = path
+                        if single_type['type'] in [Schema.JSON_SCHEMA_OBJECT, Schema.JSON_SCHEMA_ARRAY]:
+                            if not Schema.schema_validation(o, single_type, path=new_path, no_print=no_print):
+                                return False
+                        new_path = path
             return True
 
 class Converter:

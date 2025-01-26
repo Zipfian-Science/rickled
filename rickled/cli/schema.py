@@ -17,14 +17,16 @@ def check(args):
                    schema=args.SCHEMA,
                    output_dir=args.FAIL_DIRECTORY,
                    verbose=args.VERBOSE,
-                   silent=args.SILENT).do_validation()
+                   silent=args.SILENT,
+                   use_json_schema=args.JSON_SCHEMA).do_validation()
         else:
             data = sys.stdin.read()
             input_data = Converter.infer_read_string_type(data)
 
             schema = Converter.infer_read_file_type(args.SCHEMA)
 
-            passed = Schema.schema_validation(input_data, schema, no_print=not args.VERBOSE)
+            passed = Schema.schema_validation(obj=input_data, schema=schema, no_print=not args.VERBOSE,
+                                              use_json_schema=args.JSON_SCHEMA)
 
             if not args.SILENT:
                 result = f"{cli_bcolors.OKGREEN}OK{cli_bcolors.ENDC}" if passed else f"{cli_bcolors.FAIL}FAIL{cli_bcolors.ENDC}"
@@ -43,12 +45,13 @@ def gen(args):
                    input_directories=[args.INPUT_DIRECTORY],
                    output_files=args.OUTPUT,
                    silent=args.SILENT,
-                   default_output_type=args.OUTPUT_TYPE).do_generation()
+                   default_output_type=args.OUTPUT_TYPE,
+                   include_extended_properties=args.EXTRAS).do_generation()
         else:
             data = sys.stdin.read()
             input_data = Converter.infer_read_string_type(data)
 
-            schema_dict = Schema.generate_schema_from_obj(input_data)
+            schema_dict = Schema.generate_schema_from_obj(input_data, include_extended_properties=args.EXTRAS)
 
             ttype = args.OUTPUT_TYPE.lower().strip()
 

@@ -50,7 +50,8 @@ setup(
         'xml':  ['xmltodict'],
         'dotenv':  ['python-dotenv'],
         'validators':  ["py.validator;python_version>'3.7'"],
-        'full': ["py.validator;python_version>'3.7'", 'python-dotenv', 'xmltodict', 'twisted', 'pyopenssl']
+        'jsonschema': ["jsonschema'[format]'"],
+        'full': ["py.validator;python_version>'3.7'", 'python-dotenv', 'xmltodict', 'twisted', 'pyopenssl', "jsonschema'[format]'"]
     },
     entry_points={
         'console_scripts': [

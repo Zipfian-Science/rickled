@@ -47,6 +47,12 @@ Version 1.5.0 (2024-05-05)
 * New init arg ``RICKLE_NAME_CLEAN_UP`` to skip cleaning key names of disallowed chars.
 * Fixed logical flaw in ``dict`` where cleaned up keys not being used.
 * Added helper mapping ``get_native_type_name`` to map Python type names to format native names.
+* Renamed schema types to conform more to JSON schema, i.e. ``dict`` becomes ``object``, ``list`` becomes ``array`` etc.
+* Added ``min`` and ``max`` to array type in schema validation.
+* Added ability to use ``jsonschema`` instead in ``Schema.schema_validation`` by setting ``use_json_schema=True`` if jsonschema is installed.
+* Added ``--extras`` to schema generation to add things like "required" etc.
+* Renamed ``schema`` to ``properties`` for objects in default rickle schema.
+* Renamed ``schema`` to ``items`` for objects in default rickle schema.
 
 
 
