@@ -779,7 +779,7 @@ class Schema:
                     }
 
                     object_type_matches = is_mac_address(object_value, options=options)
-                if schema_type == 'number':
+                if schema_type == 'pyval-number':
                     from pyvalidator import is_number
                     object_type_matches = is_number(object_value)
                 if schema_type == 'prime-number':
@@ -908,8 +908,11 @@ class Schema:
                     object_type_matches = is_hash(object_value, algorithm=schema_info.get('algorithm', None))
 
             if schema_type in Schema.JSON_SCHEMA_TYPES:
-
-                object_type_matches = get_native_type_name(python_type_name=object_type, format_type='json') == schema_type
+                object_type_name = get_native_type_name(python_type_name=object_type, format_type='json')
+                if object_type_name == "integer" and schema_type == "number":
+                    object_type_matches = True
+                else:
+                    object_type_matches = object_type_name == schema_type
 
             null_no_type = is_nullable & ((schema_type == 'any') | (object_type == 'NoneType'))
             null_with_type = is_nullable & (schema_type != 'any') & object_type_matches
@@ -964,19 +967,19 @@ class Schema:
             if length > -1 and obj_length != length:
                 if not no_print:
                     print(
-                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required length {cli_bcolors.OKBLUE}{length}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required length {cli_bcolors.OKBLUE}{length}{cli_bcolors.ENDC} (per schema {schema['items']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                 return False
 
             if min_ > -1 and obj_length < min_:
                 if not no_print:
                     print(
-                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required minimum length {cli_bcolors.OKBLUE}{min_}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required minimum length {cli_bcolors.OKBLUE}{min_}{cli_bcolors.ENDC} (per schema {schema['items']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                 return False
 
             if max_ > -1 and obj_length > max_:
                 if not no_print:
                     print(
-                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required maximum length {cli_bcolors.OKBLUE}{max_}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required maximum length {cli_bcolors.OKBLUE}{max_}{cli_bcolors.ENDC} (per schema {schema['items']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                 return False
 
 
@@ -989,10 +992,11 @@ class Schema:
                     for i in range(obj_length):
                         new_path = f"{new_path}{_path_sep}[{i}]"
                         o = obj[i]
-                        if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
+                        elem_type = get_native_type_name(type(o).__name__, 'json')
+                        if (single_type['type'] != 'any' and elem_type != single_type['type']) or (elem_type == 'integer' and single_type['type'] == 'number'):
                             if not no_print:
                                 print(
-                                f"Type '{o}' == {cli_bcolors.FAIL}'{type(o).__name__}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                                f"Type '{o}' == {cli_bcolors.FAIL}'{elem_type}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                             return False
                         if single_type['type'] in [Schema.JSON_SCHEMA_OBJECT, Schema.JSON_SCHEMA_ARRAY]:
                             if not Schema.schema_validation(o, single_type, path=new_path, no_print=no_print):

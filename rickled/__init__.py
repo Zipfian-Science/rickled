@@ -919,6 +919,17 @@ class Rickle(BaseRickle):
                                                expected_http_status=v.get('expected_http_status', 200),
                                                hot_load=v.get('hot_load', False))
                         continue
+                    if v['type'] == 'secret':
+                        self.add_secret(name=k,
+                                        secret_id=v['secret_id'],
+                                        provider=v['provider'],
+                                        provider_access_key=v['provider_access_key'],
+                                        secret_properties=v.get('secret_properties', None),
+                                        load_as_rick=v.get('load_as_rick', False),
+                                        load_lambda=v.get('load_lambda', False),
+                                        deep=v.get('deep', False),
+                                        hot_load=v.get('hot_load', False))
+                        continue
                     if v['type'] == 'html_page':
                         self.add_html_page(name=k,
                                            url=v['url'],
@@ -1433,9 +1444,155 @@ class Rickle(BaseRickle):
                                  'headers': headers,
                                  'params': params,
                                  'body': body,
+                                 'load_as_rick': load_as_rick,
                                  'deep': deep,
                                  'load_lambda': load_lambda,
                                  'expected_http_status': expected_http_status,
+                                 'hot_load': hot_load
+                                 }
+
+    def _add_secret(self,
+                    secret_id: str,
+                    provider: str,
+                    provider_access_key: dict,
+                    secret_properties: dict = None,
+                    load_as_rick: bool = False,
+                    deep: bool = False,
+                    load_lambda: bool = False
+                    ):
+        provider = provider.strip().lower()
+
+        if provider == 'aws':
+            import boto3
+            from botocore.exceptions import ClientError
+
+            client = boto3.session.Session(
+                region_name=provider_access_key['region'],
+                aws_access_key_id=provider_access_key['access_key_id'],
+                aws_secret_access_key=provider_access_key['secret_access_key']).client('secretsmanager')
+            try:
+                secret = client.get_secret_value(SecretId=secret_id)
+            except ClientError as e:
+                sys.stderr.write(f"Error while accessing secret {e.response['Error']['Code']}")
+                raise e
+            else:
+                if 'SecretString' in secret:
+                    text_secret_data = secret['SecretString']
+
+                    if load_as_rick:
+                        args = copy.copy(self._init_args)
+                        args['load_lambda'] = load_lambda
+                        args['deep'] = deep
+                        return Rickle(text_secret_data, **args)
+                else:
+                    return secret['SecretBinary']
+        if provider == 'google':
+            from google.cloud import secretmanager
+            from google.oauth2 import service_account
+
+            credentials = service_account.Credentials.from_service_account_file(
+                provider_access_key['service_account_file']
+            )
+
+            client = secretmanager.SecretManagerServiceClient(credentials=credentials)
+            name = f"projects/{secret_properties['project_id']}/secrets/{secret_id}/versions/{secret_properties['version_id']}"
+
+            response = client.access_secret_version(name=name)
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(response.payload.data.decode('UTF-8'), **args)
+
+            return response.payload.data.decode('UTF-8')
+        if provider == 'azure':
+            from azure.identity import ClientSecretCredential
+            from azure.keyvault.secrets import SecretClient
+
+            key_vault_uri = f"https://{secret_properties['key_vault_name']}.vault.azure.net"
+
+            credential = ClientSecretCredential(
+                tenant_id=provider_access_key['tenant_id'],
+                client_id=provider_access_key['client_id'],
+                client_secret=provider_access_key['client_secret']
+            )
+
+            client = SecretClient(vault_url=key_vault_uri, credential=credential)
+
+            # Retrieve a secret
+            secret = client.get_secret(secret_id)
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret.value, **args)
+            return secret.value
+
+    def add_secret(self,
+                   name,
+                   secret_id: str,
+                   provider: str,
+                   provider_access_key: dict,
+                   secret_properties: dict = None,
+                   load_as_rick: bool = False,
+                   deep: bool = False,
+                   load_lambda: bool = False,
+                   hot_load: bool = False):
+        """
+        Add a secret from a cloud provider. Providers include ASW, Google, and Azure.
+
+        Note:
+            aws: provider_access_key needs the ``access_key_id``, ``secret_access_key``, and ``region``.
+            google: provider_access_key only required the file path as ``service_account_file`` to the service account key
+            azure: provider_access_key requires ``tenant_id``, ``client_id``, ``client_secret``.
+
+        Args:
+            name (str): Property name.
+            secret_id (str): The ID or name of the secret in the secret manager / key vault.
+            provider (str): Either 'aws', 'google', 'azure'.
+            provider_access_key (dict): Key/secrets or other access information. Dependent on ``provider``.
+            secret_properties (dict): Further defining properties of secret, such as version ID.
+            load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as dictionary (default = False).
+            deep (bool): Internalize dictionary structures in lists (default = False).
+            load_lambda (bool): Load lambda as code or strings (default = False).
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
+
+        """
+        name = self._check_kw(name)
+        if hot_load:
+            try:
+                _load = f"""lambda self=self: self._add_secret(secret_id='{str(secret_id)}', 
+                                                        provider='{str(provider)}', 
+                                                        provider_access_key={provider_access_key}, 
+                                                        secret_properties={secret_properties},
+                                                        load_as_rick={load_as_rick == True},
+                                                        deep={deep == True},
+                                                        load_lambda={load_lambda == True}"""
+
+                self.__dict__.update({name: eval(_load)})
+            except Exception as exc:
+                raise ValueError(f"At 'add_secret', when trying to add lambda, this happened {exc}")
+
+        else:
+            result = self._add_secret(secret_id=secret_id,
+                                              provider=provider,
+                                              provider_access_key=provider_access_key,
+                                              secret_properties=secret_properties,
+                                              load_as_rick=load_as_rick,
+                                              deep=deep,
+                                              load_lambda=load_lambda)
+
+            self.__dict__.update({name: result})
+
+        self._meta_info[name] = {'type': 'secret',
+                                 'secret_id': secret_id,
+                                 'provider': provider,
+                                 'provider_access_key': provider_access_key,
+                                 'secret_properties': secret_properties,
+                                 'load_as_rick': load_as_rick,
+                                 'deep': deep,
+                                 'load_lambda': load_lambda,
                                  'hot_load': hot_load
                                  }
 
@@ -1493,6 +1650,17 @@ class UnsafeRickle(Rickle):
                                            params=v.get('params', None),
                                            expected_http_status=v.get('expected_http_status', 200),
                                            hot_load=v.get('hot_load', False))
+                        continue
+                    if v['type'] == 'secret':
+                        self.add_secret(name=k,
+                                        secret_id=v['secret_id'],
+                                        provider=v['provider'],
+                                        provider_access_key=v['provider_access_key'],
+                                        secret_properties=v.get('secret_properties', None),
+                                        load_as_rick=v.get('load_as_rick', False),
+                                        load_lambda=v.get('load_lambda', False),
+                                        deep=v.get('deep', False),
+                                        hot_load=v.get('hot_load', False))
                         continue
                     if v['type'] == 'module_import':
                         safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)

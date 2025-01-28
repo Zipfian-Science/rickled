@@ -53,6 +53,7 @@ Version 1.5.0 (2024-05-05)
 * Added ``--extras`` to schema generation to add things like "required" etc.
 * Renamed ``schema`` to ``properties`` for objects in default rickle schema.
 * Renamed ``schema`` to ``items`` for objects in default rickle schema.
+* Added ``add_secret`` to Rickle, now able to add secrets from cloud providers ``aws``, ``google``, ``azure``.
 
 
 
