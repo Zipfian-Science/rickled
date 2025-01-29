@@ -15,6 +15,7 @@ import ast
 import tomli_w as tomlw
 
 def obj_get(args):
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -25,7 +26,6 @@ def obj_get(args):
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
 
             v = r.get(args.key)
-            dump_type = args.OUTPUT_TYPE.lower()
 
             if isinstance(v, Rickle):
                 v = v.dict()
@@ -107,6 +107,7 @@ def obj_get(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_GET)
 
 def obj_set(args):
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -115,7 +116,6 @@ def obj_set(args):
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             r.set(args.key, args.value)
-            dump_type = args.OUTPUT_TYPE.lower()
 
             if args.OUTPUT:
                 if dump_type == 'yaml':
@@ -149,6 +149,7 @@ def obj_set(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SET)
 
 def obj_del(args):
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -157,7 +158,6 @@ def obj_del(args):
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             r.remove(args.key)
-            dump_type = args.OUTPUT_TYPE.lower()
 
             if args.OUTPUT:
                 if dump_type == 'yaml':
@@ -190,6 +190,7 @@ def obj_del(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_DEL)
 
 def obj_type(args):
+    output_type = args.OUTPUT_TYPE.strip().lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -198,9 +199,6 @@ def obj_type(args):
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
             v = r.get(args.key)
-
-            output_type = args.OUTPUT_TYPE.strip().lower()
-
 
             try:
                 print(get_native_type_name(python_type_name=type(v).__name__, format_type=output_type))
@@ -212,6 +210,7 @@ def obj_type(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_TYPE)
 
 def obj_search(args):
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -221,8 +220,6 @@ def obj_search(args):
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
 
             paths = r.search_path(args.key)
-
-            dump_type = args.OUTPUT_TYPE.lower()
 
             if dump_type == 'json':
                 print(json.dumps(paths))
@@ -272,6 +269,7 @@ def obj_func(args):
         else:
             raise ValueError('Could not interpret type, only str, int, float, bool, list, dict accepted.')
 
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         re_pat = re.compile(r"(.+?)=(.+)")
         if args:
@@ -280,7 +278,6 @@ def obj_func(args):
             else:
                 _input = sys.stdin.read()
             r = UnsafeRickle(_input, load_lambda=args.LOAD_LAMBDA)
-            dump_type = args.OUTPUT_TYPE.lower()
 
             params = dict()
             if args.params:

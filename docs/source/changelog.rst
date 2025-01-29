@@ -8,7 +8,7 @@ Changelog
 History
 ==========================
 
-Version 1.5.0 (2024-05-05)
+Version 1.2.0 (2024-05-05)
 --------------------------
 
 * Major additions and changes, bumped version to ``1.5.0``.
@@ -54,8 +54,8 @@ Version 1.5.0 (2024-05-05)
 * Renamed ``schema`` to ``properties`` for objects in default rickle schema.
 * Renamed ``schema`` to ``items`` for objects in default rickle schema.
 * Added ``add_secret`` to Rickle, now able to add secrets from cloud providers ``aws``, ``google``, ``azure``.
-
-
+* Added ``add_random_value`` to Rickle, using ``generate_random_value`` in tools. Useful for mock data.
+* Moved ``--output-type`` to the main argument parser ``rickle``.
 
 Version 1.1.3 (2024-05-05)
 --------------------------

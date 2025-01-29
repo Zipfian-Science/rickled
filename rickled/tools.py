@@ -1,5 +1,7 @@
 import configparser
 import importlib.util
+import random
+import string
 from enum import Enum
 from typing import List, Union
 from pathlib import Path
@@ -42,6 +44,63 @@ class CLIError(Exception):
 
     def __str__(self):
         return f"{self.cli_tool} {self.message}"
+
+def generate_random_value(value_type, value_properties):
+    """
+    Helper function to generate a random value.
+
+    Notes:
+        integer: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+        number: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+        string: Properties include ``chars`` and ``length``. Defaults to ASCII chars and 10.
+        enum: Properties include ``values``.  Defaults to ASCII uppercase chars.
+        array: Properties include ``values`` and ``length``.  Defaults to 'integer' and 10.
+            ``values`` can be a string of ``value_type``.
+        object: Properties include ``keys``, ``values``, ``min``, and ``max``.
+            Defaults to random ASCII uppercase and 10 random integers, min and max of 1 and 5.
+            ``values`` can be a string of ``value_type``.
+
+    Args:
+        value_type (str): Either 'string', 'integer', 'number', 'enum', 'array', 'object', or 'any'.
+        value_properties (dict): Properties about the randomly generated value. See notes.
+
+    Returns:
+        value: Randomly generated value.
+    """
+    if value_type == 'any':
+        return generate_random_value(value_type=random.choice(['integer', 'string', 'number', 'enum', 'array', 'object']),
+                                     value_properties=value_properties)
+    if value_type == 'integer':
+        return random.randint(value_properties.get('min', 0), value_properties.get('max', 256))
+    if value_type == 'number':
+        return random.uniform(value_properties.get('min', 0), value_properties.get('max', 256))
+    if value_type == 'string':
+        chars = value_properties.get('chars', string.ascii_lowercase + string.digits)
+        length = value_properties.get('length', 10)
+        return ''.join([random.choice(chars) for _ in range(length)])
+    if value_type == 'enum':
+        return random.choice(value_properties.get('values', string.ascii_uppercase))
+    if value_type == 'array':
+        length = value_properties.get('length', 10)
+        values = value_properties.get('values', 'integer')
+        if isinstance(values, str):
+            return [generate_random_value(value_type=values, value_properties=value_properties) for _ in range(length)]
+        else:
+            return [random.choice(values) for _ in range(length)]
+
+    if value_type == 'object':
+        keys = value_properties.get('keys', [random.choice(string.ascii_uppercase) for _ in range(10)])
+        values = value_properties.get('values', 'integer')
+        if isinstance(values, str):
+            values = [generate_random_value(value_type=values, value_properties=value_properties) for _ in range(10)]
+
+        value = dict()
+        for i in range(random.randint(value_properties.get('min', 1), value_properties.get('max', 5))):
+            value[random.choice(keys)] = random.choice(values)
+
+        return value
+
+    raise ValueError(f"Unsupported value_type '{value_type}'")
 
 def get_native_type_name(python_type_name: str, format_type: str, default: str = None):
     """

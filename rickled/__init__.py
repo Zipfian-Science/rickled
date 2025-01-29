@@ -1,3 +1,6 @@
+import random
+import string
+
 from .__version__ import __version__, __date__
 from collections import OrderedDict
 import os
@@ -29,7 +32,8 @@ if sys.version_info < (3, 11):
 else:
     import tomllib as toml
 
-from rickled.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings
+from rickled.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings, \
+    generate_random_value
 
 yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
 
@@ -859,7 +863,6 @@ class BaseRickle:
         self.__dict__.update({name: value})
         self._meta_info[name] = {'type': 'attribute', 'value': value}
 
-
 class Rickle(BaseRickle):
     """
         An extended version of the BasicRick that can load OS environ variables and Python functions.
@@ -924,7 +927,7 @@ class Rickle(BaseRickle):
                                         secret_id=v['secret_id'],
                                         provider=v['provider'],
                                         provider_access_key=v['provider_access_key'],
-                                        secret_properties=v.get('secret_properties', None),
+                                        secret_version=v.get('secret_version', None),
                                         load_as_rick=v.get('load_as_rick', False),
                                         load_lambda=v.get('load_lambda', False),
                                         deep=v.get('deep', False),
@@ -937,6 +940,12 @@ class Rickle(BaseRickle):
                                            params=v.get('params', None),
                                            expected_http_status=v.get('expected_http_status', 200),
                                            hot_load=v.get('hot_load', False))
+                        continue
+                    if v['type'] == 'random':
+                        self.add_random_value(name=k,
+                                              value_type=v['value_type'],
+                                              value_properties=v.get('value_properties', dict()),
+                                              hot_load=v.get('hot_load', False))
                         continue
 
                 self.__dict__.update({k: Rickle(base=v, deep=deep, strict=self._strict, **init_args)})
@@ -1034,7 +1043,7 @@ class Rickle(BaseRickle):
                 # d[actual_key] = self._meta_info[key]
                 continue
             elif key in self._meta_info.keys() and \
-                    self._meta_info[key]['type'] in ['file', 'html_page', 'api_json'] and \
+                    self._meta_info[key]['type'] in ['file', 'html_page', 'api_json', 'secret', 'random'] and \
                     self._meta_info[key]['hot_load']:
                 # d[actual_key] = self._meta_info[key]
                 continue
@@ -1051,6 +1060,50 @@ class Rickle(BaseRickle):
             else:
                 d[actual_key] = value
         return d
+
+    def add_random_value(self, name, value_type: str, value_properties: dict = None, hot_load: bool = False):
+        """
+        Adds a completely random value, useful for generating mock data.
+
+        Notes:
+            integer: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+            number: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+            string: Properties include ``chars`` and ``length``. Defaults to ASCII chars and 10.
+            enum: Properties include ``values``.  Defaults to ASCII uppercase chars.
+            array: Properties include ``values`` and ``length``.  Defaults to 'integer' and 10.
+                ``values`` can be a string of ``value_type``.
+            object: Properties include ``keys``, ``values``, ``min``, and ``max``.
+                Defaults to random ASCII uppercase and 10 random integers, min and max of 1 and 5.
+                ``values`` can be a string of ``value_type``.
+
+        Args:
+            name (str): Key / property name.
+            value_type (str): Either 'string', 'integer', 'number', 'enum', 'array', 'object', or 'any'.
+            value_properties (dict): Extra properties defining what the randomly generated value should look like.
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
+        """
+        name = self._check_kw(name)
+        value_type = value_type.strip().lower()
+        if value_properties is None:
+            value_properties = dict()
+
+        if hot_load:
+            try:
+                _load = f"""lambda: generate_random_value(value_type='{str(value_type)}',
+                                                        value_properties={value_properties})"""
+
+                self.__dict__.update({name: eval(_load)})
+            except Exception as exc:
+                raise ValueError(f"At 'add_random_value', when trying to add lambda, this happened {exc}")
+        else:
+            value = generate_random_value(value_type=value_type, value_properties=value_properties)
+
+            self.__dict__.update({name: value})
+
+        self._meta_info[name] = {'type': 'random',
+                                 'value_type': value_type,
+                                 'value_properties': value_properties,
+                                 'hot_load': hot_load}
 
     def add_env_variable(self, name, load, default=None):
         warnings.warn(message="'add_env_variable' will be removed after version 1.4. Use 'add_env' instead")
@@ -1454,48 +1507,57 @@ class Rickle(BaseRickle):
     def _add_secret(self,
                     secret_id: str,
                     provider: str,
-                    provider_access_key: dict,
-                    secret_properties: dict = None,
+                    provider_access_key: Union[str, dict],
+                    secret_version: str = None,
                     load_as_rick: bool = False,
                     deep: bool = False,
                     load_lambda: bool = False
                     ):
         provider = provider.strip().lower()
 
+        if isinstance(provider_access_key, str):
+            provider_access_key = Rickle(provider_access_key).dict()
+
         if provider == 'aws':
             import boto3
             from botocore.exceptions import ClientError
 
-            client = boto3.session.Session(
-                region_name=provider_access_key['region'],
-                aws_access_key_id=provider_access_key['access_key_id'],
-                aws_secret_access_key=provider_access_key['secret_access_key']).client('secretsmanager')
+            client = boto3.session.Session(**provider_access_key).client('secretsmanager')
             try:
-                secret = client.get_secret_value(SecretId=secret_id)
+                args = {'SecretId': secret_id}
+                if secret_version:
+                    args['VersionId'] = secret_version
+                secret = client.get_secret_value(**args)
+
             except ClientError as e:
                 sys.stderr.write(f"Error while accessing secret {e.response['Error']['Code']}")
                 raise e
             else:
                 if 'SecretString' in secret:
-                    text_secret_data = secret['SecretString']
+                    secret_string = secret['SecretString']
 
                     if load_as_rick:
                         args = copy.copy(self._init_args)
                         args['load_lambda'] = load_lambda
                         args['deep'] = deep
-                        return Rickle(text_secret_data, **args)
+                        return Rickle(secret_string, **args)
+                    return secret_string
                 else:
                     return secret['SecretBinary']
-        if provider == 'google':
+        elif provider == 'google':
             from google.cloud import secretmanager
             from google.oauth2 import service_account
 
-            credentials = service_account.Credentials.from_service_account_file(
-                provider_access_key['service_account_file']
-            )
+            credentials = service_account.Credentials.from_service_account_info(
+                provider_access_key)
+
+            if secret_version:
+                _secret_version_id = secret_version
+            else:
+                _secret_version_id = 'latest'
 
             client = secretmanager.SecretManagerServiceClient(credentials=credentials)
-            name = f"projects/{secret_properties['project_id']}/secrets/{secret_id}/versions/{secret_properties['version_id']}"
+            name = f"projects/{provider_access_key['project_id']}/secrets/{secret_id}/versions/{_secret_version_id}"
 
             response = client.access_secret_version(name=name)
 
@@ -1506,11 +1568,11 @@ class Rickle(BaseRickle):
                 return Rickle(response.payload.data.decode('UTF-8'), **args)
 
             return response.payload.data.decode('UTF-8')
-        if provider == 'azure':
+        elif provider == 'azure':
             from azure.identity import ClientSecretCredential
             from azure.keyvault.secrets import SecretClient
 
-            key_vault_uri = f"https://{secret_properties['key_vault_name']}.vault.azure.net"
+            key_vault_uri = f"https://{provider_access_key['key_vault_name']}.vault.azure.net"
 
             credential = ClientSecretCredential(
                 tenant_id=provider_access_key['tenant_id'],
@@ -1520,39 +1582,91 @@ class Rickle(BaseRickle):
 
             client = SecretClient(vault_url=key_vault_uri, credential=credential)
 
-            # Retrieve a secret
-            secret = client.get_secret(secret_id)
+            secret = client.get_secret(name=secret_id, version=secret_version)
+
             if load_as_rick:
                 args = copy.copy(self._init_args)
                 args['load_lambda'] = load_lambda
                 args['deep'] = deep
                 return Rickle(secret.value, **args)
             return secret.value
+        elif provider == 'hashicorp':
+            import hvac
+
+            client = hvac.Client(
+                **provider_access_key
+            )
+
+            read_response = client.secrets.kv.read_secret_version(path=secret_id)
+
+            secret = read_response['data']['data']
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret, **args)
+            return secret
+        elif provider == 'oracle':
+            import oci
+
+            vault_client = oci.vault.VaultsClient(provider_access_key)
+
+            secret_response = vault_client.get_secret(secret_id=secret_id)
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret_response.data, **args)
+            return secret_response.data
+        elif provider == 'ibm':
+            from ibm_cloud_sdk_core.authenticators.iam_authenticator import IAMAuthenticator
+            from ibm_secrets_manager_sdk.secrets_manager_v2 import SecretsManagerV2
+
+            secrets_manager = SecretsManagerV2(
+                authenticator=IAMAuthenticator(provider_access_key['apikey'])
+            )
+            secrets_manager.set_service_url(provider_access_key['service_url'])
+
+            response = secrets_manager.get_secret(
+                id=secret_id
+            )
+
+            secret_payload = response.result['payload']
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret_payload, **args)
+            return secret_payload
+        else:
+            raise ValueError(f"Provider name '{provider}' not supported")
 
     def add_secret(self,
                    name,
                    secret_id: str,
                    provider: str,
-                   provider_access_key: dict,
-                   secret_properties: dict = None,
+                   provider_access_key: Union[str, dict],
+                   secret_version: str = None,
                    load_as_rick: bool = False,
                    deep: bool = False,
                    load_lambda: bool = False,
                    hot_load: bool = False):
         """
-        Add a secret from a cloud provider. Providers include ASW, Google, and Azure.
+        Adds a secret from a cloud provider. Providers include ASW, Google, Azure, and Hashicorp.
 
         Note:
-            aws: provider_access_key needs the ``access_key_id``, ``secret_access_key``, and ``region``.
-            google: provider_access_key only required the file path as ``service_account_file`` to the service account key
-            azure: provider_access_key requires ``tenant_id``, ``client_id``, ``client_secret``.
+            The provider_access_key can either be a string or dict.
+            A string can either be a JSON (or YAML) string or a file path to an access key file.
 
         Args:
             name (str): Property name.
             secret_id (str): The ID or name of the secret in the secret manager / key vault.
             provider (str): Either 'aws', 'google', 'azure'.
-            provider_access_key (dict): Key/secrets or other access information. Dependent on ``provider``.
-            secret_properties (dict): Further defining properties of secret, such as version ID.
+            provider_access_key (dict, str): Key/secrets or other access information. Dependent on ``provider``.
+            secret_version (str): Version ID of the secret (default = None).
             load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as dictionary (default = False).
             deep (bool): Internalize dictionary structures in lists (default = False).
             load_lambda (bool): Load lambda as code or strings (default = False).
@@ -1562,13 +1676,15 @@ class Rickle(BaseRickle):
         name = self._check_kw(name)
         if hot_load:
             try:
+                if isinstance(provider_access_key, str):
+                    provider_access_key = f"'{provider_access_key}'"
                 _load = f"""lambda self=self: self._add_secret(secret_id='{str(secret_id)}', 
                                                         provider='{str(provider)}', 
                                                         provider_access_key={provider_access_key}, 
-                                                        secret_properties={secret_properties},
+                                                        secret_version={secret_version},
                                                         load_as_rick={load_as_rick == True},
                                                         deep={deep == True},
-                                                        load_lambda={load_lambda == True}"""
+                                                        load_lambda={load_lambda == True})"""
 
                 self.__dict__.update({name: eval(_load)})
             except Exception as exc:
@@ -1578,7 +1694,7 @@ class Rickle(BaseRickle):
             result = self._add_secret(secret_id=secret_id,
                                               provider=provider,
                                               provider_access_key=provider_access_key,
-                                              secret_properties=secret_properties,
+                                              secret_version=secret_version,
                                               load_as_rick=load_as_rick,
                                               deep=deep,
                                               load_lambda=load_lambda)
@@ -1589,7 +1705,7 @@ class Rickle(BaseRickle):
                                  'secret_id': secret_id,
                                  'provider': provider,
                                  'provider_access_key': provider_access_key,
-                                 'secret_properties': secret_properties,
+                                 'secret_version': secret_version,
                                  'load_as_rick': load_as_rick,
                                  'deep': deep,
                                  'load_lambda': load_lambda,
@@ -1656,11 +1772,17 @@ class UnsafeRickle(Rickle):
                                         secret_id=v['secret_id'],
                                         provider=v['provider'],
                                         provider_access_key=v['provider_access_key'],
-                                        secret_properties=v.get('secret_properties', None),
+                                        secret_version=v.get('secret_version', None),
                                         load_as_rick=v.get('load_as_rick', False),
                                         load_lambda=v.get('load_lambda', False),
                                         deep=v.get('deep', False),
                                         hot_load=v.get('hot_load', False))
+                        continue
+                    if v['type'] == 'random':
+                        self.add_random_value(name=k,
+                                              value_type=v['value_type'],
+                                              value_properties=v.get('value_properties', dict()),
+                                              hot_load=v.get('hot_load', False))
                         continue
                     if v['type'] == 'module_import':
                         safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)

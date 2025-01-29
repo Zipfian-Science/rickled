@@ -39,13 +39,14 @@ def check(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_CHECK)
 
 def gen(args):
+    output_type = args.OUTPUT_TYPE.lower().strip() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args.INPUT:
             Schema(input_files=args.INPUT,
                    input_directories=[args.INPUT_DIRECTORY],
                    output_files=args.OUTPUT,
                    silent=args.SILENT,
-                   default_output_type=args.OUTPUT_TYPE,
+                   default_output_type=output_type,
                    include_extended_properties=args.EXTRAS).do_generation()
         else:
             data = sys.stdin.read()
@@ -53,22 +54,23 @@ def gen(args):
 
             schema_dict = Schema.generate_schema_from_obj(input_data, include_extended_properties=args.EXTRAS)
 
-            ttype = args.OUTPUT_TYPE.lower().strip()
-
-
-            if ttype == 'yaml':
+            if output_type == 'yaml':
                 print(yaml.dump(schema_dict))
-            elif ttype == 'json':
+            elif output_type == 'json':
                 print(json.dumps(schema_dict))
-            elif ttype == 'toml':
+            elif output_type == 'toml':
                 print(tomlw.dumps(toml_null_stripper(schema_dict)))
-            elif ttype == 'xml' and importlib.util.find_spec('xmltodict'):
-                import xmltodict
-                print(xmltodict.unparse({'schema':schema_dict}, pretty=True))
-            elif ttype == 'ini' or ttype == '.env':
+            elif output_type == 'xml':
+                if importlib.util.find_spec('xmltodict'):
+                    import xmltodict
+                    print(xmltodict.unparse({'schema':schema_dict}, pretty=True))
+                else:
+                    raise CLIError(message='Missing dependency "xmltodict" for type xml',
+                                   cli_tool=CLIError.CLITool.SCHEMA_GEN)
+            elif output_type == 'ini' or output_type == '.env':
                 raise CLIError(message='INI and .ENV output unsupported for schema generation', cli_tool=CLIError.CLITool.SCHEMA_GEN)
             else:
-                raise CLIError(message=f'Unknown type "{ttype}"', cli_tool=CLIError.CLITool.SCHEMA_GEN)
+                raise CLIError(message=f'Unknown type "{output_type}"', cli_tool=CLIError.CLITool.SCHEMA_GEN)
 
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.SCHEMA_GEN)

@@ -62,6 +62,12 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
         action="version",
         version=f'%(prog)s {ver}'
     )
+    parser.add_argument('--output-type',
+                             dest='OUTPUT_TYPE',
+                             type=str,
+                             metavar='',
+                             help=f"output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (default = YAML)",
+                             default=None)
 
     subparsers = parser.add_subparsers()
 
@@ -81,8 +87,8 @@ If input is piped, output is printed. For INPUT or INPUT_DIRECTORY output is wri
 
 Examples: 
 
-    $ cat config.yaml | rickle conv --output-type JSON
-    $ rickle conv --input conf1.yaml conf2.yaml  --output-type JSON
+    $ cat config.yaml | rickle --output-type JSON conv
+    $ rickle --output-type JSON conv --input conf1.yaml conf2.yaml 
 
 When no output type is defined, the file extension (suffix) is used to infer the output type.    
 
@@ -112,12 +118,6 @@ Supported formats:
                              help=f"{cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC} names, only if --input given",
                              nargs='+',
                              default=None)
-    parser_conv.add_argument('--output-type',
-                             dest='OUTPUT_TYPE',
-                             type=str,
-                             metavar='',
-                             help=f"output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (default = YAML)",
-                             default='yaml')
     parser_conv.add_argument('--input-type',
                              dest='INPUT_TYPE',
                              type=str,
@@ -160,13 +160,8 @@ Input is used to create a Rickle {cli_bcolors.HEADER}object{cli_bcolors.ENDC} wh
                             metavar='',
                             help=f"write to {cli_bcolors.OKBLUE}output file{cli_bcolors.ENDC}",
                             required=False)
-    parser_obj.add_argument('--output-type',
-                            dest='OUTPUT_TYPE',
-                            type=str,
-                            metavar='',
-                            help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (default = YAML)",
-                            default='yaml')
     parser_obj.add_argument('--load-lambda',
+                            '-l',
                             dest='LOAD_LAMBDA',
                             action='store_true',
                             help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} types",
@@ -189,7 +184,7 @@ Input is used to create a Rickle {cli_bcolors.HEADER}object{cli_bcolors.ENDC} wh
 Examples: 
 
     $ cat config.yaml | rickle obj get /path/to
-    $ rickle obj --input conf1.yaml --output-type JSON get /path/to  
+    $ rickle --output-type JSON obj --input conf1.yaml get /path/to  
 
 """, )
 
@@ -451,13 +446,8 @@ Unsafe usage like functions can be enabled:
                                   help=f"ssl {cli_bcolors.OKBLUE}certificate{cli_bcolors.ENDC} file path",
                                   default=None,
                                   metavar='')
-        parser_serve.add_argument('--output-type',
-                                  dest="OUTPUT_TYPE",
-                                  type=str,
-                                  help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (default = JSON)",
-                                  default='json',
-                                  metavar='')
         parser_serve.add_argument('--load-lambda',
+                                  '-l',
                                   dest="LOAD_LAMBDA",
                                   action='store_true',
                                   help=f"load {cli_bcolors.OKBLUE}lambda{cli_bcolors.ENDC} true",
@@ -587,7 +577,8 @@ Generates schemas from input.
 
 Examples: 
 
-    $ cat config.yaml | rickle schema gen  
+    $ cat config.yaml | rickle schema gen 
+    $ rickle --output-type JSON schema gen --input config.yaml --extras
 
 If --input or --input-directory are passed the output will be to files. If piped, the output is printed.
 """, )
@@ -609,12 +600,6 @@ If --input or --input-directory are passed the output will be to files. If piped
                                    type=str,
                                    help=f"{cli_bcolors.OKBLUE}directory{cli_bcolors.ENDC}(s) of files to generate from",
                                    default=None,
-                                   metavar='')
-    parser_schema_gen.add_argument('--output-type',
-                                   dest='OUTPUT_TYPE',
-                                   type=str,
-                                   help=f"output {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} (default = YAML)",
-                                   default='yaml',
                                    metavar='')
     parser_schema_gen.add_argument('--silent',
                                    '-s',

@@ -30,6 +30,7 @@ Which will show the list of available options:
    optional arguments:
      -h, --help            show this help message and exit
      --version, -v         show version number
+     --output-type         output file type (default = YAML)
 
 
 .. note::
@@ -95,7 +96,9 @@ For most of the tools the output types can be specified with the ``--output-type
 
 .. note::
 
-   The default output type for all tools is ``YAML``.
+   The default output type for all tools (except ``serve``) is ``YAML``. For ``serve`` the default output is ``JSON``.
+
+Certain tools have more output type options. Both ``search`` and ``type`` have ``list`` and ``python`` as extra types.
 
 Conversion tool
 ========================
@@ -117,7 +120,6 @@ Which will show the list of available options:
      --input  [ ...]     input file(s) to convert
      --input-directory   directory of input files
      --output  [ ...]    output file names, only if --input given
-     --output-type       output file type (default = YAML)
      --input-type        optional input type (type inferred if none)
      --verbose, -v       verbose output
 
@@ -154,7 +156,7 @@ To specify the output type:
 
 .. code-block:: shell
 
-    cat config.yaml | rickle conv --output-type JSON
+    cat config.yaml | rickle --output-type JSON conv
 
 This will output the converted file (in this example as JSON).
 
@@ -166,7 +168,7 @@ The ``--output-type`` option is needed to specify the format or else ``YAML`` wi
 
 .. code-block:: shell
 
-    rickle conv --input-directory ./configs --output-type TOML --verbose
+    rickle --output-type TOML conv --input-directory ./configs --verbose
 
 This will glob all files in the directory ``./configs``, including TOML files, and output them as TOML files with the same names.
 
@@ -192,7 +194,7 @@ Multiple files can be converted at once:
 
 .. code-block:: shell
 
-    rickle conv --input config_dev.yaml config_tst.yaml config_prd.yaml --output-type JSON
+    rickle --output-type JSON conv --input config_dev.yaml config_tst.yaml config_prd.yaml
 
 When specifying the output names, the order of output filenames must match the order of input files:
 
@@ -240,7 +242,6 @@ Which will show the following list of options:
      -h, --help            show this help message and exit
      --input               input file to create object from
      --output              write to output file
-     --output-type         output type (default = YAML)
      --load-lambda         load lambda types
 
 Using this tool requires input of a YAML, JSON, TOML (etc.) file. This is done with the ``--input`` option or alternatively piped.
@@ -358,13 +359,13 @@ Will result in:
 
 .. note::
 
-   The default output is always YAML. To change the format, add the ``--output-type`` option to ``obj``.
+   The default output is always YAML. To change the format, add the ``--output-type`` type.
 
 Outputting the same in JSON:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj -t JSON get /
+    cat conf.yaml | rickle --output-type JSON obj get /
 
 .. code-block:: shell
 
@@ -400,7 +401,7 @@ For example, the following will output to a file:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj --output-type JSON --output conf.json set /root_node/level_one/pswd *********
+    cat conf.yaml | rickle --output-type JSON obj --output conf.json set /root_node/level_one/pswd *********
 
 .. code-block:: json
    :linenos:
@@ -413,7 +414,7 @@ Of course this could also be directed:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj --output-type JSON > conf.json
+    cat conf.yaml | rickle --output-type JSON obj > conf.json
 
 A new key-value can be added, for example:
 
@@ -506,7 +507,7 @@ Examples:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj --output-type XML type /root_node/level_one
+    cat conf.yaml | rickle --output-type XML obj type /root_node/level_one
 
 .. code-block:: text
 
@@ -514,7 +515,7 @@ Examples:
 
 .. code-block:: shell
 
-    cat conf.yaml | rickle obj --output-type python type /root_node/level_one
+    cat conf.yaml | rickle --output-type PYTHON obj type /root_node/level_one
 
 .. code-block:: text
 
@@ -565,11 +566,11 @@ Where searching for the ``usr`` key:
    - /root_node/level_one/usr
    - /root_node/other/usr
 
-To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``list``:
+To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``LIST``:
 
 .. code-block:: shell
 
-    cat conf-multi.yaml | rickle obj --output-type list search usr
+    cat conf-multi.yaml | rickle --output-type LIST obj search usr
 
 ...prints the following paths:
 
@@ -584,7 +585,7 @@ The path separator will be used as is set in the env:
 .. code-block:: shell
 
     export RICKLE_PATH_SEP=.
-    cat conf-multi.yaml | rickle obj --output-type list search usr
+    cat conf-multi.yaml | rickle --output-type LIST obj search usr
 
 .. code-block:: text
 
@@ -739,13 +740,13 @@ Seeing as a ``Rickle`` can be loaded with the JSON response from a URL, it could
 
 .. code-block:: shell
 
-    rickle obj --output-type json --input https://official-joke-api.appspot.com/random_joke get /
+    rickle --output-type JSON obj --input https://official-joke-api.appspot.com/random_joke get /
 
 Or alternatively
 
 .. code-block:: shell
 
-    echo https://official-joke-api.appspot.com/random_joke | rickle obj --output-type json get /
+    echo https://official-joke-api.appspot.com/random_joke | rickle --output-type JSON obj get /
 
 .. code-block:: json
 
@@ -761,7 +762,7 @@ The most likely problem to occur is if the path can not be traversed, i.e. the p
 
 .. code-block:: shell
 
-     cat conf.yaml | rickle obj --output-type JSON get /path_to_nowhere
+     cat conf.yaml | rickle --output-type JSON obj get /path_to_nowhere
 
 And this will result in printing nothing (default behaviour).
 
@@ -806,7 +807,6 @@ Prints the following options:
      --input  [ ...]     input file(s) to generate from
      --output  [ ...]    output file(s) to write to
      --input-directory   directory(s) of files to generate from
-     --output-type       output type (default = YAML)
      --silent, -s        silence output
 
 Consider the following example file:
@@ -889,7 +889,7 @@ Of course the type can also be defined by either using ``--output-type``:
 
 .. code-block:: shell
 
-    rickle schema gen --input my-example.yaml --output-type JSON
+    rickle --output-type JSON schema gen --input my-example.yaml
 
 Or implicitly with extensions in filenames:
 
@@ -1048,7 +1048,6 @@ Prints the following options:
      --port            port number (default = 8080)
      --private-key     private key file path
      --certificate     ssl certificate file path
-     --output-type     output type (default = JSON)
      --load-lambda     load lambda true
      --unsafe          load UnsafeRickle (VERY UNSAFE)
      --browser, -b     open browser
@@ -1213,7 +1212,7 @@ Output can also be given as ``application/yaml`` with YAML output using the ``--
 
 .. code-block:: shell
 
-   cat mock-example.yaml | rickle serve -b --output-type YAML
+   cat mock-example.yaml | rickle --output-type YAML serve -b
 
 Which will produce the YAML output:
 

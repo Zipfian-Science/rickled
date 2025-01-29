@@ -11,6 +11,7 @@ def serve(args):
         warnings.warn('Required Python package "twisted" not found.', ImportWarning)
         return
 
+    output_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'json'
     try:
         if args.UNSAFE:
             if args.INPUT:
@@ -35,7 +36,7 @@ def serve(args):
                           port=args.PORT,
                           interface=args.HOST,
                           serialised=args.SERIALISED,
-                          output_type=args.OUTPUT_TYPE,
+                          output_type=output_type,
                           path_to_certificate=args.CERTIFICATE,
                           path_to_private_key=args.PRIVATE_KEY,
                         )
