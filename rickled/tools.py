@@ -108,8 +108,8 @@ def get_native_type_name(python_type_name: str, format_type: str, default: str =
 
     Args:
         python_type_name (str): Python type name.
-        format_type (str): Format type, either  yaml, json, toml, xml, ini, env, or python.
-        default (str): If unmatched return this default (default = None).
+        format_type (str): Format type, either yaml, json, toml, xml, ini, env, or python.
+        default (str): If unmatched, return this default (default = None).
 
     Returns:
         str: Native name for the given format.

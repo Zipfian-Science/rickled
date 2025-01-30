@@ -1,3 +1,5 @@
+.. _cli-page:
+
 CLI Tools
 **************************
 
@@ -808,6 +810,7 @@ Prints the following options:
      --output  [ ...]    output file(s) to write to
      --input-directory   directory(s) of files to generate from
      --silent, -s        silence output
+     --extras, -e        include extra properties
 
 Consider the following example file:
 
@@ -844,32 +847,32 @@ will create the file ``my-example.schema.yaml`` as the following:
    :caption: my-example.schema.yaml
    :name: my-example-schema-yaml
 
-   schema:
+   type: object
+   properties:
      root:
-       schema:
-         a_floats_list:
-           schema:
-           - type: float
-           type: list
-         a_mixed_list:
-           schema:
-           - type: any
-           type: list
-         a_string_list:
-           schema:
-           - type: str
-           type: list
-         dict_type:
-           schema:
-             key_one:
-               type: int
-             key_two:
-               type: str
-           type: dict
+       type: object
+       properties:
          null_type:
-           type: any
-       type: dict
-   type: dict
+           type: 'null'
+         dict_type:
+           type: object
+           properties:
+             key_one:
+               type: integer
+             key_two:
+               type: string
+         a_string_list:
+           type: array
+           items:
+           - type: string
+         a_floats_list:
+           type: array
+           items:
+           - type: number
+         a_mixed_list:
+           type: array
+           items:
+           - type: 'null'
 
 It will print the following to STDOUT:
 
@@ -905,52 +908,50 @@ Which will result in:
    :name: my-schema-json
 
    {
-     "type": "dict",
-     "schema": {
-       "root": {
-         "type": "dict",
-         "schema": {
-           "null_type": {
-             "type": "any"
-           },
-           "dict_type": {
-             "type": "dict",
-             "schema": {
-               "key_one": {
-                 "type": "int"
-               },
-               "key_two": {
-                 "type": "str"
+       "type": "object",
+       "properties": {
+           "root": {
+               "type": "object",
+               "properties": {
+                   "null_type": {
+                       "type": "null"
+                   },
+                   "dict_type": {
+                       "type": "object",
+                       "properties": {
+                           "key_one": {
+                               "type": "integer
+                               "
+                           },
+                           "key_two": {
+                               "type": "string"
+                           }
+                       }
+                   },
+                   "a_string_list": {
+                       "type": "array",
+                       "items": [{
+                               "type": "string"
+                           }
+                       ]
+                   },
+                   "a_floats_list": {
+                       "type": "array",
+                       "items": [{
+                               "type": "number"
+                           }
+                       ]
+                   },
+                   "a_mixed_list": {
+                       "type": "array",
+                       "items": [{
+                               "type": "null"
+                           }
+                       ]
+                   }
                }
-             }
-           },
-           "a_string_list": {
-             "type": "list",
-             "schema": [
-               {
-                 "type": "str"
-               }
-             ]
-           },
-           "a_floats_list": {
-             "type": "list",
-             "schema": [
-               {
-                 "type": "float"
-               }
-             ]
-           },
-           "a_mixed_list": {
-             "type": "list",
-             "schema": [
-               {
-                 "type": "any"
-               }
-             ]
            }
-         }
        }
-     }
    }
 
 
@@ -976,6 +977,9 @@ Prints the following options:
      --fail-directory    directory to move failed files to
      --verbose, -v       verbose output
      --silent, -s        silence output
+     --json-schema, -j   validate as json schema
+
+.. hint:: Using ``--json-schema`` will, if ``jsonschema`` is installed, validate using the JSON Schema specification.
 
 Example:
 
@@ -1007,8 +1011,8 @@ Furthermore a message detailing the failure can be printed using ``--verbose`` o
 
 .. code-block:: shell
 
-   Type 'key_one' == 'str',
-    Required type 'int' (per schema {'type': 'int'}),
+   Type 'key_one' == 'string',
+    Required type 'integer' (per schema {'type': 'integer'}),
     In {'key_one': '99', 'key_two': 'text'},
     Path /root/dict_type/key_one
 

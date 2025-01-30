@@ -3,10 +3,51 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Helper tools
+API Reference
 **************************
 
-Functions
+Basic Rickle (BaseRickle)
+========================
+
+The BaseRickle forms the basis for extended versions.
+This basis includes important methods for manipulating data, and formulating the internal representation.
+
+.. hlist::
+   :columns: 3
+
+   * dict()
+   * items()
+   * get()
+   * set()
+   * remove()
+   * values()
+   * keys()
+   * has()
+   * search_path()
+
+.. autoclass:: rickled.__init__.BaseRickle
+   :members:
+
+Rickle Pick (Rickle)
+========================
+
+The extended version of BaseRickle that allows for easy loading of external data such as OS environmental variables, files, JSON responses from APIs.
+Contains all the same methods in BasicRick such as ``search_path`` etc.
+
+.. autoclass:: rickled.__init__.Rickle
+   :members:
+
+Object Rickler
+========================
+
+The ObjectRickler contains static methods for converting Python objects to Rickle objects for YAML/JSON export,
+and then reconstructing the YAML/JSON files to the Python objects. These are not guaranteed to work for all Python objects.
+
+.. autoclass:: rickled.__init__.ObjectRickler
+   :members:
+
+
+Helper tools - Functions
 =====================
 
 Flatten dictionaries
@@ -107,6 +148,16 @@ Other
 -------------------
 
 .. autofunction:: rickled.tools.toml_null_stripper
+
+.. autofunction:: rickled.tools.classify_string
+
+.. autofunction:: rickled.tools.supported_encodings
+
+.. autofunction:: rickled.tools.get_native_type_name
+
+.. autofunction:: rickled.tools.generate_random_value
+
+.. autoclass:: rickled.tools.CLIError
 
 Converter
 =====================
