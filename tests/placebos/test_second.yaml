@@ -1,4 +1,0 @@
-r_one:
-  r_two:
-    some: value
-    referred: *some_reference_ref

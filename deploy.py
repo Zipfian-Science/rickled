@@ -1,16 +1,17 @@
 import os
 import shutil
 import argparse
-import run_tests as tests
+import subprocess
+import unittest
+
 import sys
-from twine.commands import upload
 from datetime import datetime
 import ftplib
 import glob
 from pathlib import Path
-from rickled import __version__ as version_name
+from rickle import __version__ as version_name
 
-_project_name = 'rickled'
+_project_name = 'rickle'
 _git_files_for_add = [
     "./docs/source/*.rst",
     f"./{_project_name}/__init__.py",
@@ -28,6 +29,7 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 def upload_to_pypi(release_name):
+    from twine.commands import upload
 
     print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.WARNING}-- Using version {version_name}!{bcolors.ENDC}')
 
@@ -60,16 +62,25 @@ def build_documentation():
     os.chdir('..')
     print(f'{bcolors.UNDERLINE}-- Made docs, change dir{bcolors.ENDC}')
 
-def lock_and_gen_pipreq():
-    print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Locking Pipfile.lock and generating requirements.txt{bcolors.ENDC}')
-    os.system("pipenv lock -r > requirements.txt")
+def lock_and_gen_pipreq(provider='poetry'):
+    if provider.lower().strip() == 'pipenv':
+        print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Locking Pipfile.lock and generating requirements.txt{bcolors.ENDC}')
+
+        os.system("pipenv lock -r > requirements.txt")
+    if provider.lower().strip() == 'poetry':
+        print(
+            f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Locking poetry.lock and generating requirements.txt{bcolors.ENDC}')
+
+        os.system("poetry export -f requirements.txt --output requirements.txt")
 
 def upload_docs_via_ftp():
+    from dotenv import load_dotenv
+    load_dotenv()
     print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Upload documentation to FTP server! {bcolors.ENDC}')
     try:
         with ftplib.FTP(os.getenv('FTP_HOST'), os.getenv('FTP_USERNAME'), os.getenv('FTP_PASSWORD')) as ftp:
             ftp.cwd(os.getenv('FTP_DIRECTORY'))
-            ftp.set_pasv(False)
+            ftp.set_pasv(True)
 
             for f in glob.glob('./docs/build/html/*'):
                 if os.path.isfile(f):
@@ -123,29 +134,86 @@ def delete_dist():
         os.system("rm -rf dist")
         os.system("rm -rf deploy" )
 
-def do_unit_tests(args):
-    if args.unit:
-        print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Running all unit tests!{bcolors.ENDC}')
-        return tests.all_unit_tests(args.coverage)
-    return True
+def specified_tests(tests):
+    for test in tests:
+        file_name = '%s.py' % test
+        tests = unittest.TestLoader().discover(start_dir="./tests/unittest", pattern=file_name, top_level_dir=".")
+        unittest.TextTestRunner(verbosity=4).run(tests)
+        tests = unittest.TestLoader().discover(start_dir="./tests/integration", pattern=file_name, top_level_dir=".")
+        unittest.TextTestRunner(verbosity=4).run(tests)
 
+def all_unit_tests(do_coverage=False):
+    import coverage
+    print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Running all unit tests!{bcolors.ENDC}')
+    cov = coverage.Coverage(cover_pylib=False, data_file='.unittest')
+    if do_coverage:
+        cov.start()
 
-def do_integration_tests(args):
-    if args.integration:
-        print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Running all integration tests!{bcolors.ENDC}')
-        return tests.all_integration_tests(args.coverage)
-    return True
+    tests = unittest.TestLoader().discover(start_dir="./tests/unittest", pattern="test_*.py", top_level_dir=".")
+    result = unittest.TextTestRunner(verbosity=4).run(tests)
+    if do_coverage:
+        cov.stop()
+        cov.save()
+        cov.html_report(directory='coverage_report/unittests')
+    return result.wasSuccessful()
+
+def all_integration_tests(do_coverage=False):
+    import coverage
+    print(f'{bcolors.UNDERLINE}{bcolors.BOLD}{bcolors.HEADER}-- Running all integration tests!{bcolors.ENDC}')
+    cov = coverage.Coverage(cover_pylib=False, data_file='.integration')
+    if do_coverage:
+        cov.start()
+
+    tests = unittest.TestLoader().discover(start_dir="./tests/integration", pattern="test_*.py", top_level_dir=".")
+    result = unittest.TextTestRunner(verbosity=4).run(tests)
+    if do_coverage:
+        cov.stop()
+        cov.save()
+        cov.html_report(directory='coverage_report/integration')
+    return result.wasSuccessful()
+
+def bump_version_patch(with_poetry=True):
+    if with_poetry:
+        result = subprocess.Popen("poetry version patch -s",
+                                  shell=True,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE,
+                                  text=True)
+        version_name = result.stdout.read().strip()
+
+        with open(f"{_project_name}/__version__.py", "r") as f:
+            lines = f.readlines()
+            lines[0] = f"__version__ = '{version_name}'\n"
+            lines[1] = f'__date__ = "{datetime.today().strftime("%Y-%m-%d")}"\n'
+        if lines:
+            with open(f"{_project_name}/__version__.py", "w") as f:
+                f.writelines(lines)
+    else:
+
+        with open(f"{_project_name}/__version__.py", "r") as f:
+            lines = f.readlines()
+            v = version_name.split('.')
+            major = int(v[0])
+            minor = int(v[1])
+            patch = int(v[2]) + 1
+            lines[0] = f"__version__ = '{major}.{minor}.{patch}'\n"
+            lines[1] = f'__date__ = "{datetime.today().strftime("%Y-%m-%d")}"\n'
+        if lines:
+            with open(f"{_project_name}/__version__.py", "w") as f:
+                f.writelines(lines)
+
+    print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {version_name}!{bcolors.ENDC}")
 
 def add_files_for_commit():
     for f in _git_files_for_add:
         os.system(f"git add {f}")
 
 def main(args):
-    if not do_unit_tests(args):
+    if not all_unit_tests(args.coverage):
         print(f'{bcolors.FAIL}{bcolors.BOLD}Unit testing failed, not building!{bcolors.ENDC}')
         return
 
-    if not do_integration_tests(args):
+    if not all_integration_tests(args.coverage):
         print(f'{bcolors.FAIL}{bcolors.BOLD}Integration testing failed, not building!{bcolors.ENDC}')
         return
 
@@ -153,12 +221,7 @@ def main(args):
         lock_and_gen_pipreq()
 
     if args.build or args.deploy:
-        with open(f"{_project_name}/__version__.py", "r") as f:
-            lines = f.readlines()
-            lines[1] = f'__date__ = "{datetime.today().strftime("%Y-%m-%d")}"\n'
-        if lines:
-            with open(f"{_project_name}/__version__.py", "w") as f:
-                f.writelines(lines)
+        bump_version_patch()
 
         build_wheel()
 
@@ -174,22 +237,6 @@ def main(args):
     if args.remove:
         delete_build()
         delete_dist()
-
-    if args.deploy:
-        # All went well!
-        with open(f"{_project_name}/__version__.py", "r") as f:
-            lines = f.readlines()
-            v = version_name.split('.')
-            major = int(v[0])
-            minor = int(v[1])
-            patch = int(v[2]) + 1
-            lines[0] = f"__version__ = '{major}.{minor}.{patch}'\n"
-        if lines:
-            with open(f"{_project_name}/__version__.py", "w") as f:
-                f.writelines(lines)
-
-
-        print(f"{bcolors.OKGREEN}{bcolors.BOLD}-- Version number bumped to {major}.{minor}.{patch}!{bcolors.ENDC}")
 
     if args.git:
         add_files_for_commit()
@@ -233,6 +280,12 @@ if __name__ == "__main__":
         "-c",
         help="Run coverage over tests",
         action="store_true",
+    )
+    parser.add_argument(
+        '-t',
+        '--tests',
+        nargs='+',
+        help='Define a list of python test files to run, Usage: -t test_data test_utils'
     )
     parser.add_argument(
         "--deploy",
