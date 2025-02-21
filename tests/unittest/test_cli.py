@@ -1,7 +1,7 @@
 import unittest
 import subprocess
 import sys
-from rickled.tools import classify_string
+from rickle.tools import classify_string
 import os
 
 os.putenv('COMSPEC',r'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe')
@@ -14,7 +14,7 @@ class TestCLITool(unittest.TestCase):
         self.placebos_path = r'.\tests\placebos' if sys.platform == 'win32' else './tests/placebos'
 
         self.python_command = 'python'
-        self.rickled_command = 'rickled.cli'
+        self.rickled_command = 'rickle.cli'
 
         self.conv_tool = 'conv'
         self.obj_tool = 'obj'

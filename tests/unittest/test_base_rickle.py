@@ -1,5 +1,5 @@
 import unittest
-from rickled import BaseRickle
+from rickle import BaseRickle
 
 class TestBaseRickle(unittest.TestCase):
 

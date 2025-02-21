@@ -1,6 +1,6 @@
 import sys
-from rickled.tools import CLIError
-from rickled.tools import Converter
+from rickle.tools import CLIError
+from rickle.tools import Converter
 
 def conv(args):
     try:

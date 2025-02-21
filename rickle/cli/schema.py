@@ -1,9 +1,9 @@
 import importlib.util
 import sys
-from rickled.tools import cli_bcolors, CLIError
-from rickled.tools import Schema
-from rickled.tools import Converter
-from rickled.tools import toml_null_stripper
+from rickle.tools import cli_bcolors, CLIError
+from rickle.tools import Schema
+from rickle.tools import Converter
+from rickle.tools import toml_null_stripper
 
 import json
 import yaml

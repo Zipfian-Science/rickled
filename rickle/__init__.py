@@ -32,7 +32,7 @@ if sys.version_info < (3, 11):
 else:
     import tomllib as toml
 
-from rickled.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings, \
+from rickle.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings, \
     generate_random_value
 
 yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
@@ -926,7 +926,7 @@ class Rickle(BaseRickle):
                         self.add_secret(name=k,
                                         secret_id=v['secret_id'],
                                         provider=v['provider'],
-                                        provider_access_key=v['provider_access_key'],
+                                        provider_access_key=v.get('provider_access_key', dict()),
                                         secret_version=v.get('secret_version', None),
                                         load_as_rick=v.get('load_as_rick', False),
                                         load_lambda=v.get('load_lambda', False),
@@ -1167,11 +1167,12 @@ class Rickle(BaseRickle):
         """
         name = self._check_kw(name)
         import csv
-        try:
-            if Path(file_path_or_str).exists():
-                stream = Path(file_path_or_str).open()
-        except:
+
+        if Path(file_path_or_str).exists():
+            stream = Path(file_path_or_str).open()
+        else:
             stream = StringIO(file_path_or_str)
+
 
         dialect = csv.Sniffer().sniff(stream.read(1024))
         stream.seek(0)
@@ -1771,7 +1772,7 @@ class UnsafeRickle(Rickle):
                         self.add_secret(name=k,
                                         secret_id=v['secret_id'],
                                         provider=v['provider'],
-                                        provider_access_key=v['provider_access_key'],
+                                        provider_access_key=v.get('provider_access_key', dict()),
                                         secret_version=v.get('secret_version', None),
                                         load_as_rick=v.get('load_as_rick', False),
                                         load_lambda=v.get('load_lambda', False),

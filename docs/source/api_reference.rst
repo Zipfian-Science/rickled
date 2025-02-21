@@ -6,8 +6,11 @@
 API Reference
 **************************
 
-Basic Rickle (BaseRickle)
+Rickle
 ========================
+
+BaseRickle
+------------------------
 
 The BaseRickle forms the basis for extended versions.
 This basis includes important methods for manipulating data, and formulating the internal representation.
@@ -25,16 +28,22 @@ This basis includes important methods for manipulating data, and formulating the
    * has()
    * search_path()
 
-.. autoclass:: rickled.__init__.BaseRickle
+.. autoclass:: rickle.__init__.BaseRickle
    :members:
 
-Rickle Pick (Rickle)
-========================
+Rickle
+------------------------
 
 The extended version of BaseRickle that allows for easy loading of external data such as OS environmental variables, files, JSON responses from APIs.
 Contains all the same methods in BasicRick such as ``search_path`` etc.
 
-.. autoclass:: rickled.__init__.Rickle
+.. autoclass:: rickle.__init__.Rickle
+   :members:
+
+UnsafeRickle
+------------------------
+
+.. autoclass:: rickle.__init__.UnsafeRickle
    :members:
 
 Object Rickler
@@ -43,7 +52,7 @@ Object Rickler
 The ObjectRickler contains static methods for converting Python objects to Rickle objects for YAML/JSON export,
 and then reconstructing the YAML/JSON files to the Python objects. These are not guaranteed to work for all Python objects.
 
-.. autoclass:: rickled.__init__.ObjectRickler
+.. autoclass:: rickle.__init__.ObjectRickler
    :members:
 
 
@@ -87,7 +96,7 @@ This will result in the following dictionary:
     'settings.nodes.(1)': 'us-central',
     'settings.nodes.(2)': 'us-east'}
 
-.. autofunction:: rickled.tools.flatten_dict
+.. autofunction:: rickle.tools.flatten_dict
 
 Inflate dictionaries
 ---------------------
@@ -132,32 +141,32 @@ Will result in the following dictionary:
       }
    }
 
-.. autofunction:: rickled.tools.inflate_dict
+.. autofunction:: rickle.tools.inflate_dict
 
 INI parsing helpers
 -------------------
 
 The INI helpers transform ``ConfigParser`` objects into Python dictionaries or vice versa and use among other the inflate and flatten functions.
 
-.. autofunction:: rickled.tools.parse_ini
+.. autofunction:: rickle.tools.parse_ini
 
-.. autofunction:: rickled.tools.unparse_ini
+.. autofunction:: rickle.tools.unparse_ini
 
 
 Other
 -------------------
 
-.. autofunction:: rickled.tools.toml_null_stripper
+.. autofunction:: rickle.tools.toml_null_stripper
 
-.. autofunction:: rickled.tools.classify_string
+.. autofunction:: rickle.tools.classify_string
 
-.. autofunction:: rickled.tools.supported_encodings
+.. autofunction:: rickle.tools.supported_encodings
 
-.. autofunction:: rickled.tools.get_native_type_name
+.. autofunction:: rickle.tools.get_native_type_name
 
-.. autofunction:: rickled.tools.generate_random_value
+.. autofunction:: rickle.tools.generate_random_value
 
-.. autoclass:: rickled.tools.CLIError
+.. autoclass:: rickle.tools.CLIError
 
 Converter
 =====================
@@ -202,10 +211,10 @@ When using the ``convert_string`` method, the input YAML string can be converted
 
 
 
-.. autoclass:: rickled.tools.Converter
+.. autoclass:: rickle.tools.Converter
    :members:
 
 Schema tools
 =====================
-.. autoclass:: rickled.tools.Schema
+.. autoclass:: rickle.tools.Schema
    :members:

@@ -1,5 +1,5 @@
 import unittest
-from rickled import Rickle
+from rickle import Rickle
 import os
 import base64
 import tempfile

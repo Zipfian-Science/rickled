@@ -5,17 +5,17 @@
 import importlib.util
 import sys
 
-import rickled.__version__ as ver
+import rickle.__version__ as ver
 import argparse
-from rickled.tools import cli_bcolors
-from rickled.tools import Schema
-from rickled.tools import Converter
-from rickled.tools import CLIError
+from rickle.tools import cli_bcolors
+from rickle.tools import Schema
+from rickle.tools import Converter
+from rickle.tools import CLIError
 
-from rickled.cli.schema import gen, check
-from rickled.cli.conv import conv
-from rickled.cli.serve import serve
-from rickled.cli.obj import obj_get, obj_set, obj_del, obj_search, obj_type, obj_func
+from rickle.cli.schema import gen, check
+from rickle.cli.conv import conv
+from rickle.cli.serve import serve
+from rickle.cli.obj import obj_get, obj_set, obj_del, obj_search, obj_type, obj_func
 
 GITHUB_DOCS_URL = "https://github.com/Zipfian-Science/rickled/blob/master/docs/source/cli_tools.rst#cli-tools"
 

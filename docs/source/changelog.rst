@@ -8,7 +8,14 @@ Changelog
 History
 ==========================
 
-Version 1.2.0 (2024-05-05)
+Version 1.2.2 (2025-02-17)
+--------------------------
+
+* Rename of entire project from ``rickled`` to ``rickle``!
+* Fixed bug in CLI tool not able to run
+* Made ``provider_access_key`` optional for ``secret`` type.
+
+Version 1.2.1 (2025-02-12)
 --------------------------
 
 * Major additions and changes, bumped version to ``1.5.0``.

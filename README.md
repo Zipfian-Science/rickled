@@ -1,4 +1,4 @@
-# rickle - Smart Python tools for working with YAML
+# rickle - Smart Python tools for working with Configs
 
 ![PyPI - Version](https://img.shields.io/pypi/v/rickled)
 [![Downloads](https://static.pepy.tech/badge/rickled)](https://pepy.tech/project/rickled)
@@ -20,13 +20,14 @@ by Zipfian Science
 
 ---
 
-`rickle` is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON (and TOML, INI, XML, .ENV) data. Here's a brief summary of its key features:
+`rickle` is a versatile Python library and command-line tool that offers a wide range of functionalities for working with YAML and JSON (and TOML, INI, XML, .ENV) data
 
-1. **Serialization**: `rickle` allows you to easily serialize Python objects to YAML format. This is particularly useful for converting Python data structures into a human-readable and easily shareable format.
+1. **Serialization**: `rickle` allows you to easily serialize Python objects to text formats like YAML or JSON. 
+This is particularly useful for converting Python data structures into a human-readable and easily shareable format, such as `config` files.
 
 2. **Schema Validation**: It provides the capability to validate YAML (and JSON, etc.) data against predefined schemas. This ensures that your data adheres to a specific structure or format, helping to maintain data consistency.
 
-3. **Schema Generation**: You can generate schema definitions from existing YAML (or JSON) files. This is helpful when you want to formalize the structure of your data or for documentation purposes.
+3. **Schema Generation**: Start with easy schema definition generations from existing config files. This is helpful when you want to formalize the structure of your data or for documentation purposes.
 
 4. **Conversion**: `rickle` offers seamless conversion between YAML, JSON, INI, XML, and .ENV formats. This facilitates data interchange between systems that use different serialization formats.
 
@@ -47,12 +48,10 @@ Documentation can be [found here](https://zipfian.science/docs/rickle/index.html
 
 ## 1. Install
 
-First install the tool (Python version >= 3.7*):
-
-*Installing `rickled[validators]` only supported from >= 3.8
+First install the tool (Python version >= 3.9):
 
 ```bash script
-$ pip install rickled
+$ pip install rickle
 ```
 ---
 ### 1.1 Extras
@@ -60,31 +59,31 @@ $ pip install rickled
 Optionally the twisted web server can be installed alongside for the `serve` functionality.
 
 ```bash script
-$ pip install rickled[net]
+$ pip install rickle[net]
 ```
 
 For expanded schema validators.
 
 ```bash script
-$ pip install rickled[validators]
+$ pip install rickle[validators]
 ```
 
 For xml support.
 
 ```bash script
-$ pip install rickled[xml]
+$ pip install rickle[xml]
 ```
 
 For .env file support.
 
 ```bash script
-$ pip install rickled[dotenv]
+$ pip install rickle[dotenv]
 ```
 
 For a fully featured install.
 
 ```bash script
-$ pip install rickled[full]
+$ pip install rickle[full]
 ```
 
 Check if the installation succeeded:
@@ -92,14 +91,52 @@ Check if the installation succeeded:
 ```bash script
 $ rickle --help
 ```
+
+## 2. And use
+
+```python
+from rickle import Rickle
+```
+
+Using an example YAML file:
+
+```yaml
+conf:
+  db_connection:
+     acc_name:
+        type: env
+        load: ACC_NAME
+        default: developer_account
+     acc_pass:
+        type: env
+        load: ACC_PASS
+     database_name: public
+```
+
+Then use Rickle:
+
+```python
+>> config = Rickle('./config.yaml')
+
+>> config.conf.db_connection.dict()
+{'acc_name' : 'acceptance_account', 'acc_pass' : 'asd!424iXj', 'database_name' : 'public'}
+
+>> config.conf.db_connection.acc_pass
+'asd!424iXj'
+
+>> config('/conf/db_connection/acc_pass')
+'asd!424iXj'
+```
+
+
 ---
-## 2. Schema tools
+## 3. Schema tools
 
 Two main schema tools exist, the `check` and the `gen` tools.
 
 ---
 
-### 2.1 Schema `check`
+### 3.1 Schema `check`
 
 For checking the schema of input files, the `check` tool is used.
 
@@ -119,7 +156,7 @@ $ cat test.yaml | rickle schema check --schema schema.yaml
 
 ---
 
-### 2.2 Schema `gen`
+### 3.2 Schema `gen`
 
 Schema files can be generated from YAML files with the `gen` tool.
 
@@ -136,14 +173,14 @@ This will generate a schema file called `test.schema.yaml`.
 OR
 
 ```bash script
-$ cat test.yaml | rickle schema gen --output-type json
+$ cat test.yaml | rickle schema --output-type json gen
 ```
 
 This will generate a schema and print the output, in this example in JSON.
 
 ---
 
-## 3. Conversion tools
+## 4. Conversion tools
 
 `rickle` can also be used for bulk conversion from YAML to JSON or the other way around.
 
@@ -161,14 +198,14 @@ For each input file the output file can be defined and the path suffix is used t
 Using input and output will read and write to files. Alternatively:
 
 ```bash script
-$ cat text.yaml | rickle conv --output-type json
+$ cat text.yaml | rickle --output-type json conv 
 ```
 
 The output type can be specified with the `--output-type` flag.
 
 ---
 
-## 4. `jq` like functions
+## 5. `object` functions
 
 Certain `jq` like functionality can be achieved using `rickle`. This includes the ability to `get`, `set`, `del`, and `search`
 document paths. This is done using the object tool `obj`.
@@ -193,7 +230,7 @@ $ rickle obj search --help
 
 ---
 
-### 4.1 Paths
+### 5.1 Paths
 
 To get to a specific value, a path is traversed. This path looks much like a Unix or web path.
 To get the whole document, `/` is used. Expanding the path would look something like this: 
@@ -230,7 +267,7 @@ values:
 
 ---
 
-### 4.2 Get
+### 5.2 Get
 
 ```bash script
 $ rickle obj --input test.yaml get /
@@ -247,7 +284,7 @@ simply be `one`.
 
 ---
 
-### 4.2 Set
+### 5.2 Set
 
 ```bash script
 $ rickle obj --input test.yaml set /path/to/values/[1] foo
@@ -273,7 +310,7 @@ path:
 
 ---
 
-### 4.3 Search
+### 5.3 Search
 
 Consider the following:
 
@@ -307,9 +344,20 @@ Will output the following (in YAML):
 
 Different output types are passed with the `--output-type` flag, including the `list` type to print paths as lines. 
 
+```bash script
+$ cat test.yaml | rickle --output-type list obj search key
+```
+
+Will instead output the following:
+
+```
+/path/to/key
+/path/and/another/key
+```
+
 ---
 
-## 5. Serving via HTTP(s)
+## 6. Serving via HTTP(s)
 
 A nifty little use of this Python tool is the ability to host a webserver, using a YAML (or other) file.
  
@@ -353,6 +401,8 @@ $ cat basic_example.yaml | rickle serve -b
 
 Add Python functions to the YAML file (unsafe!):
 
+> **_CAUTION:_**  Using `--unsafe` should only be used on trusted data.
+
 ```bash script
 $ export RICKLE_UNSAFE_LOAD=1
 $ cat unsafe_example.yaml | rickle serve --unsafe --load-lambda
@@ -364,11 +414,18 @@ This holds **security risks** though, and should only be used with caution.
 
 ---
 
+# Release
+
+See the version history in [changelog](https://zipfian.science/docs/rickle/changelog.html).
+
+
+---
+
 # Contributing
 
 As this is an open source project, forks and PRs are welcome! 
 Please review some of the practices stated in [CONTRIBUTIONS.md](https://github.com/Zipfian-Science/rickled/blob/master/CONTRIBUTING.md).
 
+---
 
-
-© [Zipfian Science](https://zipfian.science) 2020 - 2024
+© [Zipfian Science](https://zipfian.science) 2020 - 2025

@@ -6,7 +6,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 about = {}
 
-with open(os.path.join(here, "rickled", "__version__.py")) as f:
+with open(os.path.join(here, "rickle", "__version__.py")) as f:
     exec(f.read(), about)
 
 # Get the long description from the README file

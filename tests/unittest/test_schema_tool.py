@@ -1,6 +1,6 @@
 import unittest
 import os
-from rickled.tools import Schema
+from rickle.tools import Schema
 
 class TestAdvanced(unittest.TestCase):
 

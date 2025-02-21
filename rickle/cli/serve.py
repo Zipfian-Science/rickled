@@ -1,12 +1,12 @@
 import sys
 import warnings
-from rickled.tools import CLIError
+from rickle.tools import CLIError
 
-from rickled import Rickle, UnsafeRickle
+from rickle import Rickle, UnsafeRickle
 
 def serve(args):
     try:
-        from rickled.net import serve_rickle_http
+        from rickle.net import serve_rickle_http
     except NameError:
         warnings.warn('Required Python package "twisted" not found.', ImportWarning)
         return

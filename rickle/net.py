@@ -7,7 +7,7 @@ import json
 import yaml
 import tomli_w as tomlw
 
-from rickled import Rickle, toml_null_stripper
+from rickle import Rickle, toml_null_stripper
 
 try:
     from twisted.web import server, resource

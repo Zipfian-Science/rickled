@@ -3,10 +3,10 @@ import os
 import sys
 from io import StringIO
 
-from rickled.tools import unparse_ini, CLIError, get_native_type_name
-from rickled.tools import toml_null_stripper
+from rickle.tools import unparse_ini, CLIError, get_native_type_name
+from rickle.tools import toml_null_stripper
 
-from rickled import Rickle, UnsafeRickle
+from rickle import Rickle, UnsafeRickle
 import re
 import json
 import yaml
