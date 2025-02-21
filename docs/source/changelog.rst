@@ -8,9 +8,17 @@ Changelog
 History
 ==========================
 
-Version 2.0.0 (2024-05-05)
+Version 1.2.2 (2025-02-17)
 --------------------------
 
+* Rename of entire project from ``rickled`` to ``rickle``!
+* Fixed bug in CLI tool not able to run
+* Made ``provider_access_key`` optional for ``secret`` type.
+
+Version 1.2.1 (2025-02-12)
+--------------------------
+
+* Major additions and changes, bumped version to ``1.5.0``.
 * Init args now parsed with opening braces ``{{`` and closing braces ``}}``.
 * Opening and closing braces can be defined using environment variables ``RICKLE_OPENING_BRACES`` and ``RICKLE_CLOSING_BRACES``.
 * ``RICKLE_OPENING_BRACES`` and ``RICKLE_CLOSING_BRACES`` can also be passed as init arguments.
@@ -29,8 +37,32 @@ Version 2.0.0 (2024-05-05)
 * Removed unsafe code and usage into separate class, ``UnsafeRickle``.
 * Added optional schema validator if extras installed (only for Python>3.8) ``pip install rickled[validators]``.
 * Adding ability to pipe into CLI tool, i.e. perform ``cat file.json | rickle conv -x json -t yaml``.
-
-
+* Added a helper ``classify_string`` to tools to classify a string type.
+* Renaming optional arguments for CLI in order to be more clear on their meaning.
+* ``-i`` becomes ``--input``
+* ``-d`` becomes ``--dir``
+* ``-o`` becomes ``--output``
+* ``-t`` becomes ``--output-type``
+* Added ``full`` to install extras to install all extras.
+* Alternative for ``from_file`` type is now ``file``. Will be deprecated in the future.
+* Alternative for ``from_csv`` type is now ``csv``. Will be deprecated in the future.
+* Deprecating ``add_env_variable`` for ``add_env``.
+* Deprecating ``add_csv_file`` for ``add_csv``.
+* Deprecating ``add_from_file`` for ``add_from``.
+* Deprecating ``add_api_json_call`` for ``add_api_json``.
+* Deprecating ``add_attr`` for ``add``.
+* New init arg ``RICKLE_NAME_CLEAN_UP`` to skip cleaning key names of disallowed chars.
+* Fixed logical flaw in ``dict`` where cleaned up keys not being used.
+* Added helper mapping ``get_native_type_name`` to map Python type names to format native names.
+* Renamed schema types to conform more to JSON schema, i.e. ``dict`` becomes ``object``, ``list`` becomes ``array`` etc.
+* Added ``min`` and ``max`` to array type in schema validation.
+* Added ability to use ``jsonschema`` instead in ``Schema.schema_validation`` by setting ``use_json_schema=True`` if jsonschema is installed.
+* Added ``--extras`` to schema generation to add things like "required" etc.
+* Renamed ``schema`` to ``properties`` for objects in default rickle schema.
+* Renamed ``schema`` to ``items`` for objects in default rickle schema.
+* Added ``add_secret`` to Rickle, now able to add secrets from cloud providers ``aws``, ``google``, ``azure``.
+* Added ``add_random_value`` to Rickle, using ``generate_random_value`` in tools. Useful for mock data.
+* Moved ``--output-type`` to the main argument parser ``rickle``.
 
 Version 1.1.3 (2024-05-05)
 --------------------------

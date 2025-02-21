@@ -1,5 +1,8 @@
 import configparser
 import importlib.util
+import random
+import string
+from enum import Enum
 from typing import List, Union
 from pathlib import Path
 import yaml
@@ -18,6 +21,165 @@ if sys.version_info < (3, 11):
     import tomli as toml
 else:
     import tomllib as toml
+
+class CLIError(Exception):
+
+    class CLITool(Enum):
+        CONV = 1
+        OBJ = 2
+        SERVE = 3
+        SCHEMA = 4
+        OBJ_GET = 5
+        OBJ_SET = 6
+        OBJ_DEL = 7
+        OBJ_TYPE = 8
+        OBJ_SEARCH = 9
+        OBJ_FUNC = 10
+        SCHEMA_CHECK = 11
+        SCHEMA_GEN = 12
+
+    def __init__(self, message, cli_tool: CLITool):
+        self.message = message
+        self.cli_tool = cli_tool
+
+    def __str__(self):
+        return f"{self.cli_tool} {self.message}"
+
+def generate_random_value(value_type, value_properties):
+    """
+    Helper function to generate a random value.
+
+    Notes:
+        integer: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+        number: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+        string: Properties include ``chars`` and ``length``. Defaults to ASCII chars and 10.
+        enum: Properties include ``values``.  Defaults to ASCII uppercase chars.
+        array: Properties include ``values`` and ``length``.  Defaults to 'integer' and 10.
+            ``values`` can be a string of ``value_type``.
+        object: Properties include ``keys``, ``values``, ``min``, and ``max``.
+            Defaults to random ASCII uppercase and 10 random integers, min and max of 1 and 5.
+            ``values`` can be a string of ``value_type``.
+
+    Args:
+        value_type (str): Either 'string', 'integer', 'number', 'enum', 'array', 'object', or 'any'.
+        value_properties (dict): Properties about the randomly generated value. See notes.
+
+    Returns:
+        value: Randomly generated value.
+    """
+    if value_type == 'any':
+        return generate_random_value(value_type=random.choice(['integer', 'string', 'number', 'enum', 'array', 'object']),
+                                     value_properties=value_properties)
+    if value_type == 'integer':
+        return random.randint(value_properties.get('min', 0), value_properties.get('max', 256))
+    if value_type == 'number':
+        return random.uniform(value_properties.get('min', 0), value_properties.get('max', 256))
+    if value_type == 'string':
+        chars = value_properties.get('chars', string.ascii_lowercase + string.digits)
+        length = value_properties.get('length', 10)
+        return ''.join([random.choice(chars) for _ in range(length)])
+    if value_type == 'enum':
+        return random.choice(value_properties.get('values', string.ascii_uppercase))
+    if value_type == 'array':
+        length = value_properties.get('length', 10)
+        values = value_properties.get('values', 'integer')
+        if isinstance(values, str):
+            return [generate_random_value(value_type=values, value_properties=value_properties) for _ in range(length)]
+        else:
+            return [random.choice(values) for _ in range(length)]
+
+    if value_type == 'object':
+        keys = value_properties.get('keys', [random.choice(string.ascii_uppercase) for _ in range(10)])
+        values = value_properties.get('values', 'integer')
+        if isinstance(values, str):
+            values = [generate_random_value(value_type=values, value_properties=value_properties) for _ in range(10)]
+
+        value = dict()
+        for i in range(random.randint(value_properties.get('min', 1), value_properties.get('max', 5))):
+            value[random.choice(keys)] = random.choice(values)
+
+        return value
+
+    raise ValueError(f"Unsupported value_type '{value_type}'")
+
+def get_native_type_name(python_type_name: str, format_type: str, default: str = None):
+    """
+    Helper mapping from Python type names to format names.
+
+    Args:
+        python_type_name (str): Python type name.
+        format_type (str): Format type, either yaml, json, toml, xml, ini, env, or python.
+        default (str): If unmatched, return this default (default = None).
+
+    Returns:
+        str: Native name for the given format.
+    """
+    python_type_name = python_type_name.strip()
+    format_type = format_type.lower().strip()
+
+    yaml_types = {
+        'str': 'str',
+        'int': 'int',
+        'float': 'float',
+        'bool': 'boolean',
+        'list': 'seq',
+        'dict': 'map',
+        'Rickle': 'map',
+        'UnsafeRickle': 'map',
+        'BaseRickle': 'map',
+        'bytes': 'binary',
+        'NoneType': 'null'
+    }
+
+    json_types = {
+        'str': 'string',
+        'int': 'integer',
+        'float': 'number',
+        'bool': 'boolean',
+        'list': 'array',
+        'dict': 'object',
+        'Rickle': 'object',
+        'UnsafeRickle': 'object',
+        'BaseRickle': 'object',
+        'NoneType': 'null'
+    }
+
+    toml_types = {
+        'str': 'String',
+        'int': 'Integer',
+        'float': 'Float',
+        'bool': 'Boolean',
+        'list': 'Array',
+        'dict': 'Key/Value',
+        'Rickle': 'Key/Value',
+        'UnsafeRickle': 'Key/Value',
+        'BaseRickle': 'Key/Value',
+    }
+
+    xml_types = {
+        'str': 'xs:string',
+        'int': 'xs:integer',
+        'float': 'xs:decimal',
+        'bool': 'xs:boolean',
+        'list': 'xs:sequence',
+        'dict': 'xs:complexType',
+        'Rickle': 'xs:complexType',
+        'UnsafeRickle': 'xs:complexType',
+        'BaseRickle': 'xs:complexType',
+    }
+
+    if format_type == 'yaml':
+        return yaml_types.get(python_type_name, default if default else 'Python')
+    elif format_type == 'json':
+        return json_types.get(python_type_name, default if default else 'object')
+    elif format_type == 'toml':
+        return toml_types.get(python_type_name, default if default else 'Other')
+    elif format_type == 'xml':
+        return xml_types.get(python_type_name, default if default else 'xs:any')
+    elif format_type in ["ini", "env", "python"]:
+        return python_type_name
+    else:
+        raise ValueError(f'Unknown format type "{format_type}"')
 
 def supported_encodings() -> list:
     """
@@ -39,23 +201,103 @@ def supported_encodings() -> list:
             supported.append(name.replace("_", "-").strip().lower())
     return supported
 
-def toml_null_stripper(dictionary: dict) -> dict:
+def classify_string(input_string: str):
     """
-    Remove null valued key-value pairs.
+    Try to classify the type from a string. This is done by attempting to load the string as each type.
+    In the cases where the base decoder is not installed a simple Regex match is attempted.
 
     Args:
-        dictionary (dict): Input dictionary.
+        input_string (str): String to classify.
 
     Returns:
-        dict: Output dictionary.
+        str: The classified type ("json", "yaml", "toml", "xml", "ini", "env", "unknown")
     """
-    new_dict = {}
-    for k, v in dictionary.items():
-        if isinstance(v, dict):
-            v = toml_null_stripper(v)
-        if v not in (u"", None, {}):
-            new_dict[k] = v
-    return new_dict
+
+    try:
+        json.loads(input_string)
+        return "json"
+    except json.JSONDecodeError:
+        pass
+
+    try:
+        yaml.safe_load(input_string)
+        return "yaml"
+    except yaml.YAMLError:
+        pass
+
+    try:
+        toml.loads(input_string)
+        return "toml"
+    except toml.TOMLDecodeError:
+        pass
+
+    if importlib.util.find_spec('xmltodict'):
+        import xmltodict
+        try:
+            xmltodict.parse(input_string, process_namespaces=True)
+            return "xml"
+        except xmltodict.ParsingInterrupted:
+            pass
+    elif input_string.startswith("<") and input_string.endswith(">"):
+        if re.match(r'<\?xml\s+version\s*=\s*["\']1\.\d["\']', input_string) or re.match(r'<[a-zA-Z]', input_string):
+            return "xml"
+
+    config = configparser.ConfigParser()
+    if input_string.strip().startswith("["):
+        try:
+            config.read_string(input_string)
+            return "ini"
+        except configparser.Error:
+            pass
+
+    if importlib.util.find_spec('dotenv'):
+        try:
+            from dotenv import dotenv_values
+            dotenv_values(stream=StringIO(input_string))
+            return "env"
+        except:
+            pass
+    elif re.match(r'^\s*[A-Za-z_][A-Za-z0-9_]*\s*=', input_string):
+        return "env"
+
+    return "unknown"
+
+def toml_null_stripper(input: Union[dict, list]):
+    """
+    Remove null valued key-value pairs or list items.
+
+    Args:
+        dictionary (dict,list): Input dictionary or list.
+
+    Returns:
+        dict: Output dictionary (or list).
+    """
+    if isinstance(input, dict):
+        new_dict = dict()
+
+        for k, v in input.items():
+            if isinstance(v, dict):
+                v = toml_null_stripper(v)
+            if isinstance(v, list):
+                v = toml_null_stripper(v)
+            if v not in (u"", None, {}):
+                new_dict[k] = v
+
+        return new_dict
+    elif isinstance(input, list):
+        new_list = list()
+
+        for v in input:
+            if isinstance(v, dict):
+                v = toml_null_stripper(v)
+            if isinstance(v, list):
+                v = [toml_null_stripper(vv) if (isinstance(vv, dict) or isinstance(vv, list)) else vv for vv in v]
+            if v not in (u"", None, {}):
+                new_list.append(v)
+
+        return new_list
+    else:
+        raise TypeError(f"toml_null_stripper can not strip nulls from input type {type(input)}")
 
 
 def parse_ini(config: configparser.ConfigParser, path_sep: str = None, list_brackets: tuple = None):
@@ -251,9 +493,29 @@ class Schema:
         schema (str, dict): The dict definition of schema or path to schema file (default = None).
         output_dir (str): Directory to move output files to (default = None).
         silent (bool): Suppress verbose output (default = None).
+        use_json_schema (bool): If installed and is true, the schema will be validated as a JSON schem (default = False).
+        include_extended_properties (bool): Whether to include "required", "nullable", etc. (default = True).
     """
 
-    supported_list = f"{cli_bcolors.OKBLUE}YAML (r/w), JSON (r/w), TOML (r/w), XML (r){cli_bcolors.ENDC}"
+    JSON_SCHEMA_STRING = "string"
+    JSON_SCHEMA_INTEGER = "integer"
+    JSON_SCHEMA_NUMBER = "number"
+    JSON_SCHEMA_OBJECT = "object"
+    JSON_SCHEMA_ARRAY = "array"
+    JSON_SCHEMA_BOOLEAN = "boolean"
+    JSON_SCHEMA_NULL = "null"
+
+    JSON_SCHEMA_TYPES = ['string', 'integer', 'number', 'object', 'array', 'boolean', 'null']
+
+    supported_list = [f"{cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}"]
+
+    if importlib.util.find_spec('xmltodict'):
+        supported_list.append(f"{cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}")
+    supported = '- ' + '\n- '.join(supported_list)
+
+    supported_output = ['yaml', 'json', 'toml', 'xml']
 
     def __init__(self,
                  input_files: List[str] = None,
@@ -261,14 +523,18 @@ class Schema:
                  schema: Union[str, dict] = None,
                  output_files: List[str] = None,
                  output_dir: str = None,
+                 verbose: bool = False,
                  silent: bool = False,
-                 default_output_type: str = 'yaml'
+                 default_output_type: str = 'yaml',
+                 use_json_schema: bool = False,
+                 include_extended_properties: bool = True
                  ):
         self.input_files = input_files
         self.input_directories = input_directories
 
         if isinstance(schema, str):
             self.schema = Converter.infer_read_file_type(schema)
+
         else:
             self.schema = schema
 
@@ -276,10 +542,13 @@ class Schema:
 
         self.output_dir = output_dir
 
+        self.verbose = verbose
         self.silent = silent
         if default_output_type.strip().lower() == 'yml':
             default_output_type = 'yaml'
         self.default_output_type = default_output_type.strip().lower()
+        self.use_json_schema = use_json_schema
+        self.include_extended_properties = include_extended_properties
 
     def do_generation(self):
         """
@@ -314,7 +583,8 @@ class Schema:
 
                 suffix = output_file.suffix.lower() if output_file.suffix else f".{self.default_output_type}"
 
-                schema = Schema.generate_schema_from_obj(input_data)
+                schema = Schema.generate_schema_from_obj(input_data,
+                                                         include_extended_properties=self.include_extended_properties)
 
                 if suffix == '.yaml':
                     with output_file.open("w") as fout:
@@ -328,7 +598,7 @@ class Schema:
                     with output_file.open("wb") as fout:
                         tomlw.dump(toml_null_stripper(schema), fout)
                 else:
-                    raise ValueError(f"Cannot dump to format {suffix}")
+                    raise ValueError(f"Cannot dump to format {suffix}, only supported {Schema.supported_output}")
 
                 if not self.silent:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
@@ -364,7 +634,8 @@ class Schema:
             try:
                 input_data = Converter.infer_read_file_type(file)
 
-                passed = Schema.schema_validation(input_data, self.schema, no_print=self.silent)
+                passed = Schema.schema_validation(obj=input_data, schema=self.schema, no_print=not self.verbose,
+                                                  use_json_schema=self.use_json_schema)
 
                 if not passed:
                     failed_validation.append(file)
@@ -413,60 +684,71 @@ class Schema:
 
 
     @staticmethod
-    def _data_types_to_schema(value: Union[list, dict, str, int, float, bool, None]):
-        named_schema = OrderedDict({'type': None, 'required': False, 'nullable': True, 'description': None})
+    def _data_types_to_schema(value: Union[list, dict, str, int, float, bool, None], include_extended_properties: bool = True):
+        if include_extended_properties:
+            named_schema = OrderedDict({'type': None, 'required': False, 'nullable': True, 'description': None})
+        else:
+            named_schema = OrderedDict({'type': None})
         if value == bool:
-            named_schema['type'] = 'bool'
+            named_schema['type'] = Schema.JSON_SCHEMA_BOOLEAN
             return named_schema
         if value == str:
-            named_schema['type'] = 'str'
+            named_schema['type'] = Schema.JSON_SCHEMA_STRING
             return named_schema
         if value == int:
-            named_schema['type'] = 'int'
+            named_schema['type'] = Schema.JSON_SCHEMA_INTEGER
             return named_schema
         if value == float:
-            named_schema['type'] = 'float'
+            named_schema['type'] = Schema.JSON_SCHEMA_NUMBER
             return named_schema
         if value is None:
-            named_schema['type'] = 'any'
+            named_schema['type'] = Schema.JSON_SCHEMA_NULL
             return named_schema
 
         if isinstance(value, dict) or isinstance(value, OrderedDict):
-            named_schema['type'] = 'dict'
-            named_schema['schema'] = OrderedDict()
+            named_schema['type'] = Schema.JSON_SCHEMA_OBJECT
+            named_schema['properties'] = OrderedDict()
             for k, v in value.items():
-                named_schema['schema'][k] = Schema._data_types_to_schema(v)
+                named_schema['properties'][k] = Schema._data_types_to_schema(v,
+                                                            include_extended_properties=include_extended_properties)
             return named_schema
 
         if isinstance(value, list):
-            named_schema['type'] = 'list'
-            named_schema['length'] = -1
-            named_schema['schema'] = list()
+            named_schema['type'] = Schema.JSON_SCHEMA_ARRAY
+            if include_extended_properties:
+                named_schema['length'] = -1
+                named_schema['min'] = -1
+                named_schema['max'] = -1
+
+            named_schema['items'] = list()
             list_data_types = set([type(v) if not isinstance(v, type) else v for v in value])
 
             if len(list_data_types) > 1:
-                named_schema['schema'].append(Schema._data_types_to_schema(None))
+                named_schema['items'].append(Schema._data_types_to_schema(None,
+                                                            include_extended_properties=include_extended_properties))
             if len(list_data_types) == 1:
-                named_schema['schema'].append(Schema._data_types_to_schema(value[0]))
+                named_schema['items'].append(Schema._data_types_to_schema(value[0],
+                                                            include_extended_properties=include_extended_properties))
             return named_schema
 
     @staticmethod
-    def generate_schema_from_obj(obj):
+    def generate_schema_from_obj(obj, include_extended_properties: bool = True):
         """
         Generate a schema definition from a Python object.
 
         Args:
             obj: Dict like object.
+            include_extended_properties (bool): Whether to include "required", "nullable", etc. (default = True).
 
         Returns:
             dict: Schema detected from obj.
 
         """
         rep = Schema._extract_data_types(obj)
-        return Schema._data_types_to_schema(rep)
+        return Schema._data_types_to_schema(rep, include_extended_properties=include_extended_properties)
 
     @staticmethod
-    def schema_validation(obj, schema: dict, path: str = '', no_print: bool = False) -> bool:
+    def schema_validation(obj, schema: dict, path: str = '', no_print: bool = False, use_json_schema: bool = False) -> bool:
         """
         Validates if obj conforms to schema.
 
@@ -475,14 +757,36 @@ class Schema:
             schema (dict): The schema in dict form.
             path (str): The current path of the object tree (default = 'root').
             no_print (bool): If failures should not be printed (default = False).
+            use_json_schema (bool): If true and jsonschema is installed, performs JSON schema instead (default = False).
 
         Returns:
             bool: True if the object conforms.
         """
+        _path_sep = os.getenv("RICKLE_PATH_SEP", "/")
+
+        if use_json_schema:
+            if importlib.util.find_spec('jsonschema'):
+                from jsonschema import validate
+                from jsonschema.exceptions import ValidationError
+
+                try:
+                    validate(instance=obj, schema=schema)
+                    return True
+                except ValidationError as exc:
+                    if not no_print:
+                        print(
+                            f"{cli_bcolors.FAIL}{exc.message}{cli_bcolors.ENDC} at {cli_bcolors.WARNING}{_path_sep.join(exc.absolute_path)}{cli_bcolors.ENDC} as per {cli_bcolors.OKBLUE}{_path_sep.join(exc.absolute_schema_path)}{cli_bcolors.ENDC}")
+                    return False
+            else:
+                raise ImportError('Could not find package "jsonschema"!')
+
+        if not 'type' in schema.keys():
+            raise ValueError(f'No type defined in {str(schema)}!')
 
         def _check_type(object_value, schema_info, is_nullable):
 
-
+            if not 'type' in schema_info.keys():
+                raise ValueError(f'No type defined in {str(schema_info)}!')
             schema_type = schema_info['type'].lower().strip()
             object_type = type(object_value).__name__
             object_type_matches = False
@@ -534,7 +838,7 @@ class Schema:
                     }
 
                     object_type_matches = is_mac_address(object_value, options=options)
-                if schema_type == 'number':
+                if schema_type == 'pyval-number':
                     from pyvalidator import is_number
                     object_type_matches = is_number(object_value)
                 if schema_type == 'prime-number':
@@ -662,9 +966,12 @@ class Schema:
 
                     object_type_matches = is_hash(object_value, algorithm=schema_info.get('algorithm', None))
 
-            if schema_type in ['str', 'int', 'bool', 'float', 'list', 'dict']:
-
-                object_type_matches = object_type == schema_type
+            if schema_type in Schema.JSON_SCHEMA_TYPES:
+                object_type_name = get_native_type_name(python_type_name=object_type, format_type='json')
+                if object_type_name == "integer" and schema_type == "number":
+                    object_type_matches = True
+                else:
+                    object_type_matches = object_type_name == schema_type
 
             null_no_type = is_nullable & ((schema_type == 'any') | (object_type == 'NoneType'))
             null_with_type = is_nullable & (schema_type != 'any') & object_type_matches
@@ -679,9 +986,9 @@ class Schema:
             return True
 
         new_path = path
-        if schema['type'] == 'dict':
-            for k, v in schema['schema'].items():
-                new_path = f"{new_path}/{k}"
+        if schema['type'] == Schema.JSON_SCHEMA_OBJECT:
+            for k, v in schema['properties'].items():
+                new_path = f"{new_path}{_path_sep}{k}"
                 req = v.get('required', False)
                 nullable = v.get('nullable', False)
                 present = k in obj.keys()
@@ -699,12 +1006,12 @@ class Schema:
                     return False
 
 
-                if v['type'] in ['dict', 'list']:
+                if v['type'] in [Schema.JSON_SCHEMA_OBJECT, Schema.JSON_SCHEMA_ARRAY]:
                     if not Schema.schema_validation(obj[k], v, path=new_path, no_print=no_print):
                         return False
                 new_path = path
             return True
-        if schema['type'] == 'list':
+        if schema['type'] == Schema.JSON_SCHEMA_ARRAY:
 
             nullable = schema.get('nullable', False)
 
@@ -712,30 +1019,48 @@ class Schema:
                 return True
 
             length = schema.get('length', -1)
+            min_ = schema.get('min', -1)
+            max_ = schema.get('max', -1)
             obj_length = len(obj)
-            schema_len = len(schema['schema'])
 
             if length > -1 and obj_length != length:
                 if not no_print:
                     print(
-                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required length {cli_bcolors.OKBLUE}{length}{cli_bcolors.ENDC} (per schema {schema['schema']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required length {cli_bcolors.OKBLUE}{length}{cli_bcolors.ENDC} (per schema {schema['items']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                 return False
 
-            if schema_len > 0:
-                single_type = schema['schema'][0]
+            if min_ > -1 and obj_length < min_:
+                if not no_print:
+                    print(
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required minimum length {cli_bcolors.OKBLUE}{min_}{cli_bcolors.ENDC} (per schema {schema['items']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                return False
 
-                for i in range(obj_length):
-                    new_path = f"{new_path}/[{i}]"
-                    o = obj[i]
-                    if single_type['type'] != 'any' and type(o).__name__ != single_type['type']:
-                        if not no_print:
-                            print(
-                            f"Type '{o}' == {cli_bcolors.FAIL}'{type(o).__name__}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
-                        return False
-                    if single_type['type'] in ['dict', 'list']:
-                        if not Schema.schema_validation(o, single_type, path=new_path, no_print=no_print):
+            if max_ > -1 and obj_length > max_:
+                if not no_print:
+                    print(
+                    f"Length '{obj}' == {cli_bcolors.FAIL}{obj_length}{cli_bcolors.ENDC},\n Required maximum length {cli_bcolors.OKBLUE}{max_}{cli_bcolors.ENDC} (per schema {schema['items']}),\n In {obj},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
+                return False
+
+
+            if 'items' in schema.keys():
+                schema_len = len(schema['items'])
+
+                if schema_len > 0:
+                    single_type = schema['items'][0]
+
+                    for i in range(obj_length):
+                        new_path = f"{new_path}{_path_sep}[{i}]"
+                        o = obj[i]
+                        elem_type = get_native_type_name(type(o).__name__, 'json')
+                        if (single_type['type'] != 'any' and elem_type != single_type['type']) or (elem_type == 'integer' and single_type['type'] == 'number'):
+                            if not no_print:
+                                print(
+                                f"Type '{o}' == {cli_bcolors.FAIL}'{elem_type}'{cli_bcolors.ENDC},\n Required type {cli_bcolors.OKBLUE}'{single_type['type']}'{cli_bcolors.ENDC} (per schema {single_type}),\n In {o},\n Path {cli_bcolors.WARNING}{new_path}{cli_bcolors.ENDC}")
                             return False
-                    new_path = path
+                        if single_type['type'] in [Schema.JSON_SCHEMA_OBJECT, Schema.JSON_SCHEMA_ARRAY]:
+                            if not Schema.schema_validation(o, single_type, path=new_path, no_print=no_print):
+                                return False
+                        new_path = path
             return True
 
 class Converter:
@@ -750,76 +1075,91 @@ class Converter:
         silent (bool): Suppress verbose output (default = None).
     """
 
-    supported_list = f"{cli_bcolors.OKBLUE}YAML (r/w), JSON (r/w), TOML (r/w), INI (r/w), XML (r/w), .ENV (r){cli_bcolors.ENDC}"
+    supported_list = [f"{cli_bcolors.OKBLUE}YAML (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}JSON (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}TOML (r/w){cli_bcolors.ENDC}",
+                      f"{cli_bcolors.OKBLUE}INI (r/w){cli_bcolors.ENDC}"]
+
+    if importlib.util.find_spec('xmltodict'):
+        supported_list.append(f"{cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}")
+    if importlib.util.find_spec('dotenv'):
+        supported_list.append(f"{cli_bcolors.OKBLUE}ENV ({cli_bcolors.WARNING}r{cli_bcolors.OKBLUE}){cli_bcolors.ENDC}")
+    supported = '- ' + '\n- '.join(supported_list)
+
+    supported_output = ['yaml', 'json', 'toml', 'xml', 'ini']
+    supported_input = ['yaml', 'json', 'toml', 'xml', 'ini', 'env']
 
     def __init__(self,
                  input_files: List[str] = None,
-                 input_directories: List[str] = None,
+                 input_directory: str = None,
                  output_files: List[str] = None,
                  default_output_type: str = 'yaml',
-                 silent: bool = False,
+                 verbose: bool = False,
                  ):
         self.input_files = input_files
-        self.input_directories = input_directories
-        self.output_files = output_files
+        self.input_directory = input_directory
+        self.output_files = output_files if output_files else list()
+
+        if not default_output_type.strip().lower() in Converter.supported_output:
+            raise ValueError(f"Output type must be string of value {','.join(Converter.supported_output)}")
+
         self.default_output_type = default_output_type
-        self.silent = silent
-        if importlib.util.find_spec('dotenv'):
-            self.supported_list = f"{self.supported_list}, {cli_bcolors.OKBLUE}ENV (r){cli_bcolors.ENDC}"
-        if importlib.util.find_spec('xmltodict'):
-            self.supported_list = f"{self.supported_list}, {cli_bcolors.OKBLUE}XML (r/w){cli_bcolors.ENDC}"
+        self.verbose = verbose
 
 
     @staticmethod
-    def convert_string(input_string: str, input_type: str = None, output_type: str = None):
+    def convert_string(input_string: str, output_type: str, input_type: str = None):
         """
         Convert a string from one format to another. Supported input types:
 
         Args:
             input_string (str): Data in input_type format.
+            output_type (str): Output type, either ['yaml', 'json', 'toml', 'xml'].
             input_type (str): Input type, either ['yaml', 'json', 'toml', 'xml', 'env'] (default = None).
-            output_type (str): Output type, either ['yaml', 'json', 'toml', 'xml'] (default = None).
 
         Notes:
-            Output can not be of type .ENV
+            Output can not be of type .ENV .
+            If no input type is given, the type is inferred.
 
         Returns:
             str: Converted string
         """
-        input_type = input_type.strip().lower()
+
         output_type = output_type.strip().lower()
 
-        supported_input = ['yaml', 'json', 'toml', 'xml', 'env']
-        supported_output = ['yaml', 'json', 'toml', 'xml']
         path_sep = os.getenv("RICKLE_INI_PATH_SEP", ".")
         list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("), os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
 
-        if input_type == 'yaml':
-            d = yaml.safe_load(input_string)
-        elif input_type == 'json':
-            d = json.loads(input_string)
-        elif input_type == 'toml':
-            d = toml.loads(input_string)
-        elif input_type == 'xml':
-            if importlib.util.find_spec('xmltodict'):
-                import xmltodict
-                d = xmltodict.parse(input_string, process_namespaces=True)
-            else:
-                raise ValueError('Cannot parse XML without required package xmltodict')
-        elif input_type == 'ini':
-            config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
-            config.read_string(input_string)
-
-            d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
-        elif input_type == 'env':
-            if importlib.util.find_spec('dotenv'):
-                from dotenv import dotenv_values
-
-                d = dotenv_values(stream=StringIO(input_string))
-            else:
-                raise ValueError('Cannot parse .ENV without required package dotenv')
+        if input_type is None:
+            d = Converter.infer_read_string_type(input_string)
         else:
-            raise ValueError(f"Input type must be string of value {','.join(supported_input)}")
+            input_type = input_type.strip().lower()
+            if input_type == 'yaml':
+                d = yaml.safe_load(input_string)
+            elif input_type == 'json':
+                d = json.loads(input_string)
+            elif input_type == 'toml':
+                d = toml.loads(input_string)
+            elif input_type == 'xml':
+                if importlib.util.find_spec('xmltodict'):
+                    import xmltodict
+                    d = xmltodict.parse(input_string, process_namespaces=True)
+                else:
+                    raise ValueError('Cannot parse XML without required package xmltodict')
+            elif input_type == 'ini':
+                config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
+                config.read_string(input_string)
+
+                d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
+            elif input_type == 'env':
+                if importlib.util.find_spec('dotenv'):
+                    from dotenv import dotenv_values
+
+                    d = dotenv_values(stream=StringIO(input_string))
+                else:
+                    raise ValueError('Cannot parse .ENV without required package dotenv')
+            else:
+                raise ValueError(f"Input type must be string of value {','.join(Converter.supported_input)}")
 
         if output_type == 'yaml':
             return yaml.safe_dump(d)
@@ -845,7 +1185,7 @@ class Converter:
         elif output_type == 'env':
             raise ValueError('Conversion to .ENV is unsupported')
         else:
-            raise ValueError(f"Output type must be string of value {','.join(supported_output)}")
+            raise ValueError(f"Output type must be string of value {','.join(Converter.supported_output)}")
 
     @staticmethod
     def infer_read_string_type(string: str):
@@ -1011,27 +1351,27 @@ class Converter:
         """
         Converts all input files to output type(s).
         """
-        if self.input_files is None and self.input_directories is None:
+        if self.input_files is None and self.input_directory is None:
             raise ValueError("Either input_files or input_directories must be defined!")
 
-        if self.input_files is None and not self.input_directories is None:
+        if self.input_files is None and not self.input_directory is None:
             # set output to none as it should not be defined in this scenario
-            self.output_files = None
-            self.input_files = list()
-            for d in self.input_directories:
-                dir_path = Path(d)
-                # TODO extend glo range here if expanding
-                self.input_files.extend(list(dir_path.glob("*.yaml")))
-                self.input_files.extend(list(dir_path.glob("*.yml")))
-                self.input_files.extend(list(dir_path.glob("*.json")))
-                self.input_files.extend(list(dir_path.glob("*.toml")))
-                self.input_files.extend(list(dir_path.glob("*.xml")))
-                self.input_files.extend(list(dir_path.glob("*.ini")))
-                self.input_files.extend(list(dir_path.glob("*.env")))
-
-
-        if self.output_files is None:
             self.output_files = list()
+            self.input_files = list()
+
+            dir_path = Path(self.input_directory)
+
+            known_extensions = ['yaml', 'yml', 'json', 'toml', 'ini']
+            if importlib.util.find_spec('xmltodict'):
+                known_extensions.append('xml')
+            if importlib.util.find_spec('dotenv'):
+                known_extensions.append('env')
+
+            for ext in known_extensions:
+                self.input_files.extend(list(dir_path.glob(f"*.{ext}")))
+
+
+        if len(self.output_files) < 1:
             for input_file in self.input_files:
                 self.output_files.append(f"{os.path.splitext(input_file)[0]}.{self.default_output_type.lower()}")
 
@@ -1062,7 +1402,7 @@ class Converter:
                         import xmltodict
 
                         with output_file.open("wb") as fout:
-                            return xmltodict.unparse(input_data, fout)
+                            xmltodict.unparse(input_data, fout)
                     else:
                         raise ImportError("Missing 'xmltodict' dependency")
 
@@ -1076,10 +1416,10 @@ class Converter:
                     with output_file.open("w") as fout:
                         output_ini.write(fout)
 
-                if not self.silent:
+                if self.verbose:
                     print(f"{cli_bcolors.OKBLUE}{pair[0]}{cli_bcolors.ENDC} -> {cli_bcolors.OKBLUE}{pair[1]}{cli_bcolors.ENDC}")
                 continue
             except Exception as exc:
-                if not self.silent:
+                if self.verbose:
                     print(f"{cli_bcolors.FAIL}{str(exc)}{cli_bcolors.ENDC}")
                 continue

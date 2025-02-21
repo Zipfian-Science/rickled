@@ -6,7 +6,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 about = {}
 
-with open(os.path.join(here, "rickled", "__version__.py")) as f:
+with open(os.path.join(here, "rickle", "__version__.py")) as f:
     exec(f.read(), about)
 
 # Get the long description from the README file
@@ -35,7 +35,7 @@ setup(
     long_description_content_type='text/markdown',
     long_description=long_description,
     license='Apache 2.0',
-    keywords = ['Pickle', 'Python', 'YAML', 'JSON'],
+    keywords = ['Pickle', 'Python', 'config', 'configuration', 'YAML', 'JSON', 'TOML', 'XML', 'INI', 'ENV'],
     author='Zipfian Science',
     author_email='about@zipfian.science',
     zip_safe=False,
@@ -50,6 +50,8 @@ setup(
         'xml':  ['xmltodict'],
         'dotenv':  ['python-dotenv'],
         'validators':  ["py.validator;python_version>'3.7'"],
+        'jsonschema': ["jsonschema'[format]'"],
+        'full': ["py.validator;python_version>'3.7'", 'python-dotenv', 'xmltodict', 'twisted', 'pyopenssl', "jsonschema'[format]'"]
     },
     entry_points={
         'console_scripts': [

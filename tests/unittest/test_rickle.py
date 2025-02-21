@@ -1,471 +1,110 @@
 import unittest
+from rickle import Rickle
 import os
-from rickled import BaseRickle, Rickle
-
-class TestPickles(unittest.TestCase):
-
-    def test_base_config(self):
-        # Test normal dict
-        test_dict = {'A' : 1, 'l' : [1, { 'deep' : 'hole'}], 'B' : { 'k' : 'v'}}
-        test_conf = BaseRickle(test_dict)
-
-        self.assertEquals(test_conf.A, 1)
-        self.assertListEqual(test_conf.l, [1,{ 'deep' : 'hole'}])
-        self.assertEquals(test_conf.B.k, 'v')
-
-        # Test deep dict
-        test_conf = BaseRickle(test_dict, deep=True)
-
-        self.assertEquals(test_conf.l[-1].deep, 'hole')
-
-        # Test YAML and JSON doc loading with file path
-
-        test_conf_yaml = BaseRickle('./tests/placebos/test_config.yaml', deep=True)
-        test_conf_json = BaseRickle('./tests/placebos/test_config.json', deep=True)
-
-        self.assertGreater(len(test_conf_yaml), 0)
-        self.assertGreater(len(test_conf_json), 0)
-
-        # Test YAML and JSON doc loading with file stream
-
-        with open('./tests/placebos/test_config.yaml', 'r') as fs_y, open('./tests/placebos/test_config.json', 'r') as fs_j:
-            test_conf_yaml = BaseRickle(fs_y, deep=True)
-            test_conf_json = BaseRickle(fs_j, deep=True)
-
-            self.assertGreater(len(test_conf_yaml), 0)
-            self.assertGreater(len(test_conf_json), 0)
-
-        # Test string loading
-        yaml_string = """
-                ONE: "value"
-                """
-        json_string = """
-                { "ONE" : "value"}
-                """
-        test_conf_yaml = BaseRickle(yaml_string, deep=True)
-        test_conf_json = BaseRickle(json_string, deep=True)
-
-        self.assertTrue(test_conf_yaml == test_conf_json)
-        self.assertEquals(test_conf_yaml.ONE, "value")
-        self.assertEquals(test_conf_json.ONE, "value")
-
-    def test_base_set(self):
-        test = {
-            'level_one' : {
-                'level_two' : {
-                    'level_three' : 1
-                }
-            }
-        }
-
-        rickle = BaseRickle(test)
-
-        rickle.set('/level_one/level_two/level_three', 99)
-
-        with self.assertRaises(KeyError):
-            rickle.set('level_one/level_two/level_three', -1)
-
-        with self.assertRaises(NameError):
-            rickle.set('/', -1)
-
-        self.assertEquals(rickle.level_one.level_two.level_three, 99)
-
-        rickle.set('level_one', True)
-
-        self.assertTrue(rickle.level_one)
-
-        rickle['planet'] = 'Hello Uranus!'
-
-        self.assertEquals(rickle.planet, 'Hello Uranus!')
-
-        rickle['planet'] = 'Hello Venus :)'
-
-        self.assertEquals(rickle.planet, 'Hello Venus :)')
-
-    def test_base_config_add_attr(self):
-        test_conf = BaseRickle()
-
-        test_conf.add_attr('new_var', 42)
-
-        self.assertEquals(test_conf.new_var, 42)
-
-        test_conf.new_var += 1
-
-        self.assertEquals(test_conf.new_var, 43)
-
-        expected_meta = {'type': 'attr', 'value': 42}
-
-        actual_meta = test_conf.meta('new_var')
-
-        self.assertDictEqual(expected_meta, actual_meta)
-
-    def test_extended_config(self):
-        # Test normal dict
-        test_dict = {'A' : 1, 'l' : [1, { 'deep' : 'hole'}], 'B' : { 'k' : 'v'}}
-        test_conf = Rickle(test_dict)
-
-        self.assertEquals(test_conf.A, 1)
-        self.assertListEqual(test_conf.l, [1,{ 'deep' : 'hole'}])
-        self.assertEquals(test_conf.B.k, 'v')
-
-        # Test deep dict
-        test_conf = Rickle(test_dict, deep=True)
-
-        self.assertEquals(test_conf.l[-1].deep, 'hole')
-
-        # Test extended operations (OS ENV, functions)
-        test_dict = {'user' : {
-                        'type'  : 'env',
-                        'load': 'USERNAME'
-                    },
-                     'func' : {
-                        'type'  : 'lambda',
-                        'load': 'lambda x: x+1'
-                     }
-        }
-
-        test_conf = Rickle(test_dict, load_lambda=True)
-
-        expected_username = os.getenv('USERNAME')
-
-        self.assertEquals(test_conf.user, expected_username)
-        self.assertEquals(test_conf.func(41), 42)
-
-    def test_config_get_search(self):
-        test_conf_yaml = BaseRickle('./tests/placebos/test_config.yaml', deep=True)
-
-        value = test_conf_yaml.get('one')
-
-        self.assertIsNone(value)
-
-        value = test_conf_yaml.get('one', 'VALUE')
-
-        self.assertEquals(value, 'VALUE')
-
-        value = test_conf_yaml.get('one', do_recursive=True)
-
-        self.assertEquals(value, 'value')
-
-        value = test_conf_yaml.get('ONE')
-
-        self.assertIsNone(value)
-
-        value = test_conf_yaml.get('ONE', 'default_one', do_recursive=True)
-
-        self.assertEquals(value, 'default_one')
-
-        value = test_conf_yaml.get('USERNAME', do_recursive=True)
-
-        self.assertIsInstance(value, BaseRickle)
-        self.assertEquals(value.type, 'env')
-
-
-        ###########
-        # Test path like get
-
-        value = test_conf_yaml.get('/BASICS/dictionary/one')
-
-        self.assertEquals(value, 'value')
-
-        ###########
-        # Test dict like accesss
-
-        v = test_conf_yaml['MYSQL']
-
-        self.assertDictEqual(v.dict(), {'conn' : '127.0.0.1', 'usr' : 'test'})
-
-        with self.assertRaises(KeyError):
-            v = test_conf_yaml['asdasdasdasd']
-
-    def test_config_remove(self):
-        test_conf_yaml = BaseRickle('./tests/placebos/test_config.yaml', deep=True)
-
-        test_conf_yaml.remove('/MYSQL/conn')
-
-        self.assertDictEqual(test_conf_yaml.MYSQL.dict(), {'usr' : 'test'})
-
-        test_conf_yaml = BaseRickle('./tests/placebos/test_config.yaml', deep=True)
-
-        del test_conf_yaml['MYSQL']
-
-        with self.assertRaises(KeyError):
-            v = test_conf_yaml['MYSQL']
-
-    def test_config_to_dict(self):
-        test_dict = {'user': {
-            'type': 'env',
-            'load': 'USERNAME'
-            },
-            'func': {
-                'type': 'lambda',
-                'load': 'lambda x: x+1'
-            }
-        }
-
-        test_conf = BaseRickle(test_dict)
-
-        self.assertDictEqual(test_conf.dict(), test_dict)
-
-    def test_config_keys(self):
-        test_dict = {'user': {
-            'type': 'env',
-            'load': 'USERNAME'
-            },
-            'func': {
-                'type': 'lambda',
-                'load': 'lambda x: x+1'
-            }
-        }
-
-        test_conf = Rickle(test_dict)
-
-        for k in test_conf.keys():
-            self.assertIn(k, ['user', 'func'])
-
-    def test_config_iterator(self):
-        test_dict = {'user': {
-            'hello' : 'world'
-            },
-            'func': {
-                'hello' : 'world'
-            }
-        }
-
-        test_conf = Rickle(test_dict)
-
-        for k in test_conf:
-            self.assertEquals(k.hello, 'world')
-
-    def test_config_has_key(self):
-        test_dict = {'user': {
-            'hello' : 'world'
-            },
-            'func': {
-                'hello' : 'world'
-            }
-        }
-
-        test_conf = Rickle(test_dict)
-
-        self.assertTrue(test_conf.has('user'))
-        self.assertFalse(test_conf.has('hello'))
-        self.assertTrue(test_conf.has('hello', deep=True))
-        self.assertFalse(test_conf.has('BYE', deep=True))
-        self.assertFalse(test_conf.has('BYE', deep=False))
-
-    def test_config_values(self):
-        test_dict = {
-            'user': 'BYE',
-            'func': 'hello'
-        }
-
-        expected = ['BYE', 'hello']
-
-        test_conf = BaseRickle(test_dict)
-
-        l = test_conf.values()
-
-        self.assertListEqual(l, expected)
-
-    def test_config_items(self):
-        test_dict = {
-            'user': 'BYE',
-            'func': 'hello'
-        }
-
-        test_conf = BaseRickle(test_dict)
-
-        for k, v in test_conf.items():
-            self.assertEquals(v, test_dict[k])
-
-    def test_dump_yaml(self):
-        import os
-
-        test_dict = {'user': {
-            'type': 'env',
-            'load': 'USERNAME'
-        },
-            'func': {
-                'type': 'lambda',
-                'load': 'lambda x: x+1'
-            }
-        }
-
-        conf = BaseRickle(test_dict)
-
-        dumped_string = conf.to_yaml()
-
-        self.assertTrue('env' in dumped_string)
-        self.assertTrue('USERNAME' in dumped_string)
-        self.assertTrue('lambda x: x+1' in dumped_string)
-
-        filename = './unit_test_file_dump.yaml'
-
-        conf.to_yaml_file(filename)
-
-        self.assertTrue(os.path.isfile(filename))
-
-        os.remove(filename)
-
-    def test_dump_json(self):
-        test_dict = {'user': {
-            'type': 'env',
-            'load': 'USERNAME'
-        },
-            'func': {
-                'type': 'lambda',
-                'load': 'lambda x: x+1'
-            }
-        }
-
-        conf = BaseRickle(test_dict)
-
-        dumped_string = conf.to_json()
-        expected = '{"user": {"type": "env", "load": "USERNAME"}, "func": {"type": "lambda", "load": "lambda x: x+1"}}'
-
-        self.assertEquals(dumped_string, expected)
-
-        filename = './unit_test_file_dump.json'
-
-        conf.to_json_file(filename)
-
-        self.assertTrue(os.path.isfile(filename))
-
-        os.remove(filename)
-
-    def test_extended_config_add_function(self):
-        import math
-        test_conf = Rickle()
-
-        load = """
-def tester(x, c):
-    y = x * 2 + c
-    return math.cos(y)
-        """
-
-        args = {
-            'x' : 0.42,
-            'c' : 1.7
-        }
-
-        imports = ['math']
-
-        test_conf.add_function('tester',load, args, imports)
-
-        y = test_conf.tester(x=0.66, c=1.6)
-
-        y_true = math.cos(0.66 * 2 + 1.6)
-
-        self.assertEquals(y, y_true)
-
-    def test_extended_config_add_lambda(self):
-            from datetime import datetime as dd
-            test_conf = Rickle()
-
-            load = "lambda: dd.utcnow().strftime('%Y-%m-%d')"
-
-            imports = ['from datetime import datetime as dd']
-
-            test_conf.add_lambda('date_str', load, imports)
-
-            y = test_conf.date_str()
-
-            y_true = dd.utcnow().strftime('%Y-%m-%d')
-
-            self.assertEquals(y, y_true)
-
-    def test_pickle_rick_dict_decon(self):
-        test_conf_yaml = Rickle('./tests/placebos/test_config.yaml', deep=True, load_lambda=True)
-
-        d = test_conf_yaml.dict()
-
-        s = test_conf_yaml.to_yaml()
-
-    def test_pickle_rick_load_param(self):
-        test_conf_yaml = Rickle('./tests/placebos/test_config.yaml', deep=True, arg_name='hallo_wereld', load_lambda=True)
-
-        d = test_conf_yaml.dict()
-
-        s = test_conf_yaml.to_yaml()
-
-        s = test_conf_yaml.to_yaml(serialised=False)
-
-        test_conf_yaml = Rickle('./tests/placebos/test_config.yaml', deep=True,
-                                load_lambda=True)
-
-        d = test_conf_yaml.dict()
-
-        s = test_conf_yaml.to_yaml()
-
-    def test_multi_file_load(self):
-        files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
-        test_conf_yaml = Rickle(files, deep=True, load_lambda=True)
+import base64
+import tempfile
+import json
+from io import StringIO
+
+class TestBaseRickle(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        os.environ["MY_ENV_VAR"] = "test_value"
+
+    @classmethod
+    def tearDownClass(cls):
+        del os.environ["MY_ENV_VAR"]
+
+    def setUp(self):
+        self.rickle = Rickle()
+
+
+    def test_add_env(self):
+        self.rickle.add_env('my_var', 'MY_ENV_VAR', default='nil')
+
+        self.assertDictEqual(self.rickle.dict(), {'my_var': 'test_value'})
+        self.assertDictEqual(self.rickle.dict(serialised=True),
+                             {'my_var': {'type': 'env', 'load': 'MY_ENV_VAR', 'default': 'nil'}})
+
+        # test default
+        self.rickle.add_env('my_other_var', 'MY_OTHER_VAR', default='nil')
+        self.assertDictEqual(self.rickle.dict(),
+                             {'my_var': 'test_value', 'my_other_var': 'nil'})
+
+    def test_add_base64(self):
+        b_data = b"All your base are belong to us"
+        encoded_data = base64.b64encode(b_data).decode("utf-8")
+        self.rickle.add_base64("base64_data", encoded_data)
+
+        self.assertEqual(self.rickle.get("base64_data"), b_data)
+        self.assertDictEqual(self.rickle.dict(serialised=True),
+                             {'base64_data': {'type': 'base64', 'load': encoded_data}})
 
         self.assertTrue(True)
 
-    def test_class_definition(self):
+    def test_add_csv(self):
+        csv_content = "id,name\n1,Alice\n2,Bob"
 
-        files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
-        test_conf_yaml = Rickle(files, deep=True, load_lambda=True)
-
-        obj = test_conf_yaml.TesterClass()
-        obj.datenow()
-        obj.math_e(99, 99)
-        obj.math_e()
-
-        self.assertTrue(True)
-
-    def test_load_dump_load(self):
-        files = ['./tests/placebos/test_config.yaml', './tests/placebos/test_second.yaml']
-        test_conf_yaml = Rickle(files, deep=True, load_lambda=True)
-
-        test_conf_yaml.to_yaml('./test_out.yaml', serialised=True)
-
-        test_conf_yaml_reload = Rickle('./test_out.yaml', deep=True, load_lambda=True)
-
-
-        os.remove('./test_out.yaml')
-
-        self.assertTrue(True)
-
-    def test_pickle_rick_dict_decon_deserialised_vs_serialised(self):
-        test_conf_yaml = Rickle('./tests/placebos/test_config.yaml', deep=True, load_lambda=True)
-
-        d = test_conf_yaml.dict()
-
-        s = test_conf_yaml.to_yaml()
-
-        d_ = test_conf_yaml.dict(serialised=True)
-
-        s_ = test_conf_yaml.to_yaml(serialised=False)
-
-        self.assertTrue(True)
-
-    def test_load_from_url(self):
-        url = 'https://official-joke-api.appspot.com/random_joke'
-
-        r = Rickle(url)
-
-        self.assertTrue(True)
-
-
-    def test_toml_load(self):
-
-        toml_str = """
-[[players]]
-name = "Lehtinen"
-number = 26
-
-[[players]]
-name = "Numminen"
-number = 27
-        """
-
-
-        rick = BaseRickle(toml_str)
-
-        expected_dict = {
-            "players": [{"name": "Lehtinen", "number": 26}, {"name": "Numminen", "number": 27}]
+        # Method 1, purely as lists
+        self.rickle.add_csv("csv_data", file_path_or_str=csv_content, load_as_rick=True)
+        expected_data = { "csv_data":
+            [
+                {"id": "1", "name": "Alice"},
+                {"id": "2", "name": "Bob"}
+            ]
         }
 
-        self.assertDictEqual(rick.dict(), expected_dict)
+        actual_data = self.rickle.dict()
+
+        self.assertDictEqual(actual_data, expected_data)
+
+        # Method 2, as lists of Rickles
+        self.rickle.add_csv("csv_data_flat", file_path_or_str=csv_content, load_as_rick=False)
+
+        expected_data = [['id', 'name'], ['1', 'Alice'], ['2', 'Bob']]
+
+        actual_data = self.rickle.get("csv_data_flat")
+
+        self.assertListEqual(actual_data, expected_data)
+
+        # Method 3, as Rickles
+
+        csv_content = "1,Alice\n2,Bob"
+
+        self.rickle.add_csv("csv_data_fieldnames", file_path_or_str=csv_content, fieldnames=['id', 'name'])
+
+        expected_data = {"id": ["1", "2"], "name": ["Alice", "Bob"]}
+
+        actual_data = self.rickle.get("csv_data_fieldnames").dict()
+
+        self.assertDictEqual(actual_data, expected_data)
+
+        # Read file
+        self.rickle.add_csv("csv_data_from_file", file_path_or_str='./tests/placebos/test.csv', load_as_rick=True)
+
+        expected_data = {"a": "j", "b": "1", "c": "0.2", "d": "o"}
+
+        actual_data = self.rickle.get("csv_data_from_file")[0].dict()
+
+        self.assertDictEqual(actual_data, expected_data)
+
+    def test_add_file(self):
+
+        self.rickle.add_file("bowser", './tests/placebos/6D6172696F.txt')
+        self.assertTrue(self.rickle.get("bowser").startswith("d061"))
+
+    def test_add_html_page(self):
+
+        self.rickle.add_html_page("html_content", "https://zipfian.science/")
+        self.assertTrue('<title>Zipfian Science</title>' in self.rickle.get("html_content"))
+
+    def test_add_api_json(self):
+        self.rickle.add_api_json("api_result", "https://official-joke-api.appspot.com/random_joke")
+        keys = self.rickle.get("api_result").keys()
+        self.assertTrue('type' in keys)
+        self.assertTrue('setup' in keys)
+        self.assertTrue('punchline' in keys)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -1,3 +1,5 @@
+.. _cli-page:
+
 CLI Tools
 **************************
 
@@ -6,6 +8,9 @@ With this CLI, you can easily convert YAML files to JSON and vice versa, making 
 Furthermore, the CLI supports schema validation and generation, enabling quick checks and schema creation from YAML or JSON files.
 This functionality is especially useful for ensuring data integrity and for rapid prototyping where adherence to predefined data structures is critical.
 Overall, rickle's CLI makes it a breeze to manage and transform structured data with simple command-line commands.
+
+Getting started
+========================
 
 To see help and usage:
 
@@ -18,16 +23,17 @@ Which will show the list of available options:
 .. code-block:: text
 
    positional arguments:
-      {conv,obj,serve,schema}
-      conv                Tool for converting files to or from YAML
-      obj                 Tool for accessing/manipulating YAML files
-      serve               Tool for serving YAML via http(s)
-      schema              Tool for generating and checking schemas of
-                          YAML files
+     {conv,obj,serve,schema}
+       conv                Converting files between formats
+       obj                 Tool for reading or editing  objects
+       serve               Serving objects through http(s)
+       schema              Generating and checking schemas of YAML files
 
    optional arguments:
-      -h, --help            show this help message and exit
-      --version, -v         show version number
+     -h, --help            show this help message and exit
+     --version, -v         show version number
+     --output-type         output file type (default = YAML)
+
 
 .. note::
 
@@ -41,6 +47,60 @@ The main tools that the ``rickle`` CLI exposes are:
 4. serve
 
 All of which are discussed in the following sections.
+
+Input/Output to tools
+---------------------
+
+All CLI tools support Unix pipes, i.e. the output of the previous command or process will be used as input. For example:
+
+.. code-block:: shell
+
+    cat config.yml | rickle obj get /
+
+.. note::
+
+   On Windows systems the command ``type`` can be used instead of ``cat``.
+
+This is the preferred usage of ``rickle``. Similarly the output can always be piped or redirected:
+
+.. code-block:: shell
+
+    cat config.yaml | rickle obj get /config/database > db_config.yaml
+
+or for example:
+
+.. code-block:: shell
+
+    cat config.yaml | rickle obj get /config/ecr/password | aws ecr get-login-password --password-stdin
+
+For all tools, the input can be a file flagged with ``--input`` and output can be directed to a file with ``--output``:
+
+.. code-block:: shell
+
+    rickle obj --input config.yaml --output db_config.yaml get /config/database
+
+Although this is often a less readable way and is only recommended for when it makes sense to do so.
+
+Output types
+---------------------
+
+For most of the tools the output types can be specified with the ``--output-type`` flag and can be one of the following strings:
+
+.. hlist::
+   :columns: 1
+
+   * yaml
+   * json
+   * toml
+   * xml
+   * ini
+   * env
+
+.. note::
+
+   The default output type for all tools (except ``serve``) is ``YAML``. For ``serve`` the default output is ``JSON``.
+
+Certain tools have more output type options. Both ``search`` and ``type`` have ``list`` and ``python`` as extra types.
 
 Conversion tool
 ========================
@@ -57,13 +117,14 @@ Which will show the list of available options:
 
 .. code-block:: text
 
-   -h, --help            show this help message and exit
-   -i input [input ...]  input file(s) to convert
-   -d dir [dir ...]      directory(s) of input files
-   -o output [output ...]
-                         output file names
-   -t type               default output file type (JSON, YAML)
-   -s                    suppress verbose output
+   optional arguments:
+     -h, --help          show this help message and exit
+     --input  [ ...]     input file(s) to convert
+     --input-directory   directory of input files
+     --output  [ ...]    output file names, only if --input given
+     --input-type        optional input type (type inferred if none)
+     --verbose, -v       verbose output
+
 
 
 Convert YAML to JSON
@@ -73,33 +134,51 @@ To convert an input file ``config.json``, use the following:
 
 .. code-block:: shell
 
-    rickle conv -i config.json
+    cat config.json | rickle conv
 
-This will create a file ``config.yaml``.
+This will print the converted file ``config.json`` as YAML (which is the default), or if specified ``--output-type`` type.
 
 .. note::
 
-   The default output format is YAML. Use ``-t`` option for other formats.
+   Because the input is piped, the input type is inferred but can explicitly be defined using the ``--input-type`` option.
+
+If input is given as ``--input`` flag (or ``--input-directory``), the output will be a file with the same filename (with new extension).
+
+.. code-block:: shell
+
+    rickle conv --input config.json
+
+This will create a file ``config.yaml`` instead of printing.
+
+.. note::
+
+   The default output format is YAML. Use ``--output-type`` option for other formats.
 
 To specify the output type:
 
 .. code-block:: shell
 
-    rickle conv -i config.yaml -t JSON
+    cat config.yaml | rickle --output-type JSON conv
 
-This will create a ``config.json`` file.
+This will output the converted file (in this example as JSON).
 
 Glob whole directory
 ---------------------
 
-If the ``-d`` option is used with a directory name, all YAML and JSON files are converted to the same directory.
-The ``-t`` option is needed to specify the format or else ``YAML`` will be the default output format.
+If the ``--input-directory`` option is used with a directory name, all files with an extension are converted to the same directory.
+The ``--output-type`` option is needed to specify the format or else ``YAML`` will be the default output format.
 
 .. code-block:: shell
 
-    rickle conv -d ./configs -t YAML
+    rickle --output-type TOML conv --input-directory ./configs --verbose
 
-This will glob all files in the directory ``./configs``, including JSON and YAML files, and output them as YAML files with the same names.
+This will glob all files in the directory ``./configs``, including TOML files, and output them as TOML files with the same names.
+
+The ``--verbose`` prints a line of the input/output filenames for each conversion.
+
+.. note::
+
+   The file extensions ``yaml``, ``yml``, ``json``, ``toml``, ``ini``, ``xml``, and ``env`` will be globbed.
 
 Define output filenames
 ---------------------
@@ -108,22 +187,22 @@ Input files can have output filenames explicitly defined:
 
 .. code-block:: shell
 
-    rickle conv -i config.yaml -o ./configs/config_dev.json
+    rickle conv --input config.yaml --output ./configs/config_dev.toml
 
-This will convert ``config.yaml`` to type ``JSON`` (because the type is inferred from the file extension)
-with a new name ``config_dev.json`` in the directory ``./configs``.
+This will convert ``config.yaml`` to type ``TOML`` (because the type is inferred from the file extension)
+with a new name ``config_dev.toml`` in the directory ``./configs``.
 
 Multiple files can be converted at once:
 
 .. code-block:: shell
 
-    rickle conv -i config_dev.yaml config_tst.yaml config_prd.yaml -t JSON
+    rickle --output-type JSON conv --input config_dev.yaml config_tst.yaml config_prd.yaml
 
 When specifying the output names, the order of output filenames must match the order of input files:
 
 .. code-block:: shell
 
-    rickle conv -i config_dev.yaml config_prd.yaml -o confDev.json confPrd.json
+    rickle conv --input config_dev.yaml config_prod.yaml --output conf-dev.json conf-prd.json
 
 Troubleshooting Conv
 ---------------------
@@ -153,27 +232,31 @@ Which will show the following list of options:
 .. code-block:: text
 
    positional arguments:
-      {get,set,del,type,search,func}
-      get                 Tool for getting values from YAML files
-      set                 Tool for setting values in YAML files
-      del                 Tool for deleting keys in YAML files
-      type                Tool for checking type of keys in YAML files
-      search              Tool for searching keys in YAML files
-      func                Tool for executing function defined in YAML
-                          files
+     {get,set,del,type,search,func}
+       get                 Getting values from objects
+       set                 Setting values in objects
+       del                 For deleting keys (paths) in objects
+       type                Printing value type
+       search              For searching keys (paths) in objects
+       func                Executing functions defined in objects
 
    optional arguments:
-      -h, --help            show this help message and exit
-      -i input              input file to read/modify
-      -o output             output file to save modified
-      -t type               output type (JSON, YAML)
-      -l                    load lambda types
+     -h, --help            show this help message and exit
+     --input               input file to create object from
+     --output              write to output file
+     --load-lambda         load lambda types
 
-Using this tool requires input of a YAML or JSON file. This is done with the ``-i`` option.
+Using this tool requires input of a YAML, JSON, TOML (etc.) file. This is done with the ``--input`` option or alternatively piped.
 
 .. code-block:: shell
 
-    rickle obj -i config.yaml <VERB>
+    rickle obj --input config.yaml <VERB>
+
+Or
+
+.. code-block:: shell
+
+    cat config.yaml | rickle obj <VERB>
 
 Where ``<VERB>`` can be one of the following:
 
@@ -227,6 +310,10 @@ Which would have the value ``password``.
 
    The path separator can be specified by setting an environment variable "RICKLE_PATH_SEP", for example ``RICKLE_PATH_SEP=.`` for dots.
 
+.. code-block:: shell
+
+    export RICKLE_PATH_SEP=.
+
 Get
 ---------------------
 
@@ -236,7 +323,7 @@ For example, getting the value of ``pswd``:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml get /root_node/level_one/pswd
+    cat conf.yaml | rickle obj get /root_node/level_one/pswd
 
 This will output the value to the command line:
 
@@ -248,7 +335,7 @@ Just about any paths value can be printed to the command line:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml get /root_node/level_one
+    cat conf.yaml | rickle obj get /root_node/level_one
 
 This will output:
 
@@ -261,7 +348,7 @@ To output the entire document:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml get /
+    cat conf.yaml | rickle obj get /
 
 Will result in:
 
@@ -274,13 +361,13 @@ Will result in:
 
 .. note::
 
-   The default output is always YAML. To change the format, add the ``-t`` option to ``obj``.
+   The default output is always YAML. To change the format, add the ``--output-type`` type.
 
 Outputting the same in JSON:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml -t JSON get /
+    cat conf.yaml | rickle --output-type JSON obj get /
 
 .. code-block:: shell
 
@@ -288,7 +375,7 @@ Outputting the same in JSON:
 
 .. note::
 
-   If the ``-o`` option in ``obj`` is used to output to a file, the result is not printed to screen.
+   If the ``--output`` option in ``obj`` is used to output to a file, the result is not printed to screen.
 
 Set
 ---------------------
@@ -297,7 +384,7 @@ To set a value in a document, the key needs be to a path, along with a value.
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml set /root_node/level_one/pswd **********
+    cat conf.yaml | rickle obj set /root_node/level_one/pswd **********
 
 This will set the ``pswd`` value to ``**********`` and print the whole document with new value to the command line.
 
@@ -310,13 +397,13 @@ This will set the ``pswd`` value to ``**********`` and print the whole document 
 
 .. note::
 
-   If the ``-o`` option in ``obj`` is used to output to a file, the result is not printed to screen.
+   If the ``--output`` option in ``obj`` is used to output to a file, the result is not printed to screen.
 
 For example, the following will output to a file:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml -t JSON -o conf.json set /root_node/level_one/pswd *********
+    cat conf.yaml | rickle --output-type JSON obj --output conf.json set /root_node/level_one/pswd *********
 
 .. code-block:: json
    :linenos:
@@ -325,11 +412,17 @@ For example, the following will output to a file:
 
     {"root_node": {"level_one": {"usr": "name", "pswd": "*********"}}}
 
+Of course this could also be directed:
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle --output-type JSON obj > conf.json
+
 A new key-value can be added, for example:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml set /root_node/level_one/email not@home.com
+    cat conf.yaml | rickle obj set /root_node/level_one/email not@home.com
 
 Results in the added key:
 
@@ -345,7 +438,7 @@ This will, however, not work in the following example and result in an error:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml set /root_node/level_one/unknown/email not@home.com
+    cat conf.yaml | rickle obj set /root_node/level_one/unknown/email not@home.com
 
 
 Which results in the error message:
@@ -361,7 +454,7 @@ To remove a value, use the ``del`` option:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml del /root_node/level_one/pswd
+    cat conf.yaml | rickle obj del /root_node/level_one/pswd
 
 Resulting in:
 
@@ -378,21 +471,57 @@ The ``type`` option will print the Python value type, for example:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml type /root_node/level_one/pswd
+    cat conf.yaml | rickle obj type /root_node/level_one/pswd
 
 .. code-block:: text
 
-   <class 'str'>
+   str
 
 Or:
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml type /root_node/level_one
+    cat conf.yaml | rickle obj type /root_node/level_one
 
 .. code-block:: text
 
-   <class 'rickled.Rickle'>
+   map
+
+Using ``--output-type`` the printed type changes. Available types include ``YAML``, ``JSON``, ``TOML``, ``XML``, and ``python``.
+
+Depending on this type, the value could be:
+
+.. code-block:: text
+
+   Python |    YAML |    JSON |      TOML |            XML |
+   =========================================================
+   str    |     str |  string |    String |      xs:string |
+   int    |     int |  number |   Integer |     xs:integer |
+   float  |   float |  number |     Float |     xs:decimal |
+   bool   | boolean | boolean |   Boolean |     xs:boolean |
+   list   |     seq |   array |     Array |    xs:sequence |
+   dict   |     map |  object | Key/Value | xs:complexType |
+   bytes  |  binary |         |           |                |
+   ---------------------------------------------------------
+   *      |  Python |  object |     Other |         xs:any |
+
+Examples:
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle --output-type XML obj type /root_node/level_one
+
+.. code-block:: text
+
+   xs:complexType
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle --output-type PYTHON obj type /root_node/level_one
+
+.. code-block:: text
+
+   Rickle
 
 Search
 ---------------------
@@ -417,19 +546,33 @@ To get the path to ``pswd``:
 
 .. code-block:: shell
 
-    rickle obj -i conf-multi.yaml search pswd
+    cat conf-multi.yaml | rickle obj search pswd
 
-Which will print the path:
+Which will print the path as a YAML list by default (use the type ``--output-type`` flag for other output):
 
-.. code-block:: text
+.. code-block:: yaml
 
-   /root_node/level_one/pswd
+   - /root_node/level_one/pswd
 
 Where searching for the ``usr`` key:
 
 .. code-block:: shell
 
-    rickle obj -i conf-multi.yaml search usr
+    cat conf-multi.yaml | rickle obj search usr
+
+...prints the following paths:
+
+.. code-block:: yaml
+
+   - /root_node/usr
+   - /root_node/level_one/usr
+   - /root_node/other/usr
+
+To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``LIST``:
+
+.. code-block:: shell
+
+    cat conf-multi.yaml | rickle --output-type LIST obj search usr
 
 ...prints the following paths:
 
@@ -438,6 +581,19 @@ Where searching for the ``usr`` key:
    /root_node/usr
    /root_node/level_one/usr
    /root_node/other/usr
+
+The path separator will be used as is set in the env:
+
+.. code-block:: shell
+
+    export RICKLE_PATH_SEP=.
+    cat conf-multi.yaml | rickle --output-type LIST obj search usr
+
+.. code-block:: text
+
+   .root_node.usr
+   .root_node.level_one.usr
+   .root_node.other.usr
 
 Func
 ---------------------
@@ -457,9 +613,10 @@ For using functions, see :ref:`functions <sect-ext-usage-functions>` usage.
 
    optional arguments:
      -h, --help  show this help message and exit
-     -x          infer parameter types
+     --infer          infer parameter types
 
-Where ``key`` is the path to the function
+Where ``key`` is the path to the function. As a slight but by no means foolproof safe gaurd, it is required to set the environment variable
+``RICKLE_UNSAFE_LOAD=1``. This is not a security measure but an added step to make the user more aware of the risks involved.
 
 For the following example a function ``get_area`` is defined:
 
@@ -491,11 +648,12 @@ To run the function and get the resulting:
 
 .. code-block:: shell
 
-    rickle obj -i get-area.yaml -l func /get_area z:int=10
+    export RICKLE_UNSAFE_LOAD=1
+    cat get-area.yaml | rickle obj --load-lambda func /get_area z:int=10
 
 .. note::
 
-   To load the function the ``-l`` flag must be specified. Please see the warning above again before proceeding.
+   To load the function the ``--load-lambda`` flag must be added. Please see the warning above again before proceeding.
    Running unknown code is dangerous and should not be done without fully understanding what the code does.
 
 Which will output:
@@ -521,11 +679,12 @@ The parameter types are:
    * list
    * dict
 
-Optionally types can be inferred using the ``-x`` option:
+Optionally types can be inferred using the ``--infer`` option:
 
 .. code-block:: shell
 
-    rickle obj -i get-area.yaml -l func -x /get_area z=10
+    export RICKLE_UNSAFE_LOAD=1
+    cat get-area.yaml | rickle obj --load-lambda func --infer /get_area z=10
 
 Which should infer that ``z`` is an integer.
 
@@ -556,7 +715,8 @@ When running:
 
 .. code-block:: shell
 
-    rickle obj -i list-and-dict.yaml -l func -x /list_and_dict list_of_string="['shrt','looong']" dict_type="{'fifty' : 50}"
+    export RICKLE_UNSAFE_LOAD=1
+    cat list-and-dict.yaml | rickle obj --load-lambda func --infer /list_and_dict list_of_string="['shrt','looong']" dict_type="{'fifty' : 50}"
 
 The output would be:
 
@@ -566,13 +726,34 @@ The output would be:
    looong - of length 6
    {"fifty": 50}
 
-Without using the ``-x`` option to infer the values and explicitly defining them:
+Without using the ``--infer`` option to infer the values and explicitly defining them:
 
 .. code-block:: shell
 
-    rickle obj -i list-and-dict.yaml -l func /list_and_dict list_of_string:list="['shrt','looong']" dict_type:dict="{'fifty' : 50}"
+    export RICKLE_UNSAFE_LOAD=1
+    cat list-and-dict.yaml | rickle obj --load-lambda func /list_and_dict list_of_string:list="['shrt','looong']" dict_type:dict="{'fifty' : 50}"
 
 Would produce the same results.
+
+cURL alternative
+---------------------
+
+Seeing as a ``Rickle`` can be loaded with the JSON response from a URL, it could be used in a cURL-like manner:
+
+.. code-block:: shell
+
+    rickle --output-type JSON obj --input https://official-joke-api.appspot.com/random_joke get /
+
+Or alternatively
+
+.. code-block:: shell
+
+    echo https://official-joke-api.appspot.com/random_joke | rickle --output-type JSON obj get /
+
+.. code-block:: json
+
+    {"type": "general", "setup": "Why did the girl smear peanut butter on the road?", "punchline": "To go with the traffic jam.", "id": 324}
+
 
 Troubleshooting Obj
 ---------------------
@@ -583,9 +764,12 @@ The most likely problem to occur is if the path can not be traversed, i.e. the p
 
 .. code-block:: shell
 
-    rickle obj -i conf.yaml -t JSON get /path_to_nowhere
+     cat conf.yaml | rickle --output-type JSON obj get /path_to_nowhere
 
 And this will result in printing nothing (default behaviour).
+
+Another likely problem is that the scalar can not be output in the given type.
+I.e. TOML, INI, and XML for example need at least a root node.
 
 2. Set
 
@@ -609,7 +793,26 @@ Schema tools are useful for either generating schema definitions of files or che
 Gen
 ---------------------
 
-For generating a schema from a file, ``gen`` is used. Consider the following example file:
+For generating a schema from a file, ``gen`` is used.
+The gen tool is used for generating schemas from input. This is a useful step to start from, where a developer can then further define the schema.
+
+.. code-block:: shell
+
+    rickle schema gen -h
+
+Prints the following options:
+
+.. code-block:: text
+
+   optional arguments:
+     -h, --help          show this help message and exit
+     --input  [ ...]     input file(s) to generate from
+     --output  [ ...]    output file(s) to write to
+     --input-directory   directory(s) of files to generate from
+     --silent, -s        silence output
+     --extras, -e        include extra properties
+
+Consider the following example file:
 
 .. code-block:: yaml
    :linenos:
@@ -635,7 +838,7 @@ Running the ``gen`` tool:
 
 .. code-block:: shell
 
-    rickle schema gen -i my-example.yaml
+    rickle schema gen --input my-example.yaml
 
 will create the file ``my-example.schema.yaml`` as the following:
 
@@ -644,32 +847,32 @@ will create the file ``my-example.schema.yaml`` as the following:
    :caption: my-example.schema.yaml
    :name: my-example-schema-yaml
 
-   schema:
+   type: object
+   properties:
      root:
-       schema:
-         a_floats_list:
-           schema:
-           - type: float
-           type: list
-         a_mixed_list:
-           schema:
-           - type: any
-           type: list
-         a_string_list:
-           schema:
-           - type: str
-           type: list
-         dict_type:
-           schema:
-             key_one:
-               type: int
-             key_two:
-               type: str
-           type: dict
+       type: object
+       properties:
          null_type:
-           type: any
-       type: dict
-   type: dict
+           type: 'null'
+         dict_type:
+           type: object
+           properties:
+             key_one:
+               type: integer
+             key_two:
+               type: string
+         a_string_list:
+           type: array
+           items:
+           - type: string
+         a_floats_list:
+           type: array
+           items:
+           - type: number
+         a_mixed_list:
+           type: array
+           items:
+           - type: 'null'
 
 It will print the following to STDOUT:
 
@@ -679,74 +882,76 @@ It will print the following to STDOUT:
 
 .. note::
 
-   This can be suppressed by using the ``-s`` flag.
+   This can be suppressed by using the ``--silent`` flag.
 
-Of course the type can also be defined by either using ``-t``:
+.. note::
+
+   Note that if no output name is given the filename becomes ``<filename>.schema.<ext>``.
+
+Of course the type can also be defined by either using ``--output-type``:
 
 .. code-block:: shell
 
-    rickle schema gen -i my-example.yaml -t JSON
+    rickle --output-type JSON schema gen --input my-example.yaml
 
 Or implicitly with extensions in filenames:
 
 .. code-block:: shell
 
-    rickle schema gen -i my-example.yaml -o my-example.schema.json
+    rickle schema gen --input my-example.yaml --output my-schema.json
 
 Which will result in:
 
 .. code-block:: json
    :linenos:
-   :caption: my-example.schema.json
-   :name: my-example-schema-json
+   :caption: my-schema.json
+   :name: my-schema-json
 
    {
-     "type": "dict",
-     "schema": {
-       "root": {
-         "type": "dict",
-         "schema": {
-           "null_type": {
-             "type": "any"
-           },
-           "dict_type": {
-             "type": "dict",
-             "schema": {
-               "key_one": {
-                 "type": "int"
-               },
-               "key_two": {
-                 "type": "str"
+       "type": "object",
+       "properties": {
+           "root": {
+               "type": "object",
+               "properties": {
+                   "null_type": {
+                       "type": "null"
+                   },
+                   "dict_type": {
+                       "type": "object",
+                       "properties": {
+                           "key_one": {
+                               "type": "integer
+                               "
+                           },
+                           "key_two": {
+                               "type": "string"
+                           }
+                       }
+                   },
+                   "a_string_list": {
+                       "type": "array",
+                       "items": [{
+                               "type": "string"
+                           }
+                       ]
+                   },
+                   "a_floats_list": {
+                       "type": "array",
+                       "items": [{
+                               "type": "number"
+                           }
+                       ]
+                   },
+                   "a_mixed_list": {
+                       "type": "array",
+                       "items": [{
+                               "type": "null"
+                           }
+                       ]
+                   }
                }
-             }
-           },
-           "a_string_list": {
-             "type": "list",
-             "schema": [
-               {
-                 "type": "str"
-               }
-             ]
-           },
-           "a_floats_list": {
-             "type": "list",
-             "schema": [
-               {
-                 "type": "float"
-               }
-             ]
-           },
-           "a_mixed_list": {
-             "type": "list",
-             "schema": [
-               {
-                 "type": "any"
-               }
-             ]
            }
-         }
        }
-     }
    }
 
 
@@ -756,11 +961,31 @@ Check
 
 The check tool is used to validate file(s) against a schema.
 
+.. code-block:: shell
+
+    rickle schema check -h
+
+Prints the following options:
+
+.. code-block:: text
+
+   optional arguments:
+     -h, --help          show this help message and exit
+     --input  [ ...]     input file(s) to check
+     --input-directory   directory(s) of files to check
+     --schema            schema definition file to compare
+     --fail-directory    directory to move failed files to
+     --verbose, -v       verbose output
+     --silent, -s        silence output
+     --json-schema, -j   validate as json schema
+
+.. hint:: Using ``--json-schema`` will, if ``jsonschema`` is installed, validate using the JSON Schema specification.
+
 Example:
 
 .. code-block:: shell
 
-    rickle schema check -i my-example.yaml -c my-example.schema.json
+    cat my-example.yaml | rickle schema check --schema my-example.schema.json
 
 Will print the following if passed:
 
@@ -774,26 +999,71 @@ Or if failed the test:
 
    my-example.yaml -> FAIL
 
-Furthermore a message detailing the failure will be printed, for example:
+.. note::
+
+   If the input is piped and the input fails the check, the program exits with code 1.
+
+Furthermore a message detailing the failure can be printed using ``--verbose`` output, for example:
 
 .. code-block:: shell
 
-   Type 'key_one' == 'str',
-    Required type 'int' (per schema {'type': 'int'}),
+    cat my-example.yaml | rickle schema check --schema my-example.schema.json --verbose
+
+.. code-block:: shell
+
+   Type 'key_one' == 'string',
+    Required type 'integer' (per schema {'type': 'integer'}),
     In {'key_one': '99', 'key_two': 'text'},
     Path /root/dict_type/key_one
 
-Should output be suppressed, adding the ``-s`` can be used.
-Furthermore, failed input files can be moved to directory using ``-o``:
+Should output be suppressed, adding the ``--silent`` can be used.
+Furthermore, input files that fail the check can be moved to directory using ``--fail-directory``:
 
 .. code-block:: shell
 
-    rickle schema check -i my-example.yaml -c my-example.schema.json -o ./failed -s
+    rickle schema check --input-directory ./configs --schema my-example.schema.json --fail-directory ./failed -s
 
 Serve tool
 ========================
 
-This is a little tool to serve the a YAML or JSON file as a mini API.
+This is a little tool to serve the a YAML or JSON (or TOML, XML, INI) file as a mini API.
+
+.. note::
+
+   If ``Rickle`` is not installed with ``net`` extras the serve tool will not appear.
+
+.. code-block:: shell
+
+    pip install rickled[net]
+
+
+.. code-block:: shell
+
+    rickle schema check -h
+
+Prints the following options:
+
+.. code-block:: text
+
+   optional arguments:
+     -h, --help        show this help message and exit
+     --input           input file to serve
+     --host            host address (default = localhost)
+     --port            port number (default = 8080)
+     --private-key     private key file path
+     --certificate     ssl certificate file path
+     --load-lambda     load lambda true
+     --unsafe          load UnsafeRickle (VERY UNSAFE)
+     --browser, -b     open browser
+     --serialised, -s  serve as serialised data (default = false)
+
+.. note::
+
+   The default output type is set to ``JSON``.
+
+.. note::
+
+   The ``/`` overrides ``RICKLE_PATH_SEP`` as the path separator.
 
 Example
 ------------------------
@@ -836,13 +1106,13 @@ If running the serve tool with the option ``-b`` a new tab in the browser will b
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b
+   cat mock-example.yaml | rickle serve -b
 
-A port number can be defined specified using ``-p``:
+A port number can be defined specified using ``--port``:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -p 3301
+   cat mock-example.yaml | rickle serve -b --port 3301
 
 Using the given example input file the following JSON data will be returned:
 
@@ -868,7 +1138,7 @@ Using the given example input file the following JSON data will be returned:
 
 .. note::
 
-   The text for ``heavens_gate`` is excluded.
+   The text for ``heavens_gate`` is excluded for space (and your sanity).
 
 Calling ``http://localhost:3301/root/random_joke`` will return (example):
 
@@ -885,13 +1155,13 @@ Furthermore, SSL can be used:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -p 3301 -k .\local.pem -c .\local.crt
+   cat mock-example.yaml | rickle serve -b --port 3301 --private-key .\local.pem --certificate .\local.crt
 
 And finally, if the given YAML or JSON file needs to be given in serialised form, use ``-s``:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -s
+   cat mock-example.yaml | rickle serve -b -s
 
 which will give the following:
 
@@ -942,11 +1212,11 @@ which will give the following:
      }
    }
 
-Output can also be given as ``application/yaml`` with YAML output using the ``-t`` option:
+Output can also be given as ``application/yaml`` with YAML output using the ``--output-type`` option:
 
 .. code-block:: shell
 
-   rickle serve -i mock-example.yaml -b -t YAML
+   cat mock-example.yaml | rickle --output-type YAML serve -b
 
 Which will produce the YAML output:
 
@@ -967,3 +1237,49 @@ Which will produce the YAML output:
 .. note::
 
    In some browsers, the YAML output will be downloaded as data and not rendered in the browser.
+
+Unsafe usage
+------------------------
+
+.. warning::
+
+   Loading unknown code can be potentially dangerous. Only load files that you are fully aware what the Python code will do once executed.
+   In general, a safe rule of thumb should be: don't load any Python code.
+
+To enabled functions, the environment variable ``RICKLE_UNSAFE_LOAD`` has to be set, and ``--load-lambda`` and ``--unsafe`` passed.
+Using the ``get-area.yaml`` example again:
+
+.. code-block:: yaml
+   :linenos:
+   :caption: get-area.yaml
+   :name: get-area-yaml
+
+    get_area:
+      type: function
+      name: get_area
+      args:
+         x: 10
+         y: 10
+         z: null
+         f: 0.7
+      import:
+         - math
+      load: >
+         def get_area(x, y, z, f):
+            if not z is None:
+               area = (x * y) + (x * z) + (y * z)
+               area = 2 * area
+            else:
+               area = x * y
+            return math.floor(area * f)
+
+.. code-block:: shell
+
+   export RICKLE_UNSAFE_LOAD=1
+   cat get-area.yaml | rickle serve --load-lambda --unsafe
+
+Then the endpoint can be called:
+
+.. code-block:: shell
+
+   curl http://localhost:8080/get_area?x=15&y=5&z=25

@@ -1,6 +1,8 @@
-from collections import defaultdict
+import random
+import string
 
 from .__version__ import __version__, __date__
+from collections import OrderedDict
 import os
 import json
 import copy
@@ -30,8 +32,10 @@ if sys.version_info < (3, 11):
 else:
     import tomllib as toml
 
-from rickled.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings
+from rickle.tools import toml_null_stripper, inflate_dict, flatten_dict, parse_ini, unparse_ini, supported_encodings, \
+    generate_random_value
 
+yaml.add_representer(OrderedDict, lambda dumper, data: dumper.represent_mapping('tag:yaml.org,2002:map', data.items()))
 
 class BaseRickle:
     """
@@ -100,16 +104,18 @@ class BaseRickle:
                 try:
                     parsed = parse_url(base)
                     if all([parsed.scheme, parsed.host]):
-                        response = requests.get(url=base, )
+                        response = requests.get(url=base.strip(), )
                         if response.status_code == 200:
                             _d = response.json()
                             self._input_type = "url"
                             return _d
                         else:
+                            sys.stderr.write(f"Non-200 status {response.status_code} returned for URL {base}")
                             raise ValueError(f"Non-200 status {response.status_code} returned for URL {base}")
                 except:
                     pass
             except (ImportError, ModuleNotFoundError):
+                print("#######################3")
                 pass
 
             stringed = base
@@ -117,9 +123,9 @@ class BaseRickle:
         if not init_args is None:
             for k, v in init_args.items():
                 _k = "{opening}{key}{closing}".format(
-                    opening=os.getenv("RICKLE_OPENING_BRACES", init_args.get('RICKLE_OPENING_BRACES', "{{")),
+                    opening=init_args.get("RICKLE_OPENING_BRACES", os.getenv('RICKLE_OPENING_BRACES', "{{")),
                     key=k,
-                    closing=os.getenv("RICKLE_CLOSING_BRACES", init_args.get('RICKLE_CLOSING_BRACES', "}}"))
+                    closing=init_args.get("RICKLE_CLOSING_BRACES", os.getenv('RICKLE_CLOSING_BRACES', "}}"))
                 )
                 stringed = stringed.replace(_k, json.dumps(v))
 
@@ -151,9 +157,11 @@ class BaseRickle:
                 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
                 config.read_string(stringed)
 
-                path_sep = os.getenv("RICKLE_INI_PATH_SEP", init_args.get('RICKLE_INI_PATH_SEP', "."))
-                list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("),
-                                 os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+                path_sep = init_args.get('RICKLE_INI_PATH_SEP', os.getenv("RICKLE_INI_PATH_SEP", "."))
+                list_brackets = (
+                    init_args.get("RICKLE_INI_OPENING_BRACES", os.getenv("RICKLE_INI_OPENING_BRACES", "(")),
+                    init_args.get("RICKLE_INI_CLOSING_BRACES", os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+                )
 
                 _d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
 
@@ -208,9 +216,11 @@ class BaseRickle:
             config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
             config.read_string(stringed)
 
-            path_sep = os.getenv("RICKLE_INI_PATH_SEP", init_args.get('RICKLE_INI_PATH_SEP', "."))
-            list_brackets = (os.getenv("RICKLE_INI_OPENING_BRACES", "("),
-                             os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+            path_sep = init_args.get('RICKLE_INI_PATH_SEP', os.getenv("RICKLE_INI_PATH_SEP", "."))
+            list_brackets = (
+                init_args.get("RICKLE_INI_OPENING_BRACES", os.getenv("RICKLE_INI_OPENING_BRACES", "(")),
+                init_args.get("RICKLE_INI_CLOSING_BRACES", os.getenv("RICKLE_INI_CLOSING_BRACES", ")"))
+            )
 
             _d = parse_ini(config=config, path_sep=path_sep, list_brackets=list_brackets)
 
@@ -272,7 +282,9 @@ class BaseRickle:
         self._input_type = None
         self._allowed_chars_pat = re.compile('[^a-zA-Z_]')
         self._keys_map = dict()
-        self._path_sep = os.getenv("RICKLE_PATH_SEP", init_args.get('RICKLE_PATH_SEP', "/"))
+        self._path_sep = init_args.get('RICKLE_PATH_SEP', os.getenv("RICKLE_PATH_SEP", "/"))
+        self._name_cleanup = init_args.get('RICKLE_NAME_CLEAN_UP', os.getenv("RICKLE_NAME_CLEAN_UP", True))
+
         self._init_args = init_args
 
         if base is None:
@@ -451,8 +463,10 @@ class BaseRickle:
 
     def _check_kw(self, name):
         if self._strict and name in dir(self):
-            raise ValueError(f"Unable to add key '{name}', reserved keyword in Rickle. Use strict=False.")
+            raise NameError(f"Unable to add key '{name}', reserved keyword in Rickle. Use strict=False.")
 
+        if not self._name_cleanup:
+            return name
         clean_name = self._allowed_chars_pat.sub('', name)
         if clean_name != name:
             self._keys_map[clean_name] = name
@@ -512,6 +526,8 @@ class BaseRickle:
             if do_recursive:
                 value = self._recursive_search(self.__dict__, key)
             else:
+                if key in self._keys_map.values():
+                    key = next((k for k, v in self._keys_map.items() if v == key), None)
                 value = self.__dict__.get(key, default)
             return value
         except StopIteration:
@@ -539,21 +555,29 @@ class BaseRickle:
             key = f"{self._path_sep}{key}"
 
         if key == self._path_sep:
-            raise NameError('Can not set a value to self')
+            raise KeyError('Can not set a value to self')
 
         path_list = key.split(self._path_sep)
 
         current_node = self
 
         for node_name in path_list[1:-1]:
+            if not isinstance(current_node, BaseRickle):
+                raise KeyError(f'The path {key} could not be traversed')
             current_node = current_node.get(node_name)
             if current_node is None:
-                raise NameError(f'The path {key} could not be traversed')
+                raise KeyError(f'The path {key} could not be traversed')
 
         if '?' in path_list[-1]:
             raise KeyError(f'Function params "{path_list[-1]}" included in path!')
 
-        current_node.add_attr(path_list[-1], value)
+        if not isinstance(current_node, BaseRickle):
+            raise NameError(f'The path {key} could not be set, try using put')
+
+        if current_node.has(path_list[-1]):
+            current_node[path_list[-1]] = value
+        else:
+            current_node.add(path_list[-1], value)
 
     def remove(self, key: str):
         """
@@ -625,12 +649,13 @@ class BaseRickle:
         """
         d = dict()
         for key, value in self.__dict__.items():
+            actual_key = key
+            if key in self._keys_map.keys():
+                actual_key = self._keys_map[key]
             if self._eval_name(key) or str(key).endswith('_meta_info'):
                 continue
-            if serialised and key in self._keys_map.keys():
-                key = self._keys_map[key]
             if isinstance(value, BaseRickle) or isinstance(value, Rickle):
-                d[key] = value.dict(serialised=serialised)
+                d[actual_key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
@@ -638,9 +663,9 @@ class BaseRickle:
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
-                d[key] = new_list
+                d[actual_key] = new_list
             else:
-                d[key] = value
+                d[actual_key] = value
         return d
 
     def has(self, key: str, deep=False) -> bool:
@@ -676,7 +701,6 @@ class BaseRickle:
         Notes:
             Functions and lambdas are always given in serialised form.
         """
-
         self_as_dict = self.dict(serialised=serialised)
 
         if output:
@@ -818,21 +842,26 @@ class BaseRickle:
             dict: The metadata as a dict.
         """
         if name:
+            if name in self._keys_map.values():
+                name = next((k for k, v in self._keys_map.items() if v == name), None)
             return self._meta_info[name]
         return self._meta_info
 
     def add_attr(self, name, value):
+        warnings.warn(message="'add_attr' will be removed after version 1.4. Use 'add' instead")
+        self.add(name=name, value=value)
+
+    def add(self, name, value):
         """
-        Add a new attribute member to Rick.
+        Add a new key (attribute) and value member to Rick.
 
         Args:
-            name (str): Property name.
-            value (any): Value of new member.
+            name (str): Key / property name.
+            value (any): Value of new key.
         """
         name = self._check_kw(name)
         self.__dict__.update({name: value})
-        self._meta_info[name] = {'type': 'attr', 'value': value}
-
+        self._meta_info[name] = {'type': 'attribute', 'value': value}
 
 class Rickle(BaseRickle):
     """
@@ -855,7 +884,7 @@ class Rickle(BaseRickle):
             if isinstance(v, dict):
                 if 'type' in v.keys():
                     if v['type'] == 'env':
-                        self.add_env_variable(name=k,
+                        self.add_env(name=k,
                                               load=v['load'],
                                               default=v.get('default', None))
                         continue
@@ -863,8 +892,8 @@ class Rickle(BaseRickle):
                         self.add_base64(name=k,
                                         load=v['load'])
                         continue
-                    if v['type'] == 'from_file':
-                        self.add_from_file(name=k,
+                    if v['type'] == 'file' or v['type'] == 'from_file':
+                        self.add_file(name=k,
                                            file_path=v['file_path'],
                                            load_as_rick=v.get('load_as_rick', False),
                                            deep=v.get('deep', False),
@@ -873,15 +902,15 @@ class Rickle(BaseRickle):
                                            encoding=v.get('encoding', 'utf-8'),
                                            hot_load=v.get('hot_load', False))
                         continue
-                    if v['type'] == 'from_csv':
-                        self.add_csv_file(name=k,
-                                          file_path=v['file_path'],
+                    if v['type'] == 'csv' or v['type'] == 'from_csv':
+                        self.add_csv(name=k,
+                                          file_path_or_str=v['file_path'],
                                           fieldnames=v.get('fieldnames', None),
                                           load_as_rick=v.get('load_as_rick', False),
                                           encoding=v.get('encoding', 'utf-8'))
                         continue
                     if v['type'] == 'api_json':
-                        self.add_api_json_call(name=k,
+                        self.add_api_json(name=k,
                                                url=v['url'],
                                                http_verb=v.get('http_verb', 'GET'),
                                                headers=v.get('headers', None),
@@ -893,6 +922,17 @@ class Rickle(BaseRickle):
                                                expected_http_status=v.get('expected_http_status', 200),
                                                hot_load=v.get('hot_load', False))
                         continue
+                    if v['type'] == 'secret':
+                        self.add_secret(name=k,
+                                        secret_id=v['secret_id'],
+                                        provider=v['provider'],
+                                        provider_access_key=v.get('provider_access_key', dict()),
+                                        secret_version=v.get('secret_version', None),
+                                        load_as_rick=v.get('load_as_rick', False),
+                                        load_lambda=v.get('load_lambda', False),
+                                        deep=v.get('deep', False),
+                                        hot_load=v.get('hot_load', False))
+                        continue
                     if v['type'] == 'html_page':
                         self.add_html_page(name=k,
                                            url=v['url'],
@@ -900,6 +940,12 @@ class Rickle(BaseRickle):
                                            params=v.get('params', None),
                                            expected_http_status=v.get('expected_http_status', 200),
                                            hot_load=v.get('hot_load', False))
+                        continue
+                    if v['type'] == 'random':
+                        self.add_random_value(name=k,
+                                              value_type=v['value_type'],
+                                              value_properties=v.get('value_properties', dict()),
+                                              hot_load=v.get('hot_load', False))
                         continue
 
                 self.__dict__.update({k: Rickle(base=v, deep=deep, strict=self._strict, **init_args)})
@@ -984,24 +1030,25 @@ class Rickle(BaseRickle):
         """
         d = dict()
         for key, value in self.__dict__.items():
+            actual_key = key
+            if key in self._keys_map.keys():
+                actual_key = self._keys_map[key]
             if self._eval_name(key):
                 continue
-            if serialised and key in self._keys_map.keys():
-                key = self._keys_map[key]
             if serialised and key in self._meta_info.keys():
-                d[key] = self._meta_info[key]
+                d[actual_key] = self._meta_info[key]
             # Revisit this at some later point
             elif key in self._meta_info.keys() and \
                     self._meta_info[key]['type'] in ['base64']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif key in self._meta_info.keys() and \
-                    self._meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
+                    self._meta_info[key]['type'] in ['file', 'html_page', 'api_json', 'secret', 'random'] and \
                     self._meta_info[key]['hot_load']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif isinstance(value, BaseRickle):
-                d[key] = value.dict(serialised=serialised)
+                d[actual_key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
@@ -1009,12 +1056,60 @@ class Rickle(BaseRickle):
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
-                d[key] = new_list
+                d[actual_key] = new_list
             else:
-                d[key] = value
+                d[actual_key] = value
         return d
 
+    def add_random_value(self, name, value_type: str, value_properties: dict = None, hot_load: bool = False):
+        """
+        Adds a completely random value, useful for generating mock data.
+
+        Notes:
+            integer: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+            number: Properties include ``min`` and ``max``. Defaults to 0 and 256.
+            string: Properties include ``chars`` and ``length``. Defaults to ASCII chars and 10.
+            enum: Properties include ``values``.  Defaults to ASCII uppercase chars.
+            array: Properties include ``values`` and ``length``.  Defaults to 'integer' and 10.
+                ``values`` can be a string of ``value_type``.
+            object: Properties include ``keys``, ``values``, ``min``, and ``max``.
+                Defaults to random ASCII uppercase and 10 random integers, min and max of 1 and 5.
+                ``values`` can be a string of ``value_type``.
+
+        Args:
+            name (str): Key / property name.
+            value_type (str): Either 'string', 'integer', 'number', 'enum', 'array', 'object', or 'any'.
+            value_properties (dict): Extra properties defining what the randomly generated value should look like.
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
+        """
+        name = self._check_kw(name)
+        value_type = value_type.strip().lower()
+        if value_properties is None:
+            value_properties = dict()
+
+        if hot_load:
+            try:
+                _load = f"""lambda: generate_random_value(value_type='{str(value_type)}',
+                                                        value_properties={value_properties})"""
+
+                self.__dict__.update({name: eval(_load)})
+            except Exception as exc:
+                raise ValueError(f"At 'add_random_value', when trying to add lambda, this happened {exc}")
+        else:
+            value = generate_random_value(value_type=value_type, value_properties=value_properties)
+
+            self.__dict__.update({name: value})
+
+        self._meta_info[name] = {'type': 'random',
+                                 'value_type': value_type,
+                                 'value_properties': value_properties,
+                                 'hot_load': hot_load}
+
     def add_env_variable(self, name, load, default=None):
+        warnings.warn(message="'add_env_variable' will be removed after version 1.4. Use 'add_env' instead")
+        self.add_env(name=name,load=load,default=default)
+
+    def add_env(self, name, load, default=None):
         """
         Add a new OS ENVIRONMENT VARIABLE to Rick.
 
@@ -1049,12 +1144,22 @@ class Rickle(BaseRickle):
                      load_as_rick: bool = False,
                      encoding: str = 'utf-8'
                      ):
+        warnings.warn(message="'add_csv_file' will be removed after version 1.4. Use 'add_csv' instead")
+        self.add_csv(name=name,file_path_or_str=file_path,fieldnames=fieldnames,load_as_rick=load_as_rick,encoding=encoding)
+
+    def add_csv(self,
+                     name,
+                     file_path_or_str: str,
+                     fieldnames: list = None,
+                     load_as_rick: bool = False,
+                     encoding: str = 'utf-8'
+                     ):
         """
         Adds the ability to load CSV data as lists or even a list of Ricks where the column names are the properties.
 
         Args:
             name (str): Property name.
-            file_path (str): File path to load from.
+            file_path_or_str (str): File path to load from, or CSV string.
             fieldnames (list): Column headers (default = None).
             load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as text (default = False).
             encoding (str): If text, encoding can be specified (default = 'utf-8').
@@ -1062,45 +1167,53 @@ class Rickle(BaseRickle):
         """
         name = self._check_kw(name)
         import csv
-        with open(file_path, 'r', encoding=encoding) as file:
-            dialect = csv.Sniffer().sniff(file.read(1024))
-            file.seek(0)
-            l = list()
 
-            if load_as_rick:
-                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+        if Path(file_path_or_str).exists():
+            stream = Path(file_path_or_str).open()
+        else:
+            stream = StringIO(file_path_or_str)
 
-                for row in csv_file:
-                    l.append(dict(row))
 
-                self._iternalize({name: l}, deep=True)
-            elif not fieldnames is None:
+        dialect = csv.Sniffer().sniff(stream.read(1024))
+        stream.seek(0)
+        l = list()
 
-                columns = {c: list() for c in fieldnames}
+        if load_as_rick:
+            csv_file = csv.DictReader(stream, fieldnames=fieldnames, dialect=dialect)
 
-                csv_file = csv.DictReader(file, fieldnames=fieldnames, dialect=dialect)
+            for row in csv_file:
+                l.append(dict(row))
 
-                for row in csv_file:
-                    for k, v in row.items():
-                        columns[k].append(v)
+            self._iternalize({name: l}, deep=True)
+        elif not fieldnames is None:
 
-                self._iternalize({name: columns}, deep=False)
-            else:
-                csv_file = csv.reader(file, dialect=dialect)
+            columns = {c: list() for c in fieldnames}
 
-                for row in csv_file:
-                    l.append(row)
+            csv_file = csv.DictReader(stream, fieldnames=fieldnames, dialect=dialect)
 
-                self.__dict__.update({name: l})
+            for row in csv_file:
+                for k, v in row.items():
+                    columns[k].append(v)
 
-        self._meta_info[name] = {'type': 'from_csv',
-                                 'file_path': file_path,
+            self._iternalize({name: columns}, deep=False)
+        else:
+            csv_file = csv.reader(stream, dialect=dialect)
+
+            for row in csv_file:
+                l.append(row)
+
+            self.__dict__.update({name: l})
+
+        stream.close()
+
+        self._meta_info[name] = {'type': 'csv',
+                                 'file_path_or_str': file_path_or_str,
                                  'load_as_rick': load_as_rick,
                                  'fieldnames': fieldnames,
                                  'encoding': encoding
                                  }
 
-    def _load_from_file(self,
+    def _load_file(self,
                         file_path: str,
                         load_as_rick: bool = False,
                         deep: bool = False,
@@ -1120,7 +1233,19 @@ class Rickle(BaseRickle):
                 with open(file_path, 'r', encoding=encoding) as fn:
                     return fn.read()
 
-    def add_from_file(self, name,
+    def add_from_file(self,name,
+                      file_path: str,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      is_binary: bool = False,
+                      encoding: str = 'utf-8',
+                      hot_load: bool = False):
+        warnings.warn(message="'add_from_file' will be removed after version 1.4. Use 'add_file' instead")
+        self.add_file(name=name,file_path=file_path,load_as_rick=load_as_rick,deep=deep,load_lambda=load_lambda,
+                      is_binary=is_binary,encoding=encoding,hot_load=hot_load)
+
+    def add_file(self, name,
                       file_path: str,
                       load_as_rick: bool = False,
                       deep: bool = False,
@@ -1150,7 +1275,7 @@ class Rickle(BaseRickle):
             if (encoding in supported_encodings() and Path(file_path).is_file()
                     and self._init_args['load_lambda']):
 
-                _load = f"""lambda self=self: self._load_from_file(file_path='{str(file_path)}',
+                _load = f"""lambda self=self: self._load_file(file_path='{str(file_path)}',
                                               load_as_rick={load_as_rick == True},
                                               deep={deep == True},
                                               load_lambda={load_lambda == True},
@@ -1161,7 +1286,7 @@ class Rickle(BaseRickle):
             else:
                 raise ValueError(f"At 'add_from_file', when trying to add lambda, one or more checks failed")
         else:
-            result = self._load_from_file(file_path=file_path,
+            result = self._load_file(file_path=file_path,
                                           load_as_rick=load_as_rick,
                                           deep=deep,
                                           load_lambda=load_lambda,
@@ -1170,7 +1295,7 @@ class Rickle(BaseRickle):
 
             self.__dict__.update({name: result})
 
-        self._meta_info[name] = {'type': 'from_file',
+        self._meta_info[name] = {'type': 'file',
                                  'file_path': file_path,
                                  'load_as_rick': load_as_rick,
                                  'deep': deep,
@@ -1251,7 +1376,7 @@ class Rickle(BaseRickle):
                                  'hot_load': hot_load
                                  }
 
-    def _load_api_json_call(self,
+    def _load_api_json(self,
                             url: str,
                             http_verb: str = 'GET',
                             headers: dict = None,
@@ -1279,17 +1404,32 @@ class Rickle(BaseRickle):
         else:
             raise ValueError(f'Unexpected HTTP status code in response {r.status_code}')
 
-    def add_api_json_call(self, name,
-                          url: str,
-                          http_verb: str = 'GET',
-                          headers: dict = None,
-                          params: dict = None,
-                          body: dict = None,
-                          load_as_rick: bool = False,
-                          deep: bool = False,
-                          load_lambda: bool = False,
-                          expected_http_status: int = 200,
-                          hot_load: bool = False):
+    def add_api_json_call(self,name,
+                      url: str,
+                      http_verb: str = 'GET',
+                      headers: dict = None,
+                      params: dict = None,
+                      body: dict = None,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      expected_http_status: int = 200,
+                      hot_load: bool = False):
+        warnings.warn(message="'add_api_json_call' will be removed after version 1.4. Use 'add_api_json' instead")
+        self.add_api_json(name=name,url=url,http_verb=http_verb,headers=headers,params=params,body=body,
+                          load_as_rick=load_as_rick,deep=deep,load_lambda=load_lambda,
+                          expected_http_status=expected_http_status,hot_load=hot_load)
+    def add_api_json(self, name,
+                      url: str,
+                      http_verb: str = 'GET',
+                      headers: dict = None,
+                      params: dict = None,
+                      body: dict = None,
+                      load_as_rick: bool = False,
+                      deep: bool = False,
+                      load_lambda: bool = False,
+                      expected_http_status: int = 200,
+                      hot_load: bool = False):
         """
         Load a JSON response from a URL and create a Rick from it. This opens up dynamic possibility,
         but with that it also opens up extreme security vulnerabilities. Only ever load JSON objects from trusted sources.
@@ -1321,7 +1461,7 @@ class Rickle(BaseRickle):
                         _body = dict(body) if body else None
                         _headers = dict(headers) if headers else None
                         _params = dict(params) if params else None
-                        _load = f"""lambda self=self: self._load_api_json_call(url='{str(url)}', 
+                        _load = f"""lambda self=self: self._load_api_json(url='{str(url)}', 
                                                         http_verb='{str(http_verb)}', 
                                                         headers={_headers}, 
                                                         params={_params}, 
@@ -1340,7 +1480,7 @@ class Rickle(BaseRickle):
                 raise ValueError(f"At 'add_api_json_call', when trying to add lambda, this happened {exc}")
 
         else:
-            result = self._load_api_json_call(url=url,
+            result = self._load_api_json(url=url,
                                               http_verb=http_verb,
                                               headers=headers,
                                               params=params,
@@ -1358,9 +1498,218 @@ class Rickle(BaseRickle):
                                  'headers': headers,
                                  'params': params,
                                  'body': body,
+                                 'load_as_rick': load_as_rick,
                                  'deep': deep,
                                  'load_lambda': load_lambda,
                                  'expected_http_status': expected_http_status,
+                                 'hot_load': hot_load
+                                 }
+
+    def _add_secret(self,
+                    secret_id: str,
+                    provider: str,
+                    provider_access_key: Union[str, dict],
+                    secret_version: str = None,
+                    load_as_rick: bool = False,
+                    deep: bool = False,
+                    load_lambda: bool = False
+                    ):
+        provider = provider.strip().lower()
+
+        if isinstance(provider_access_key, str):
+            provider_access_key = Rickle(provider_access_key).dict()
+
+        if provider == 'aws':
+            import boto3
+            from botocore.exceptions import ClientError
+
+            client = boto3.session.Session(**provider_access_key).client('secretsmanager')
+            try:
+                args = {'SecretId': secret_id}
+                if secret_version:
+                    args['VersionId'] = secret_version
+                secret = client.get_secret_value(**args)
+
+            except ClientError as e:
+                sys.stderr.write(f"Error while accessing secret {e.response['Error']['Code']}")
+                raise e
+            else:
+                if 'SecretString' in secret:
+                    secret_string = secret['SecretString']
+
+                    if load_as_rick:
+                        args = copy.copy(self._init_args)
+                        args['load_lambda'] = load_lambda
+                        args['deep'] = deep
+                        return Rickle(secret_string, **args)
+                    return secret_string
+                else:
+                    return secret['SecretBinary']
+        elif provider == 'google':
+            from google.cloud import secretmanager
+            from google.oauth2 import service_account
+
+            credentials = service_account.Credentials.from_service_account_info(
+                provider_access_key)
+
+            if secret_version:
+                _secret_version_id = secret_version
+            else:
+                _secret_version_id = 'latest'
+
+            client = secretmanager.SecretManagerServiceClient(credentials=credentials)
+            name = f"projects/{provider_access_key['project_id']}/secrets/{secret_id}/versions/{_secret_version_id}"
+
+            response = client.access_secret_version(name=name)
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(response.payload.data.decode('UTF-8'), **args)
+
+            return response.payload.data.decode('UTF-8')
+        elif provider == 'azure':
+            from azure.identity import ClientSecretCredential
+            from azure.keyvault.secrets import SecretClient
+
+            key_vault_uri = f"https://{provider_access_key['key_vault_name']}.vault.azure.net"
+
+            credential = ClientSecretCredential(
+                tenant_id=provider_access_key['tenant_id'],
+                client_id=provider_access_key['client_id'],
+                client_secret=provider_access_key['client_secret']
+            )
+
+            client = SecretClient(vault_url=key_vault_uri, credential=credential)
+
+            secret = client.get_secret(name=secret_id, version=secret_version)
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret.value, **args)
+            return secret.value
+        elif provider == 'hashicorp':
+            import hvac
+
+            client = hvac.Client(
+                **provider_access_key
+            )
+
+            read_response = client.secrets.kv.read_secret_version(path=secret_id)
+
+            secret = read_response['data']['data']
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret, **args)
+            return secret
+        elif provider == 'oracle':
+            import oci
+
+            vault_client = oci.vault.VaultsClient(provider_access_key)
+
+            secret_response = vault_client.get_secret(secret_id=secret_id)
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret_response.data, **args)
+            return secret_response.data
+        elif provider == 'ibm':
+            from ibm_cloud_sdk_core.authenticators.iam_authenticator import IAMAuthenticator
+            from ibm_secrets_manager_sdk.secrets_manager_v2 import SecretsManagerV2
+
+            secrets_manager = SecretsManagerV2(
+                authenticator=IAMAuthenticator(provider_access_key['apikey'])
+            )
+            secrets_manager.set_service_url(provider_access_key['service_url'])
+
+            response = secrets_manager.get_secret(
+                id=secret_id
+            )
+
+            secret_payload = response.result['payload']
+
+            if load_as_rick:
+                args = copy.copy(self._init_args)
+                args['load_lambda'] = load_lambda
+                args['deep'] = deep
+                return Rickle(secret_payload, **args)
+            return secret_payload
+        else:
+            raise ValueError(f"Provider name '{provider}' not supported")
+
+    def add_secret(self,
+                   name,
+                   secret_id: str,
+                   provider: str,
+                   provider_access_key: Union[str, dict],
+                   secret_version: str = None,
+                   load_as_rick: bool = False,
+                   deep: bool = False,
+                   load_lambda: bool = False,
+                   hot_load: bool = False):
+        """
+        Adds a secret from a cloud provider. Providers include ASW, Google, Azure, and Hashicorp.
+
+        Note:
+            The provider_access_key can either be a string or dict.
+            A string can either be a JSON (or YAML) string or a file path to an access key file.
+
+        Args:
+            name (str): Property name.
+            secret_id (str): The ID or name of the secret in the secret manager / key vault.
+            provider (str): Either 'aws', 'google', 'azure'.
+            provider_access_key (dict, str): Key/secrets or other access information. Dependent on ``provider``.
+            secret_version (str): Version ID of the secret (default = None).
+            load_as_rick (bool): If true, loads and creates Rick from source, else loads the contents as dictionary (default = False).
+            deep (bool): Internalize dictionary structures in lists (default = False).
+            load_lambda (bool): Load lambda as code or strings (default = False).
+            hot_load (bool): Load the data on calling or load it only once on start (cold) (default = False).
+
+        """
+        name = self._check_kw(name)
+        if hot_load:
+            try:
+                if isinstance(provider_access_key, str):
+                    provider_access_key = f"'{provider_access_key}'"
+                _load = f"""lambda self=self: self._add_secret(secret_id='{str(secret_id)}', 
+                                                        provider='{str(provider)}', 
+                                                        provider_access_key={provider_access_key}, 
+                                                        secret_version={secret_version},
+                                                        load_as_rick={load_as_rick == True},
+                                                        deep={deep == True},
+                                                        load_lambda={load_lambda == True})"""
+
+                self.__dict__.update({name: eval(_load)})
+            except Exception as exc:
+                raise ValueError(f"At 'add_secret', when trying to add lambda, this happened {exc}")
+
+        else:
+            result = self._add_secret(secret_id=secret_id,
+                                              provider=provider,
+                                              provider_access_key=provider_access_key,
+                                              secret_version=secret_version,
+                                              load_as_rick=load_as_rick,
+                                              deep=deep,
+                                              load_lambda=load_lambda)
+
+            self.__dict__.update({name: result})
+
+        self._meta_info[name] = {'type': 'secret',
+                                 'secret_id': secret_id,
+                                 'provider': provider,
+                                 'provider_access_key': provider_access_key,
+                                 'secret_version': secret_version,
+                                 'load_as_rick': load_as_rick,
+                                 'deep': deep,
+                                 'load_lambda': load_lambda,
                                  'hot_load': hot_load
                                  }
 
@@ -1373,7 +1722,7 @@ class UnsafeRickle(Rickle):
             if isinstance(v, dict):
                 if 'type' in v.keys():
                     if v['type'] == 'env':
-                        self.add_env_variable(name=k,
+                        self.add_env(name=k,
                                               load=v['load'],
                                               default=v.get('default', None))
                         continue
@@ -1381,8 +1730,8 @@ class UnsafeRickle(Rickle):
                         self.add_base64(name=k,
                                         load=v['load'])
                         continue
-                    if v['type'] == 'from_file':
-                        self.add_from_file(name=k,
+                    if v['type'] == 'file' or v['type'] == 'from_file':
+                        self.add_file(name=k,
                                            file_path=v['file_path'],
                                            load_as_rick=v.get('load_as_rick', False),
                                            deep=v.get('deep', False),
@@ -1391,15 +1740,15 @@ class UnsafeRickle(Rickle):
                                            encoding=v.get('encoding', 'utf-8'),
                                            hot_load=v.get('hot_load', False))
                         continue
-                    if v['type'] == 'from_csv':
-                        self.add_csv_file(name=k,
+                    if v['type'] == 'csv' or v['type'] == 'from_csv':
+                        self.add_csv(name=k,
                                           file_path=v['file_path'],
                                           fieldnames=v.get('fieldnames', None),
                                           load_as_rick=v.get('load_as_rick', False),
                                           encoding=v.get('encoding', 'utf-8'))
                         continue
                     if v['type'] == 'api_json':
-                        self.add_api_json_call(name=k,
+                        self.add_api_json(name=k,
                                                url=v['url'],
                                                http_verb=v.get('http_verb', 'GET'),
                                                headers=v.get('headers', None),
@@ -1418,6 +1767,23 @@ class UnsafeRickle(Rickle):
                                            params=v.get('params', None),
                                            expected_http_status=v.get('expected_http_status', 200),
                                            hot_load=v.get('hot_load', False))
+                        continue
+                    if v['type'] == 'secret':
+                        self.add_secret(name=k,
+                                        secret_id=v['secret_id'],
+                                        provider=v['provider'],
+                                        provider_access_key=v.get('provider_access_key', dict()),
+                                        secret_version=v.get('secret_version', None),
+                                        load_as_rick=v.get('load_as_rick', False),
+                                        load_lambda=v.get('load_lambda', False),
+                                        deep=v.get('deep', False),
+                                        hot_load=v.get('hot_load', False))
+                        continue
+                    if v['type'] == 'random':
+                        self.add_random_value(name=k,
+                                              value_type=v['value_type'],
+                                              value_properties=v.get('value_properties', dict()),
+                                              hot_load=v.get('hot_load', False))
                         continue
                     if v['type'] == 'module_import':
                         safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
@@ -1567,25 +1933,26 @@ class UnsafeRickle(Rickle):
         """
         d = dict()
         for key, value in self.__dict__.items():
+            actual_key = key
+            if key in self._keys_map.keys():
+                actual_key = self._keys_map[key]
             if self._eval_name(key):
                 continue
-            if serialised and key in self._keys_map.keys():
-                key = self._keys_map[key]
             if serialised and key in self._meta_info.keys():
-                d[key] = self._meta_info[key]
+                d[actual_key] = self._meta_info[key]
             # Revisit this at some later point
             elif key in self._meta_info.keys() and \
                     self._meta_info[key]['type'] in ['function', 'class_definition', 'module_import',
                                                      'base64']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif key in self._meta_info.keys() and \
-                    self._meta_info[key]['type'] in ['from_file', 'html_page', 'api_json'] and \
+                    self._meta_info[key]['type'] in ['file', 'html_page', 'api_json'] and \
                     self._meta_info[key]['hot_load']:
-                # d[key] = self._meta_info[key]
+                # d[actual_key] = self._meta_info[key]
                 continue
             elif isinstance(value, BaseRickle):
-                d[key] = value.dict(serialised=serialised)
+                d[actual_key] = value.dict(serialised=serialised)
             elif isinstance(value, list):
                 new_list = list()
                 for element in value:
@@ -1593,9 +1960,9 @@ class UnsafeRickle(Rickle):
                         new_list.append(element.dict(serialised=serialised))
                     else:
                         new_list.append(element)
-                d[key] = new_list
+                d[actual_key] = new_list
             else:
-                d[key] = value
+                d[actual_key] = value
         return d
 
     def add_module_import(self, name, imports: list):

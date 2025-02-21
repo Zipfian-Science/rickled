@@ -1,0 +1,47 @@
+root:
+  env:
+    envar_exists:
+      type: env
+      load: EXISTS
+    envar_not_exists:
+      type: env
+      load: EXISTS
+      default: sneakers
+  csv:
+    csv_rickles:
+      type: csv
+      file_path: './tests/placebos/test.csv'
+      load_as_rick: true
+    csv_lists:
+      type: csv
+      file_path: './tests/placebos/test.csv'
+    csv_columns:
+      type: csv
+      file_path: './tests/placebos/test.csv'
+      fieldnames: [ A, B, C, D ]
+  file:
+    text:
+      type: file
+      file_path: './tests/placebos/6D6172696F.txt'
+    rickle:
+      type: file
+      file_path: './tests/placebos/conv_test.json'
+      load_as_rick: true
+      deep: true
+      load_lambda: true
+  api:
+    random_joke_dict:
+      type: api_json
+      url: https://official-joke-api.appspot.com/random_joke
+      expected_http_status: 200
+      load_as_rick: false
+      deep: true
+      load_lambda: false
+    random_joke_rickle:
+      type: api_json
+      url: https://official-joke-api.appspot.com/random_joke
+      expected_http_status: 200
+      load_as_rick: true
+      deep: true
+      load_lambda: false
+
