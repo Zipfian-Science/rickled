@@ -91,10 +91,10 @@ class BaseRickle:
 
         if os.path.exists(base) and Path(base).is_file():
             file_path = Path(base)
-            file_ext = file_path.suffix
+            file_ext = file_path.suffix.lower()
 
             # handle dotenv
-            if file_path.stem == '.env':
+            if file_path.stem.lower() == '.env':
                 file_ext = '.env'
             with file_path.open(mode='r', encoding=init_args.get('encoding', 'utf-8')) as f:
                 stringed = f.read()
@@ -131,28 +131,28 @@ class BaseRickle:
 
         error_list = list()
 
-        if file_ext.lower() in [".yaml", ".yml"]:
+        if file_ext in [".yaml", ".yml"]:
             try:
                 _d = yaml.safe_load(stringed)
                 self._input_type = "yaml"
                 return _d
             except Exception as exc:
                 error_list.append(f"YAML: {exc}")
-        if file_ext.lower() in [".json"]:
+        if file_ext in [".json"]:
             try:
                 _d = json.loads(stringed)
                 self._input_type = "json"
                 return _d
             except Exception as exc:
                 error_list.append(f"JSON: {exc}")
-        if file_ext.lower() in [".toml"]:
+        if file_ext in [".toml"]:
             try:
                 _d = toml.loads(stringed)
                 self._input_type = "toml"
                 return _d
             except Exception as exc:
                 error_list.append(f"TOML: {exc}")
-        if file_ext.lower() in [".ini"]:
+        if file_ext in [".ini"]:
             try:
                 config = configparser.ConfigParser(interpolation=configparser.ExtendedInterpolation())
                 config.read_string(stringed)
@@ -169,7 +169,7 @@ class BaseRickle:
                 return _d
             except Exception as exc:
                 error_list.append(f"INI: {exc}")
-        if file_ext.lower() == ".env":
+        if file_ext == ".env":
             try:
                 if importlib.util.find_spec('dotenv'):
                     from io import StringIO
@@ -181,7 +181,7 @@ class BaseRickle:
                     return _d
             except Exception as exc:
                 error_list.append(f"ENV: {exc}")
-        if file_ext.lower() == ".xml":
+        if file_ext == ".xml":
             try:
                 if importlib.util.find_spec('xmltodict'):
                     import xmltodict
@@ -255,29 +255,35 @@ class BaseRickle:
 
         raise ValueError("Unable to infer data type")
 
-    def _iternalize(self, dictionary: dict, deep: bool, **init_args):
-        for k, v in dictionary.items():
-            k = self._check_kw(k)
-            if isinstance(v, dict):
-                self.__dict__.update({k: BaseRickle(base=v, deep=deep, strict=self._strict, **init_args)})
-                continue
-            if isinstance(v, list) and deep:
-                new_list = list()
-                for i in v:
-                    if isinstance(i, dict):
-                        new_list.append(BaseRickle(base=i, deep=deep, strict=self._strict, **init_args))
-                    else:
-                        new_list.append(i)
-                self.__dict__.update({k: new_list})
-                continue
+    def _iternalize(self, obj: Union[dict, list], deep: bool, **init_args):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                k = self._check_kw(k)
+                if isinstance(v, dict):
+                    self.__dict__.update({k: BaseRickle(base=v, deep=deep, strict=self._strict, **init_args)})
+                    continue
+                if isinstance(v, list) and deep:
+                    new_list = list()
+                    for i in v:
+                        if isinstance(i, dict):
+                            new_list.append(BaseRickle(base=i, deep=deep, strict=self._strict, **init_args))
+                        else:
+                            new_list.append(i)
+                    self.__dict__.update({k: new_list})
+                    continue
 
-            self.__dict__.update({k: v})
+                self.__dict__.update({k: v})
+        if isinstance(obj, list):
+            for b in obj:
+                if isinstance(b, dict):
+                    self.__list__.append(BaseRickle(base=b, deep=deep, strict=self._strict, **init_args))
 
     def __init__(self, base: Union[dict, str, TextIOWrapper, list] = None,
                  deep: bool = False,
                  strict: bool = True,
                  **init_args):
         self._meta_info = dict()
+        self.__list__ = list()
         self._strict = strict
         self._input_type = None
         self._allowed_chars_pat = re.compile('[^a-zA-Z_]')
@@ -292,7 +298,7 @@ class BaseRickle:
 
         if isinstance(base, dict):
             self._iternalize(base, deep=deep, **init_args)
-            self._input_type = 'dict'
+            self._input_type = 'object'
             return
 
         if isinstance(base, TextIOWrapper):
@@ -304,7 +310,19 @@ class BaseRickle:
             _d = self.__create_dict_from_string(base, **init_args)
             self._iternalize(_d, deep=deep, **init_args)
 
+        if isinstance(base, list):
+            _l = list()
+            for i in base:
+                if not isinstance(i, str):
+                    raise TypeError()
+                _l.append( self.__create_dict_from_string(i, **init_args) )
+
+            self._iternalize(_l, deep=deep, **init_args)
+            self._input_type = 'array'
+
     def __repr__(self):
+        if self._input_type == 'array':
+            return "[{}]".format( ", ".join([repr(i) for i in self.__list__]) )
         keys = self.__dict__
         items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys if not str(k).__contains__(self.__class__.__name__)
                  and not str(k).endswith('_meta_info') and not str(k).startswith('_'))
@@ -314,9 +332,11 @@ class BaseRickle:
         return self.to_yaml()
 
     def __eq__(self, other):
-        return repr(self) == repr(other)
+        raise NotImplementedError("Removed since version 1.2.3")
 
     def __len__(self):
+        if self._input_type == 'array':
+            return len(self.__list__)
         return len(self.dict())
 
     def __iter__(self):
@@ -324,54 +344,58 @@ class BaseRickle:
         return self
 
     def __next__(self):
-        current_loop = 0
-        if self.__n < len(self.__dict__):
-            name = list(self.__dict__.keys())[self.__n]
-            while self._eval_name(name) and current_loop < 9:
-                self.__n += 1
-                current_loop += 1
-                if self.__n < len(self.__dict__):
-                    name = list(self.__dict__.keys())[self.__n]
-                else:
-                    raise StopIteration
-            if self.__n < len(self.__dict__):
-                obj = self.__dict__[list(self.__dict__.keys())[self.__n]]
-                self.__n += 1
-                return obj
-            else:
-                raise StopIteration
+        if self._input_type == "array":
+            try:
+                item = self.__list__[self.__n]
+            except IndexError:
+                raise StopIteration()
+            self.__n += 1
+            return item
         else:
-            raise StopIteration
+            try:
+                item = list(self.dict().keys())[self.__n]
+            except IndexError:
+                raise StopIteration()
+            self.__n += 1
+            return item
 
     def __getitem__(self, key):
         if key is None:
             raise KeyError("NoneType is not a valid key type")
-        if not isinstance(key, str):
-            raise TypeError("Key can only be of case sensitive string type")
+        if isinstance(key, str):
+            return self.__dict__[key]
+        elif isinstance(key, int):
+            return self.__list__[key]
+        else:
+            raise TypeError("Key can only be of case sensitive string type or if created from list, an integer index!")
 
-        return self.__dict__[key]
 
     def __setitem__(self, key, value):
         if key is None:
             raise KeyError("NoneType is not a valid key type")
-        if not isinstance(key, str):
-            raise TypeError("Key can only be of case sensitive string type")
-
-        self.__dict__.update({key: value})
+        if isinstance(key, str):
+            self.__dict__.update({key: value})
+        elif isinstance(key, int):
+            self.__list__[key] = value
+        else:
+            raise TypeError("Key can only be of case sensitive string type or if created from list, an integer index!")
 
     def __delitem__(self, key):
         if key is None:
             raise KeyError("NoneType is not a valid key type")
-        if not isinstance(key, str):
-            raise TypeError("Key can only be of case sensitive string type")
+        if isinstance(key, str):
+            del self.__dict__[key]
+        elif isinstance(key, int):
+            del self.__list__[key]
+        else:
+            raise TypeError("Key can only be of case sensitive string type or if created from list, an integer index!")
 
-        del self.__dict__[key]
 
     def _search_path(self, key, dictionary=None, parent_path=None):
-        if dictionary is None:
-            dictionary = self.dict()
-        if parent_path is None:
-            parent_path = ''
+        # if dictionary is None:
+        #     dictionary = self.dict()
+        # if parent_path is None:
+        #     parent_path = ''
         values = list()
         if key in dictionary:
             values = [f'{parent_path}{self._path_sep}{key}']
@@ -415,7 +439,9 @@ class BaseRickle:
             list: all paths found.
         """
         try:
-            return self._search_path(key=key)
+            if self._input_type == 'array':
+                return self._search_path(key=key, dictionary={f'[{ix}]':_d.dict() for ix, _d in enumerate(self.__list__)}, parent_path='')
+            return self._search_path(key=key, dictionary=self.dict(), parent_path='')
         except StopIteration:
             return list()
 
@@ -427,6 +453,7 @@ class BaseRickle:
             '/' => root.
             '/name' => member.
             '/name/[0]' => for lists.
+            '/[0]' => for lists types.
 
         Args:
             path (str): The path as a string, down to the last mentioned node.
@@ -434,17 +461,24 @@ class BaseRickle:
         Returns:
             Any: Value of node of function.
         """
-
-        if not path.startswith(self._path_sep):
-            raise KeyError(f'Missing root path {self._path_sep}')
         if path == self._path_sep:
             return self
 
+        if not path.startswith(self._path_sep):
+            raise KeyError(f'Missing root path {self._path_sep} at {repr(self)}')
+
+        list_index_match = re.match(r'/\[(\d+)\](/.+)?', path)
+        path_start_index = 1
+        if list_index_match:
+            current_node = self.__list__[int(list_index_match.group(1))]
+            path_start_index = 2
+        else:
+            current_node = self
+
+
         path_list = path.split(self._path_sep)
 
-        current_node = self
-
-        for node_name in path_list[1:]:
+        for node_name in path_list[path_start_index:]:
             list_index_match = re.match(r'\[(\d+)\]', node_name)
             if list_index_match and isinstance(current_node, list):
                 current_node = current_node[int(list_index_match.group(1))]
@@ -557,11 +591,16 @@ class BaseRickle:
         if key == self._path_sep:
             raise KeyError('Can not set a value to self')
 
+        list_index_match = re.match(r'/\[(\d+)\](/.+)?', key)
+        path_start_index = 1
+        if list_index_match:
+            current_node = self.__list__[int(list_index_match.group(1))]
+            path_start_index = 2
+        else:
+            current_node = self
         path_list = key.split(self._path_sep)
 
-        current_node = self
-
-        for node_name in path_list[1:-1]:
+        for node_name in path_list[path_start_index:-1]:
             if not isinstance(current_node, BaseRickle):
                 raise KeyError(f'The path {key} could not be traversed')
             current_node = current_node.get(node_name)
@@ -594,11 +633,17 @@ class BaseRickle:
         if key == self._path_sep:
             raise NameError('Can not remove self')
 
+        list_index_match = re.match(r'/\[(\d+)\](/.+)?', key)
+        path_start_index = 1
+        if list_index_match:
+            current_node = self.__list__[int(list_index_match.group(1))]
+            path_start_index = 2
+        else:
+            current_node = self
+
         path_list = key.split(self._path_sep)
 
-        current_node = self
-
-        for node_name in path_list[1:-1]:
+        for node_name in path_list[path_start_index:-1]:
             current_node = current_node.get(node_name)
             if current_node is None:
                 raise NameError(f'The path {key} could not be traversed')
@@ -668,6 +713,21 @@ class BaseRickle:
                 d[actual_key] = value
         return d
 
+    def list(self, serialised: bool = False):
+        """
+        Deconstructs the whole object into a Python list (of dictionaries) if type is 'array'.
+
+        Args:
+            serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
+
+        Notes:
+            Functions and lambdas are always given in serialised form.
+
+        Returns:
+            list: of self.
+        """
+        return [_d.dict(serialised=serialised) for _d in self.__list__]
+
     def has(self, key: str, deep=False) -> bool:
         """
         Checks whether the key exists in the object.
@@ -701,16 +761,19 @@ class BaseRickle:
         Notes:
             Functions and lambdas are always given in serialised form.
         """
-        self_as_dict = self.dict(serialised=serialised)
+        if self._input_type == "array":
+            self_as_primitive = self.list(serialised=serialised)
+        else:
+            self_as_primitive = self.dict(serialised=serialised)
 
         if output:
             if isinstance(output, TextIOWrapper):
-                yaml.safe_dump(self_as_dict, stream=output, encoding=encoding)
+                yaml.safe_dump(self_as_primitive, stream=output, encoding=encoding)
             elif isinstance(output, str):
                 with open(output, 'w', encoding=encoding) as fs:
-                    yaml.safe_dump(self_as_dict, fs)
+                    yaml.safe_dump(self_as_primitive, fs)
         else:
-            return yaml.safe_dump(self_as_dict, stream=None, encoding=encoding).decode(encoding)
+            return yaml.safe_dump(self_as_primitive, stream=None, encoding=encoding).decode(encoding)
 
     def to_json(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """
@@ -724,16 +787,19 @@ class BaseRickle:
         Notes:
             Functions and lambdas are always given in serialised form.
         """
-        self_as_dict = self.dict(serialised=serialised)
+        if self._input_type == "array":
+            self_as_primitive = self.list(serialised=serialised)
+        else:
+            self_as_primitive = self.dict(serialised=serialised)
 
         if output:
             if isinstance(output, TextIOWrapper):
-                json.dump(self_as_dict, output)
+                json.dump(self_as_primitive, output)
             elif isinstance(output, str):
                 with open(output, 'w', encoding=encoding) as fs:
-                    json.dump(self_as_dict, fs)
+                    json.dump(self_as_primitive, fs)
         else:
-            return json.dumps(self_as_dict)
+            return json.dumps(self_as_primitive)
 
     def to_toml(self, output: Union[str, BytesIO] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """
@@ -748,17 +814,19 @@ class BaseRickle:
             Functions and lambdas are always given in serialised form.
             IO stream "output" needs to be BytesIO object
         """
-
-        self_as_dict = toml_null_stripper(self.dict(serialised=serialised))
+        if self._input_type == "array":
+            raise TypeError("Can not dump array type as TOML, convert to object type.")
+        else:
+            self_as_primitive = toml_null_stripper(self.dict(serialised=serialised))
 
         if output:
             if isinstance(output, BytesIO):
-                tomlw.dump(self_as_dict, output)
+                tomlw.dump(self_as_primitive, output)
             elif isinstance(output, str):
                 with open(output, 'wb', encoding=encoding) as fs:
-                    tomlw.dump(self_as_dict, fs)
+                    tomlw.dump(self_as_primitive, fs)
         else:
-            return tomlw.dumps(self_as_dict)
+            return tomlw.dumps(self_as_primitive)
 
     def to_xml(self, output: Union[str, BytesIO] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """
@@ -776,16 +844,19 @@ class BaseRickle:
         if importlib.util.find_spec('xmltodict'):
             import xmltodict
 
-            self_as_dict = self.dict(serialised=serialised)
+            if self._input_type == "array":
+                raise TypeError("Can not dump array type as XML, convert to object type.")
+            else:
+                self_as_primitive = self.dict(serialised=serialised)
 
             if output:
                 if isinstance(output, BytesIO):
-                    xmltodict.unparse(input_dict=self_as_dict, output=output, encoding=encoding, pretty=True)
+                    xmltodict.unparse(input_dict=self_as_primitive, output=output, encoding=encoding, pretty=True)
                 elif isinstance(output, str):
                     with open(output, 'wb', encoding=encoding) as fs:
-                        xmltodict.unparse(input_dict=self_as_dict, output=fs, encoding=encoding, pretty=True)
+                        xmltodict.unparse(input_dict=self_as_primitive, output=fs, encoding=encoding, pretty=True)
             else:
-                return xmltodict.unparse(input_dict=self_as_dict, encoding=encoding, pretty=True)
+                return xmltodict.unparse(input_dict=self_as_primitive, encoding=encoding, pretty=True)
         else:
             raise ModuleNotFoundError("Missing 'xmltodict' package!")
 
@@ -806,7 +877,11 @@ class BaseRickle:
             IO stream "output" needs to be BytesIO object
 
         """
-        self_as_dict = toml_null_stripper(self.dict(serialised=serialised))
+        if self._input_type == "array":
+            raise TypeError("Can not dump array type as INI, convert to object type.")
+        else:
+            self_as_primitive = toml_null_stripper(self.dict(serialised=serialised))
+
         _path_sep = path_sep if path_sep else os.getenv("RICKLE_INI_PATH_SEP",
                                                         self._init_args.get('RICKLE_INI_PATH_SEP', "."))
 
@@ -816,7 +891,7 @@ class BaseRickle:
                 os.getenv("RICKLE_INI_CLOSING_BRACES", self._init_args.get('RICKLE_INI_CLOSING_BRACES', ")"))
             )
 
-        output_ini = unparse_ini(dictionary=self_as_dict, path_sep=_path_sep, list_brackets=list_brackets)
+        output_ini = unparse_ini(dictionary=self_as_primitive, path_sep=_path_sep, list_brackets=list_brackets)
 
         if output:
             if isinstance(output, TextIOWrapper):
@@ -878,88 +953,93 @@ class Rickle(BaseRickle):
             ValueError: If the given base object can not be handled. Also raises if YAML key is already member of Rickle.
     """
 
-    def _iternalize(self, dictionary: dict, deep: bool, **init_args):
-        for k, v in dictionary.items():
-            k = self._check_kw(k)  # Redundant but easier to check twice than to paste 10 times
-            if isinstance(v, dict):
-                if 'type' in v.keys():
-                    if v['type'] == 'env':
-                        self.add_env(name=k,
-                                              load=v['load'],
-                                              default=v.get('default', None))
-                        continue
-                    if v['type'] == 'base64':
-                        self.add_base64(name=k,
-                                        load=v['load'])
-                        continue
-                    if v['type'] == 'file' or v['type'] == 'from_file':
-                        self.add_file(name=k,
-                                           file_path=v['file_path'],
-                                           load_as_rick=v.get('load_as_rick', False),
-                                           deep=v.get('deep', False),
-                                           load_lambda=v.get('load_lambda', False),
-                                           is_binary=v.get('is_binary', False),
-                                           encoding=v.get('encoding', 'utf-8'),
-                                           hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'csv' or v['type'] == 'from_csv':
-                        self.add_csv(name=k,
-                                          file_path_or_str=v['file_path'],
-                                          fieldnames=v.get('fieldnames', None),
-                                          load_as_rick=v.get('load_as_rick', False),
-                                          encoding=v.get('encoding', 'utf-8'))
-                        continue
-                    if v['type'] == 'api_json':
-                        self.add_api_json(name=k,
+    def _iternalize(self, obj: dict, deep: bool, **init_args):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                k = self._check_kw(k)  # Redundant but easier to check twice than to paste 10 times
+                if isinstance(v, dict):
+                    if 'type' in v.keys():
+                        if v['type'] == 'env':
+                            self.add_env(name=k,
+                                                  load=v['load'],
+                                                  default=v.get('default', None))
+                            continue
+                        if v['type'] == 'base64':
+                            self.add_base64(name=k,
+                                            load=v['load'])
+                            continue
+                        if v['type'] == 'file' or v['type'] == 'from_file':
+                            self.add_file(name=k,
+                                               file_path=v['file_path'],
+                                               load_as_rick=v.get('load_as_rick', False),
+                                               deep=v.get('deep', False),
+                                               load_lambda=v.get('load_lambda', False),
+                                               is_binary=v.get('is_binary', False),
+                                               encoding=v.get('encoding', 'utf-8'),
+                                               hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'csv' or v['type'] == 'from_csv':
+                            self.add_csv(name=k,
+                                              file_path_or_str=v['file_path'],
+                                              fieldnames=v.get('fieldnames', None),
+                                              load_as_rick=v.get('load_as_rick', False),
+                                              encoding=v.get('encoding', 'utf-8'))
+                            continue
+                        if v['type'] == 'api_json':
+                            self.add_api_json(name=k,
+                                                   url=v['url'],
+                                                   http_verb=v.get('http_verb', 'GET'),
+                                                   headers=v.get('headers', None),
+                                                   params=v.get('params', None),
+                                                   body=v.get('body', None),
+                                                   load_as_rick=v.get('load_as_rick', False),
+                                                   load_lambda=v.get('load_lambda', False),
+                                                   deep=v.get('deep', False),
+                                                   expected_http_status=v.get('expected_http_status', 200),
+                                                   hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'secret':
+                            self.add_secret(name=k,
+                                            secret_id=v['secret_id'],
+                                            provider=v['provider'],
+                                            provider_access_key=v.get('provider_access_key', dict()),
+                                            secret_version=v.get('secret_version', None),
+                                            load_as_rick=v.get('load_as_rick', False),
+                                            load_lambda=v.get('load_lambda', False),
+                                            deep=v.get('deep', False),
+                                            hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'html_page':
+                            self.add_html_page(name=k,
                                                url=v['url'],
-                                               http_verb=v.get('http_verb', 'GET'),
                                                headers=v.get('headers', None),
                                                params=v.get('params', None),
-                                               body=v.get('body', None),
-                                               load_as_rick=v.get('load_as_rick', False),
-                                               load_lambda=v.get('load_lambda', False),
-                                               deep=v.get('deep', False),
                                                expected_http_status=v.get('expected_http_status', 200),
                                                hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'secret':
-                        self.add_secret(name=k,
-                                        secret_id=v['secret_id'],
-                                        provider=v['provider'],
-                                        provider_access_key=v.get('provider_access_key', dict()),
-                                        secret_version=v.get('secret_version', None),
-                                        load_as_rick=v.get('load_as_rick', False),
-                                        load_lambda=v.get('load_lambda', False),
-                                        deep=v.get('deep', False),
-                                        hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'html_page':
-                        self.add_html_page(name=k,
-                                           url=v['url'],
-                                           headers=v.get('headers', None),
-                                           params=v.get('params', None),
-                                           expected_http_status=v.get('expected_http_status', 200),
-                                           hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'random':
-                        self.add_random_value(name=k,
-                                              value_type=v['value_type'],
-                                              value_properties=v.get('value_properties', dict()),
-                                              hot_load=v.get('hot_load', False))
-                        continue
+                            continue
+                        if v['type'] == 'random':
+                            self.add_random_value(name=k,
+                                                  value_type=v['value_type'],
+                                                  value_properties=v.get('value_properties', dict()),
+                                                  hot_load=v.get('hot_load', False))
+                            continue
 
-                self.__dict__.update({k: Rickle(base=v, deep=deep, strict=self._strict, **init_args)})
-                continue
-            if isinstance(v, list) and deep:
-                new_list = list()
-                for i in v:
-                    if isinstance(i, dict):
-                        new_list.append(Rickle(base=i, deep=deep, strict=self._strict, **init_args))
-                    else:
-                        new_list.append(i)
-                self.__dict__.update({k: new_list})
-                continue
-            self.__dict__.update({k: v})
+                    self.__dict__.update({k: Rickle(base=v, deep=deep, strict=self._strict, **init_args)})
+                    continue
+                if isinstance(v, list) and deep:
+                    new_list = list()
+                    for i in v:
+                        if isinstance(i, dict):
+                            new_list.append(Rickle(base=i, deep=deep, strict=self._strict, **init_args))
+                        else:
+                            new_list.append(i)
+                    self.__dict__.update({k: new_list})
+                    continue
+                self.__dict__.update({k: v})
+        if isinstance(obj, list):
+            for b in obj:
+                if isinstance(b, dict):
+                    self.__list__.append(Rickle(base=b, deep=deep, strict=self._strict, **init_args))
 
     def __init__(self, base: Union[dict, str, TextIOWrapper, list] = None,
                  deep: bool = False,
@@ -988,16 +1068,23 @@ class Rickle(BaseRickle):
             Any: Value of node of function.
         """
 
-        if not path.startswith(self._path_sep):
-            raise KeyError(f'Missing root path {self._path_sep}')
         if path == self._path_sep:
             return self
 
+        if not path.startswith(self._path_sep):
+            raise KeyError(f'Missing root path {self._path_sep} at {repr(self)}')
+
+        list_index_match = re.match(r'/\[(\d+)\](/.+)?', path)
+        path_start_index = 1
+        if list_index_match:
+            current_node = self.__list__[int(list_index_match.group(1))]
+            path_start_index = 2
+        else:
+            current_node = self
+
         path_list = path.split(self._path_sep)
 
-        current_node = self
-
-        for node_name in path_list[1:]:
+        for node_name in path_list[path_start_index:]:
             list_index_match = re.match(r'\[(\d+)\]', node_name)
             if list_index_match and isinstance(current_node, list):
                 current_node = current_node[int(list_index_match.group(1))]
@@ -1716,125 +1803,130 @@ class Rickle(BaseRickle):
 
 class UnsafeRickle(Rickle):
 
-    def _iternalize(self, dictionary: dict, deep: bool, **init_args):
-        for k, v in dictionary.items():
-            k = self._check_kw(k)
-            if isinstance(v, dict):
-                if 'type' in v.keys():
-                    if v['type'] == 'env':
-                        self.add_env(name=k,
-                                              load=v['load'],
-                                              default=v.get('default', None))
-                        continue
-                    if v['type'] == 'base64':
-                        self.add_base64(name=k,
-                                        load=v['load'])
-                        continue
-                    if v['type'] == 'file' or v['type'] == 'from_file':
-                        self.add_file(name=k,
-                                           file_path=v['file_path'],
-                                           load_as_rick=v.get('load_as_rick', False),
-                                           deep=v.get('deep', False),
-                                           load_lambda=v.get('load_lambda', False),
-                                           is_binary=v.get('is_binary', False),
-                                           encoding=v.get('encoding', 'utf-8'),
-                                           hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'csv' or v['type'] == 'from_csv':
-                        self.add_csv(name=k,
-                                          file_path=v['file_path'],
-                                          fieldnames=v.get('fieldnames', None),
-                                          load_as_rick=v.get('load_as_rick', False),
-                                          encoding=v.get('encoding', 'utf-8'))
-                        continue
-                    if v['type'] == 'api_json':
-                        self.add_api_json(name=k,
+    def _iternalize(self, obj: dict, deep: bool, **init_args):
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                k = self._check_kw(k)
+                if isinstance(v, dict):
+                    if 'type' in v.keys():
+                        if v['type'] == 'env':
+                            self.add_env(name=k,
+                                                  load=v['load'],
+                                                  default=v.get('default', None))
+                            continue
+                        if v['type'] == 'base64':
+                            self.add_base64(name=k,
+                                            load=v['load'])
+                            continue
+                        if v['type'] == 'file' or v['type'] == 'from_file':
+                            self.add_file(name=k,
+                                               file_path=v['file_path'],
+                                               load_as_rick=v.get('load_as_rick', False),
+                                               deep=v.get('deep', False),
+                                               load_lambda=v.get('load_lambda', False),
+                                               is_binary=v.get('is_binary', False),
+                                               encoding=v.get('encoding', 'utf-8'),
+                                               hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'csv' or v['type'] == 'from_csv':
+                            self.add_csv(name=k,
+                                              file_path=v['file_path'],
+                                              fieldnames=v.get('fieldnames', None),
+                                              load_as_rick=v.get('load_as_rick', False),
+                                              encoding=v.get('encoding', 'utf-8'))
+                            continue
+                        if v['type'] == 'api_json':
+                            self.add_api_json(name=k,
+                                                   url=v['url'],
+                                                   http_verb=v.get('http_verb', 'GET'),
+                                                   headers=v.get('headers', None),
+                                                   params=v.get('params', None),
+                                                   body=v.get('body', None),
+                                                   load_as_rick=v.get('load_as_rick', False),
+                                                   load_lambda=v.get('load_lambda', False),
+                                                   deep=v.get('deep', False),
+                                                   expected_http_status=v.get('expected_http_status', 200),
+                                                   hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'html_page':
+                            self.add_html_page(name=k,
                                                url=v['url'],
-                                               http_verb=v.get('http_verb', 'GET'),
                                                headers=v.get('headers', None),
                                                params=v.get('params', None),
-                                               body=v.get('body', None),
-                                               load_as_rick=v.get('load_as_rick', False),
-                                               load_lambda=v.get('load_lambda', False),
-                                               deep=v.get('deep', False),
                                                expected_http_status=v.get('expected_http_status', 200),
                                                hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'html_page':
-                        self.add_html_page(name=k,
-                                           url=v['url'],
-                                           headers=v.get('headers', None),
-                                           params=v.get('params', None),
-                                           expected_http_status=v.get('expected_http_status', 200),
-                                           hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'secret':
-                        self.add_secret(name=k,
-                                        secret_id=v['secret_id'],
-                                        provider=v['provider'],
-                                        provider_access_key=v.get('provider_access_key', dict()),
-                                        secret_version=v.get('secret_version', None),
-                                        load_as_rick=v.get('load_as_rick', False),
-                                        load_lambda=v.get('load_lambda', False),
-                                        deep=v.get('deep', False),
-                                        hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'random':
-                        self.add_random_value(name=k,
-                                              value_type=v['value_type'],
-                                              value_properties=v.get('value_properties', dict()),
-                                              hot_load=v.get('hot_load', False))
-                        continue
-                    if v['type'] == 'module_import':
-                        safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
-                        if init_args and init_args['load_lambda'] and safe_load:
-                            self.add_module_import(name=k,
-                                                   imports=v['import'])
-                        else:
-                            self.__dict__.update({k: v})
-                        continue
-                    if v['type'] == 'class_definition':
-                        name = v.get('name', k)
-                        attributes = v['attributes']
-                        imports = v.get('import', None)
-                        safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
-                        if init_args and init_args['load_lambda'] and safe_load:
-                            self.add_class_definition(name=name,
-                                                      attributes=attributes,
-                                                      imports=imports)
-                        else:
-                            self.__dict__.update({k: v})
-                        continue
-                    if v['type'] == 'function':
-                        name = v.get('name', k)
-                        load = v['load']
-                        args_dict = v.get('args', None)
-                        imports = v.get('import', None)
-                        is_method = v.get('is_method', False)
+                            continue
+                        if v['type'] == 'secret':
+                            self.add_secret(name=k,
+                                            secret_id=v['secret_id'],
+                                            provider=v['provider'],
+                                            provider_access_key=v.get('provider_access_key', dict()),
+                                            secret_version=v.get('secret_version', None),
+                                            load_as_rick=v.get('load_as_rick', False),
+                                            load_lambda=v.get('load_lambda', False),
+                                            deep=v.get('deep', False),
+                                            hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'random':
+                            self.add_random_value(name=k,
+                                                  value_type=v['value_type'],
+                                                  value_properties=v.get('value_properties', dict()),
+                                                  hot_load=v.get('hot_load', False))
+                            continue
+                        if v['type'] == 'module_import':
+                            safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
+                            if init_args and init_args['load_lambda'] and safe_load:
+                                self.add_module_import(name=k,
+                                                       imports=v['import'])
+                            else:
+                                self.__dict__.update({k: v})
+                            continue
+                        if v['type'] == 'class_definition':
+                            name = v.get('name', k)
+                            attributes = v['attributes']
+                            imports = v.get('import', None)
+                            safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
+                            if init_args and init_args['load_lambda'] and safe_load:
+                                self.add_class_definition(name=name,
+                                                          attributes=attributes,
+                                                          imports=imports)
+                            else:
+                                self.__dict__.update({k: v})
+                            continue
+                        if v['type'] == 'function':
+                            name = v.get('name', k)
+                            load = v['load']
+                            args_dict = v.get('args', None)
+                            imports = v.get('import', None)
+                            is_method = v.get('is_method', False)
 
-                        safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
-                        if init_args and init_args['load_lambda'] and safe_load:
-                            self.add_function(name=name,
-                                              load=load,
-                                              args=args_dict,
-                                              imports=imports,
-                                              is_method=is_method)
-                        else:
-                            self.__dict__.update({k: v})
-                        continue
+                            safe_load = os.getenv("RICKLE_UNSAFE_LOAD", False)
+                            if init_args and init_args['load_lambda'] and safe_load:
+                                self.add_function(name=name,
+                                                  load=load,
+                                                  args=args_dict,
+                                                  imports=imports,
+                                                  is_method=is_method)
+                            else:
+                                self.__dict__.update({k: v})
+                            continue
 
-                self.__dict__.update({k: UnsafeRickle(base=v, deep=deep, strict=self._strict, **init_args)})
-                continue
-            if isinstance(v, list) and deep:
-                new_list = list()
-                for i in v:
-                    if isinstance(i, dict):
-                        new_list.append(UnsafeRickle(base=i, deep=deep, strict=self._strict, **init_args))
-                    else:
-                        new_list.append(i)
-                self.__dict__.update({k: new_list})
-                continue
-            self.__dict__.update({k: v})
+                    self.__dict__.update({k: UnsafeRickle(base=v, deep=deep, strict=self._strict, **init_args)})
+                    continue
+                if isinstance(v, list) and deep:
+                    new_list = list()
+                    for i in v:
+                        if isinstance(i, dict):
+                            new_list.append(UnsafeRickle(base=i, deep=deep, strict=self._strict, **init_args))
+                        else:
+                            new_list.append(i)
+                    self.__dict__.update({k: new_list})
+                    continue
+                self.__dict__.update({k: v})
+        if isinstance(obj, list):
+            for b in obj:
+                if isinstance(b, dict):
+                    self.__list__.append(UnsafeRickle(base=b, deep=deep, strict=self._strict, **init_args))
 
     def __init__(self, base: Union[dict, str, TextIOWrapper, list] = None,
                  deep: bool = False,
@@ -1864,16 +1956,23 @@ class UnsafeRickle(Rickle):
             Any: Value of node of function.
         """
 
-        if not path.startswith(self._path_sep):
-            raise KeyError(f'Missing root path {self._path_sep}')
         if path == self._path_sep:
             return self
 
+        if not path.startswith(self._path_sep):
+            raise KeyError(f'Missing root path {self._path_sep} at {repr(self)}')
+
+        list_index_match = re.match(r'/\[(\d+)\](/.+)?', path)
+        path_start_index = 1
+        if list_index_match:
+            current_node = self.__list__[int(list_index_match.group(1))]
+            path_start_index = 2
+        else:
+            current_node = self
+
         path_list = path.split(self._path_sep)
 
-        current_node = self
-
-        for node_name in path_list[1:]:
+        for node_name in path_list[path_start_index:]:
             if '?' in node_name:
                 node_name = node_name.split('?')[0]
 

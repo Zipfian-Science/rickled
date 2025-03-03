@@ -8,12 +8,19 @@ Changelog
 History
 ==========================
 
+Version 1.2.3 (2025-02-17)
+--------------------------
+
+* Adding ability to load list (array) instead of dict (object), opening way for lists of configs.
+* New list type internal representation "array".
+
 Version 1.2.2 (2025-02-17)
 --------------------------
 
 * Rename of entire project from ``rickled`` to ``rickle``!
 * Fixed bug in CLI tool not able to run
 * Made ``provider_access_key`` optional for ``secret`` type.
+* Can now use list type in path method, for example ``[0]/path/to`` will reference the first object in the list.
 
 Version 1.2.1 (2025-02-12)
 --------------------------
