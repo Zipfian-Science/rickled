@@ -15,7 +15,7 @@ from rickle.tools import CLIError
 from rickle.cli.schema import gen, check
 from rickle.cli.conv import conv
 from rickle.cli.serve import serve
-from rickle.cli.obj import obj_get, obj_set, obj_del, obj_search, obj_type, obj_func
+from rickle.cli.obj import obj_get, obj_set, obj_put, obj_del, obj_search, obj_type, obj_func, obj_find
 
 GITHUB_DOCS_URL = "https://github.com/Zipfian-Science/rickled/blob/master/docs/source/cli_tools.rst#cli-tools"
 
@@ -207,6 +207,8 @@ Examples:
                                                description=f"""
 {cli_bcolors.HEADER}Tool for setting values in objects{cli_bcolors.ENDC}.
 
+Setting a value requires the path to exist in the input. Use "put" for creating new document paths.
+
 Examples: 
 
     $ cat config.yaml | rickle obj set /path/to new_value
@@ -225,6 +227,39 @@ Examples:
                                 metavar='value')
 
     set_obj_parser.set_defaults(func=obj_set)
+
+    #################### OBJ - PUT #####################
+    #   ___ _   _ _____
+    #  | _ \ | | |_   _|
+    #  |  _/ |_| | | |
+    #  |_|  \___/  |_|
+    #
+
+    put_obj_parser = subparsers_obj.add_parser('put',
+                                               formatter_class=argparse.RawTextHelpFormatter,
+                                               help=f'{cli_bcolors.OKBLUE}Putting{cli_bcolors.ENDC} values in objects',
+                                               description=f"""
+    {cli_bcolors.HEADER}Tool for putting values in objects with new paths{cli_bcolors.ENDC}.
+
+    Examples: 
+
+        $ cat config.yaml | rickle obj put /path/not/existing new_value
+        $ rickle obj --input conf1.yaml --output-type JSON set /newly/created/path/to new_value  
+
+    """,
+                                               )
+
+    put_obj_parser.add_argument('key',
+                                type=str,
+                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to put value",
+                                metavar='key')
+    put_obj_parser.add_argument('value',
+                                type=str,
+                                help=f"{cli_bcolors.OKBLUE}Value{cli_bcolors.ENDC} to put",
+                                metavar='value')
+
+    put_obj_parser.set_defaults(func=obj_put)
+
 
     #################### OBJ - DEL #####################
     #  ___  ___ _
@@ -266,7 +301,7 @@ Examples:
 
     $ cat config.yaml | rickle obj type /path/to 
 
-Types depend on --output-type and can be the following:
+Types depend on --output-type and can be the following (default is JSON):
 
     Python |    YAML |    JSON |      TOML |            XML |
     =========================================================
@@ -303,9 +338,9 @@ Types depend on --output-type and can be the following:
 
 Examples: 
 
-    $ cat config.yaml | rickle obj search /path/to 
+    $ cat config.yaml | rickle obj search key
 
-Only the following --output-type is allowed: YAML, JSON, and LIST. Using LIST will only print the path(s).
+Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Using ARRAY will only print the path(s).
 
 
 """, )
@@ -316,6 +351,54 @@ Only the following --output-type is allowed: YAML, JSON, and LIST. Using LIST wi
                                    metavar='key')
 
     search_obj_parser.set_defaults(func=obj_search)
+
+    #################### OBJ - FIND #####################
+    #   ___ ___ _  _ ___
+    #  | __|_ _| \| |   \
+    #  | _| | || .` | |) |
+    #  |_| |___|_|\_|___/
+    #
+
+    find_obj_parser = subparsers_obj.add_parser('find',
+                                                  formatter_class=argparse.RawTextHelpFormatter,
+                                                  help=f'For {cli_bcolors.OKBLUE}finding{cli_bcolors.ENDC} key/value (paths) in objects',
+                                                  description=f"""
+    {cli_bcolors.HEADER}Tool for finding key/value pairs in objects{cli_bcolors.ENDC}.
+
+    Examples: 
+
+        $ cat config.yaml | rickle obj find key=value
+
+    Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Using ARRAY will only print the path(s).
+
+
+    """, )
+
+    find_obj_parser.add_argument('key',
+                                   type=str,
+                                   help=f"{cli_bcolors.OKBLUE}key / value{cli_bcolors.ENDC} to find",
+                                   nargs='?',
+                                   default=None,
+                                   metavar='key')
+    find_obj_parser.add_argument('--or',
+                                 help=f"list of {cli_bcolors.OKBLUE}OR{cli_bcolors.ENDC} conditions",
+                                 nargs='+',
+                                 default=[],
+                                 dest='OR')
+    find_obj_parser.add_argument('--and',
+                                 help=f"list of {cli_bcolors.OKBLUE}OR{cli_bcolors.ENDC} conditions",
+                                 nargs='+',
+                                 default=[],
+                                 dest='AND')
+    find_obj_parser.add_argument('--parent',
+                              '-p',
+                              dest="PARENT_ONLY",
+                              action='store_true',
+                              default=False,
+                              help=f"only list {cli_bcolors.OKBLUE}parent{cli_bcolors.ENDC} node", )
+
+    find_obj_parser.set_defaults(func=obj_find)
+
 
     #################### OBJ - FUNC #####################
     #  ___ _   _ _  _  ___

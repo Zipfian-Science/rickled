@@ -98,9 +98,9 @@ For most of the tools the output types can be specified with the ``--output-type
 
 .. note::
 
-   The default output type for all tools (except ``serve``) is ``YAML``. For ``serve`` the default output is ``JSON``.
+   The default output type for all tools (except ``serve``) will be based on what the input is. For ``serve`` the default output is ``JSON``.
 
-Certain tools have more output type options. Both ``search`` and ``type`` have ``list`` and ``python`` as extra types.
+Certain tools have more output type options. Both ``search`` and ``type`` have ``ARRAY`` and ``PYTHON`` as extra types.
 
 Conversion tool
 ========================
@@ -127,7 +127,7 @@ Which will show the list of available options:
 
 
 
-Convert YAML to JSON
+Convert X to Y
 ---------------------
 
 To convert an input file ``config.json``, use the following:
@@ -235,6 +235,7 @@ Which will show the following list of options:
      {get,set,del,type,search,func}
        get                 Getting values from objects
        set                 Setting values in objects
+       put                 Putting values in objects
        del                 For deleting keys (paths) in objects
        type                Printing value type
        search              For searching keys (paths) in objects
@@ -418,21 +419,9 @@ Of course this could also be directed:
 
     cat conf.yaml | rickle --output-type JSON obj > conf.json
 
-A new key-value can be added, for example:
+.. note::
 
-.. code-block:: shell
-
-    cat conf.yaml | rickle obj set /root_node/level_one/email not@home.com
-
-Results in the added key:
-
-.. code-block:: shell
-
-    root_node:
-      level_one:
-         pswd: password
-         usr: name
-         email: not@home.com
+   Values can only be set for paths that exist. To create a new path, use ``put``.
 
 This will, however, not work in the following example and result in an error:
 
@@ -446,6 +435,44 @@ Which results in the error message:
 .. code-block:: shell
 
    error: The path /root_node/level_one/unknown/email could not be traversed
+
+Put
+---------------------
+
+A new key-value can be added, for example:
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle obj put /root_node/level_one/email not@home.com
+
+Results in the added key:
+
+.. code-block:: shell
+
+    root_node:
+      level_one:
+         pswd: password
+         usr: name
+         email: not@home.com
+
+Any path input to put will be created:
+
+.. code-block:: shell
+
+    cat conf.yaml | rickle obj put /root_node/level_one/config/host/address 127.0.0.1
+
+Results in the added key:
+
+.. code-block:: shell
+
+    root_node:
+      level_one:
+         pswd: password
+         usr: name
+         email: not@home.com
+         config:
+            host:
+               address: 127.0.0.1
 
 Del
 ---------------------
@@ -568,11 +595,11 @@ Where searching for the ``usr`` key:
    - /root_node/level_one/usr
    - /root_node/other/usr
 
-To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``LIST``:
+To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``ARRAY`` (or ``LIST``):
 
 .. code-block:: shell
 
-    cat conf-multi.yaml | rickle --output-type LIST obj search usr
+    cat conf-multi.yaml | rickle --output-type ARRAY obj search usr
 
 ...prints the following paths:
 

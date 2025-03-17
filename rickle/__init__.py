@@ -1,6 +1,3 @@
-import random
-import string
-
 from .__version__ import __version__, __date__
 from collections import OrderedDict
 import os
@@ -133,8 +130,11 @@ class BaseRickle:
 
         if file_ext in [".yaml", ".yml"]:
             try:
-                _d = yaml.safe_load(stringed)
-                self._input_type = "yaml"
+                _d = list(yaml.safe_load_all(stringed))
+                if len(_d) == 1:
+                    self._input_type = "yaml"
+                    return _d[0]
+                self._input_type = "array"
                 return _d
             except Exception as exc:
                 error_list.append(f"YAML: {exc}")
@@ -142,6 +142,13 @@ class BaseRickle:
             try:
                 _d = json.loads(stringed)
                 self._input_type = "json"
+                return _d
+            except Exception as exc:
+                error_list.append(f"JSON: {exc}")
+        if file_ext in [".jsonl"]:
+            try:
+                _d = [json.loads(line) for line in stringed.split('\n')]
+                self._input_type = "array"
                 return _d
             except Exception as exc:
                 error_list.append(f"JSON: {exc}")
@@ -195,17 +202,29 @@ class BaseRickle:
 
         # Brute force it
         try:
-            _d = yaml.safe_load(stringed)
-            self._input_type = "yaml"
+            _d = [json.loads(l) for l in stringed.splitlines()]
+            if len(_d) == 1:
+                self._input_type = "json"
+                return _d[0]
+            self._input_type = "array"
             return _d
         except Exception as exc:
-            error_list.append(f"YAML: {exc}")
+            error_list.append(f"JSONL: {exc}")
         try:
             _d = json.loads(stringed)
             self._input_type = "json"
             return _d
         except Exception as exc:
             error_list.append(f"JSON: {exc}")
+        try:
+            _d = list(yaml.safe_load_all(stringed))
+            if len(_d) == 1:
+                self._input_type = "yaml"
+                return _d[0]
+            self._input_type = "array"
+            return _d
+        except Exception as exc:
+            error_list.append(f"YAML: {exc}")
         try:
             _d = toml.loads(stringed)
             self._input_type = "toml"
@@ -313,9 +332,14 @@ class BaseRickle:
         if isinstance(base, list):
             _l = list()
             for i in base:
-                if not isinstance(i, str):
-                    raise TypeError()
-                _l.append( self.__create_dict_from_string(i, **init_args) )
+                if isinstance(i, dict):
+                    _l.append(i)
+                elif isinstance(i, str):
+                    _l.append( self.__create_dict_from_string(i, **init_args) )
+                elif isinstance(i, TextIOWrapper):
+                    _l.append( self.__create_dict_from_string(i.read(), **init_args) )
+                else:
+                    raise TypeError(f"Unable to add type {type(i)}")
 
             self._iternalize(_l, deep=deep, **init_args)
             self._input_type = 'array'
@@ -390,12 +414,83 @@ class BaseRickle:
         else:
             raise TypeError("Key can only be of case sensitive string type or if created from list, an integer index!")
 
+    def _find_key_value(self, key, value, op:str, dictionary=None, parent_path=None, report_parent: bool = False):
+        values = list()
+        if key in dictionary:
+            if (op == '=' and dictionary[key] == value) or \
+                (op == '!=' and dictionary[key] != value) or \
+                (op == '>' and dictionary[key] > value) or \
+                (op == '>=' and dictionary[key] >= value) or \
+                (op == '<' and dictionary[key] < value) or \
+                (op == '<=' and dictionary[key] <= value) :
+                if report_parent:
+                    values = [f'{parent_path}']
+                else:
+                    values = [f'{parent_path}{self._path_sep}{key}']
+        for k, v in dictionary.items():
+            if isinstance(v, BaseRickle):
+                try:
+                    paths_list = self._find_key_value(key=key, value=value, op=op, dictionary=v.dict(),
+                                              parent_path=f'{parent_path}{self._path_sep}{k}',
+                                                      report_parent=report_parent)
+                    values.extend(paths_list)
+                except StopIteration:
+                    continue
+            if isinstance(v, dict):
+                try:
+                    paths_list = self._find_key_value(key=key, value=value, op=op, dictionary=v,
+                                                      parent_path=f'{parent_path}{self._path_sep}{k}',
+                                                      report_parent=report_parent)
+                    values.extend(paths_list)
+                except StopIteration:
+                    continue
+            if isinstance(v, list):
+                try:
+                    for ix, el in enumerate(v):
+                        if isinstance(el, dict):
+                            paths_list = self._find_key_value(key=key, value=value, op=op, dictionary=el,
+                                                      parent_path=f'{parent_path}{self._path_sep}{k}{self._path_sep}[{ix}]',
+                                                              report_parent=report_parent)
+                            values.extend(paths_list)
+                        if isinstance(el, BaseRickle):
+                            paths_list = self._find_key_value(key=key, value=value, op=op, dictionary=el.dict(),
+                                                      parent_path=f'{parent_path}{self._path_sep}{k}{self._path_sep}[{ix}]',
+                                                              report_parent=report_parent)
+                            values.extend(paths_list)
+                except StopIteration:
+                    continue
+        if len(values) > 0:
+            return values
+        raise StopIteration
+
+    def find_key_value(self, key: str, value, op: str, report_parent: bool = False) -> list:
+        """
+        Search the current Rickle for all paths that match the search key. Returns empty list if nothing is found.
+
+        Args:
+            key (str): The key to search.
+
+        Returns:
+            list: all paths found.
+        """
+        try:
+            if self._input_type == 'array':
+                return self._find_key_value(key=key,
+                                            value=value,
+                                            op=op,
+                                            dictionary={f'[{ix}]':_d.dict() for ix, _d in enumerate(self.__list__)},
+                                            parent_path='',
+                                            report_parent=report_parent)
+            return self._find_key_value(key=key,
+                                        value=value,
+                                        op=op,
+                                        dictionary=self.dict(),
+                                        parent_path='',
+                                        report_parent=report_parent)
+        except StopIteration:
+            return list()
 
     def _search_path(self, key, dictionary=None, parent_path=None):
-        # if dictionary is None:
-        #     dictionary = self.dict()
-        # if parent_path is None:
-        #     parent_path = ''
         values = list()
         if key in dictionary:
             values = [f'{parent_path}{self._path_sep}{key}']
@@ -601,7 +696,7 @@ class BaseRickle:
         path_list = key.split(self._path_sep)
 
         for node_name in path_list[path_start_index:-1]:
-            if not isinstance(current_node, BaseRickle):
+            if not isinstance(current_node, self.__class__):
                 raise KeyError(f'The path {key} could not be traversed')
             current_node = current_node.get(node_name)
             if current_node is None:
@@ -610,7 +705,59 @@ class BaseRickle:
         if '?' in path_list[-1]:
             raise KeyError(f'Function params "{path_list[-1]}" included in path!')
 
-        if not isinstance(current_node, BaseRickle):
+        if not isinstance(current_node, self.__class__):
+            raise NameError(f'The path {key} could not be set, try using put')
+
+        if current_node.has(path_list[-1]):
+            current_node[path_list[-1]] = value
+        else:
+            raise NameError(f'The path {key} could not be set, try using put')
+
+    def put(self, key: str, value):
+        """
+        As with the `get` method, this method can be used to update the inherent dictionary with new values.
+
+        Note:
+            Document paths like '/root/to/path' can also be used. If the path can not be traversed, an error is raised.
+
+        Args:
+            key (str): key string to set.
+            value: Any Python like value that can be deserialised.
+        """
+
+        if self._path_sep in key and not key.startswith(self._path_sep):
+            raise KeyError(f'Missing root path {self._path_sep}')
+        if not self._path_sep in key:
+            key = f"{self._path_sep}{key}"
+
+        if key == self._path_sep:
+            raise KeyError('Can not set a value to self')
+
+        list_index_match = re.match(r'/\[(\d+)\](/.+)?', key)
+        path_start_index = 1
+        if list_index_match:
+            current_node = self.__list__[int(list_index_match.group(1))]
+            path_start_index = 2
+        else:
+            current_node = self
+        path_list = key.split(self._path_sep)
+
+        for node_name in path_list[path_start_index:-1]:
+            if not isinstance(current_node, self.__class__):
+                raise KeyError(f'The path {key} could not be traversed')
+            next_node = current_node.get(node_name)
+            if next_node is None or not isinstance(next_node, self.__class__):
+                next_node = self.__class__()
+                if current_node.has(node_name):
+                    current_node.remove(node_name)
+                current_node.add(node_name, next_node)
+            current_node = next_node
+
+
+        if '?' in path_list[-1]:
+            raise KeyError(f'Function params "{path_list[-1]}" included in path!')
+
+        if not isinstance(current_node, self.__class__):
             raise NameError(f'The path {key} could not be set, try using put')
 
         if current_node.has(path_list[-1]):
@@ -768,14 +915,23 @@ class BaseRickle:
 
         if output:
             if isinstance(output, TextIOWrapper):
-                yaml.safe_dump(self_as_primitive, stream=output, encoding=encoding)
+                if self._input_type == "array":
+                    yaml.safe_dump_all(self_as_primitive, stream=output, encoding=encoding)
+                else:
+                    yaml.safe_dump(self_as_primitive, stream=output, encoding=encoding)
             elif isinstance(output, str):
                 with open(output, 'w', encoding=encoding) as fs:
-                    yaml.safe_dump(self_as_primitive, fs)
+                    if self._input_type == "array":
+                        yaml.safe_dump_all(self_as_primitive, fs)
+                    else:
+                        yaml.safe_dump(self_as_primitive, fs)
         else:
-            return yaml.safe_dump(self_as_primitive, stream=None, encoding=encoding).decode(encoding)
+            if self._input_type == "array":
+                return yaml.safe_dump_all(self_as_primitive, stream=None, encoding=encoding).decode(encoding)
+            else:
+                return yaml.safe_dump(self_as_primitive, stream=None, encoding=encoding).decode(encoding)
 
-    def to_json(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8'):
+    def to_json(self, output: Union[str, TextIOWrapper] = None, serialised: bool = False, encoding: str = 'utf-8', lines: bool = True):
         """
         Does a self dump to a JSON file or returns as string.
 
@@ -783,9 +939,12 @@ class BaseRickle:
             output (str, TextIOWrapper): File path or stream (default = None).
             serialised (bool): Give a Python dictionary in serialised (True) form or deserialised (default = False).
             encoding (str): Output stream encoding (default = 'utf-8').
+            lines (bool): Whether to dump as JSON lines when rickle is an array (default = True).
 
         Notes:
             Functions and lambdas are always given in serialised form.
+            To not dump as JSON lines when rickle is an array, use lines=False.
+
         """
         if self._input_type == "array":
             self_as_primitive = self.list(serialised=serialised)
@@ -794,12 +953,25 @@ class BaseRickle:
 
         if output:
             if isinstance(output, TextIOWrapper):
-                json.dump(self_as_primitive, output)
+                if self._input_type == "array" and lines:
+                    for l in self_as_primitive:
+                        output.write(json.dumps(l))
+                        output.write('\n')
+                else:
+                    json.dump(self_as_primitive, output)
             elif isinstance(output, str):
                 with open(output, 'w', encoding=encoding) as fs:
-                    json.dump(self_as_primitive, fs)
+                    if self._input_type == "array" and lines:
+                        for l in self_as_primitive:
+                            fs.write(json.dumps(l))
+                            fs.write('\n')
+                    else:
+                        json.dump(self_as_primitive, fs)
         else:
-            return json.dumps(self_as_primitive)
+            if self._input_type == "array" and lines:
+                return '\n'.join([json.dumps(l) for l in self_as_primitive])
+            else:
+                return json.dumps(self_as_primitive)
 
     def to_toml(self, output: Union[str, BytesIO] = None, serialised: bool = False, encoding: str = 'utf-8'):
         """

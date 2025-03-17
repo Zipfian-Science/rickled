@@ -31,12 +31,14 @@ class CLIError(Exception):
         SCHEMA = 4
         OBJ_GET = 5
         OBJ_SET = 6
-        OBJ_DEL = 7
-        OBJ_TYPE = 8
-        OBJ_SEARCH = 9
-        OBJ_FUNC = 10
-        SCHEMA_CHECK = 11
-        SCHEMA_GEN = 12
+        OBJ_PUT = 7
+        OBJ_DEL = 8
+        OBJ_TYPE = 9
+        OBJ_SEARCH = 10
+        OBJ_FIND = 11
+        OBJ_FUNC = 12
+        SCHEMA_CHECK = 13
+        SCHEMA_GEN = 14
 
     def __init__(self, message, cli_tool: CLITool):
         self.message = message

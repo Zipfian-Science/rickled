@@ -13,6 +13,10 @@ Version 1.2.3 (2025-02-17)
 
 * Adding ability to load list (array) instead of dict (object), opening way for lists of configs.
 * New list type internal representation "array".
+* Added new ``put`` method for putting values in Rickle with any path. Where the path does not exist, the path will be created.
+* Changed ``set`` to only mutate paths that already exist. Creating clear distinction between set and put.
+* Added multi document YAML support.
+* Added JSONL support.
 
 Version 1.2.2 (2025-02-17)
 --------------------------
