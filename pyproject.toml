@@ -1,9 +1,9 @@
 [project]
 name = "rickle"
-version = "1.2.2"
+version = "1.2.3"
 description = "Python tools for working with configuration files"
 authors = [
-    { name = "Zipfian Science", email = "about@zipfian.science" }
+    { name = "Zipfian Science", email = "about@zipfian.sh" }
 ]
 license = { text = "Apache 2.0" }
 readme = "README.md"

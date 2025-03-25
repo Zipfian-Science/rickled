@@ -24,9 +24,11 @@ class TestBaseRickle(unittest.TestCase):
         self.assertEqual(self.base_rickle.get("key_one"), "value_one")
         self.assertIsNone(self.base_rickle.get("nonexistent_key"))
 
-    def test_set(self):
-        self.base_rickle.set("key_two", "value_two")
+    def test_put(self):
+        self.base_rickle.put("key_two", "value_two")
         self.assertEqual(self.base_rickle.get("key_two"), "value_two")
+
+    def test_set(self):
         # Updating an existing key
         self.base_rickle.set("key_one", "new_value")
         self.assertEqual(self.base_rickle.get("key_one"), "new_value")
@@ -105,7 +107,7 @@ class TestBaseRickle(unittest.TestCase):
         base_rickle = BaseRickle(expected)
 
         for obj in base_rickle:
-            self.assertEquals(obj.message, 'hello world')
+            self.assertTrue(obj in expected.keys())
 
     def test_get_by_path(self):
         result = self.expanded_rickle.get("/path/to/value")
