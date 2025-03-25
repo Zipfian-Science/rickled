@@ -15,7 +15,6 @@ import ast
 import tomli_w as tomlw
 
 def obj_get(args):
-    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -24,6 +23,8 @@ def obj_get(args):
                 _input = sys.stdin.read()
 
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
+
+            dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else r._input_type
 
             v = r.get(args.key)
 
@@ -35,11 +36,10 @@ def obj_get(args):
                 v = ''
 
             if args.OUTPUT:
-
-                if dump_type == 'yaml':
+                if dump_type in ['yaml', 'object', 'array']:
                     with open(args.OUTPUT, 'w') as fp:
                         yaml.safe_dump(v, fp)
-                elif dump_type == 'json':
+                elif dump_type in ['json', 'url']:
                     with open(args.OUTPUT, 'w') as fp:
                         json.dump(v, fp)
                 elif dump_type == 'toml':
@@ -70,9 +70,9 @@ def obj_get(args):
                     raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_GET)
 
             else:
-                if dump_type == 'yaml':
+                if dump_type in ['yaml', 'object', 'array']:
                     print(yaml.safe_dump(v))
-                elif dump_type == 'json':
+                elif dump_type in ['json', 'url']:
                     print(json.dumps(v))
                 elif dump_type == 'toml':
                     print(tomlw.dumps(toml_null_stripper(v)))
@@ -107,7 +107,6 @@ def obj_get(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_GET)
 
 def obj_set(args):
-    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         if args:
             if args.INPUT:
@@ -115,12 +114,15 @@ def obj_set(args):
             else:
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
+
+            dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else r._input_type
+
             r.set(args.key, args.value)
 
             if args.OUTPUT:
-                if dump_type == 'yaml':
+                if dump_type in ['yaml', 'object', 'array']:
                     r.to_yaml(output=args.OUTPUT)
-                elif dump_type == 'json':
+                if dump_type in ['json', 'url']:
                     r.to_json(output=args.OUTPUT)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.OUTPUT)
@@ -132,9 +134,9 @@ def obj_set(args):
                     raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_SET)
 
             else:
-                if dump_type == 'yaml':
+                if dump_type in ['yaml', 'object', 'array']:
                     print(r.to_yaml())
-                elif dump_type == 'json':
+                elif dump_type in ['json', 'url']:
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
@@ -148,8 +150,7 @@ def obj_set(args):
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SET)
 
-def obj_del(args):
-    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
+def obj_put(args):
     try:
         if args:
             if args.INPUT:
@@ -157,12 +158,59 @@ def obj_del(args):
             else:
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
+
+            dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else r._input_type
+
+            r.put(args.key, args.value)
+
+            if args.OUTPUT:
+                if dump_type in ['yaml', 'object', 'array']:
+                    r.to_yaml(output=args.OUTPUT)
+                elif dump_type in ['json', 'url']:
+                    r.to_json(output=args.OUTPUT)
+                elif dump_type == 'toml':
+                    r.to_toml(output=args.OUTPUT)
+                elif dump_type == 'xml':
+                    r.to_xml(output=args.OUTPUT)
+                elif dump_type == 'ini':
+                    r.to_ini(output=args.OUTPUT)
+                else:
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_PUT)
+
+            else:
+                if dump_type in ['yaml', 'object', 'array']:
+                    print(r.to_yaml())
+                elif dump_type in ['json', 'url']:
+                    print(r.to_json())
+                elif dump_type == 'toml':
+                    print(r.to_toml())
+                elif dump_type == 'xml':
+                    print(r.to_xml())
+                elif dump_type == 'ini':
+                    print(r.to_ini())
+                else:
+                    raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_PUT)
+
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_PUT)
+
+def obj_del(args):
+    try:
+        if args:
+            if args.INPUT:
+                _input = args.INPUT
+            else:
+                _input = sys.stdin.read()
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
+
+            dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else r._input_type
+
             r.remove(args.key)
 
             if args.OUTPUT:
-                if dump_type == 'yaml':
+                if dump_type in ['yaml', 'object', 'array']:
                     r.to_yaml(output=args.OUTPUT)
-                elif dump_type == 'json':
+                elif dump_type in ['json', 'url']:
                     r.to_json(output=args.OUTPUT)
                 elif dump_type == 'toml':
                     r.to_toml(output=args.OUTPUT)
@@ -173,9 +221,9 @@ def obj_del(args):
                 else:
                     raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_DEL)
             else:
-                if dump_type == 'yaml':
+                if dump_type in ['yaml', 'object', 'array']:
                     print(r.to_yaml())
-                elif dump_type == 'json':
+                elif dump_type in ['json', 'url']:
                     print(r.to_json())
                 elif dump_type == 'toml':
                     print(r.to_toml())
@@ -190,7 +238,7 @@ def obj_del(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_DEL)
 
 def obj_type(args):
-    output_type = args.OUTPUT_TYPE.strip().lower() if args.OUTPUT_TYPE else 'yaml'
+    output_type = args.OUTPUT_TYPE.strip().lower() if args.OUTPUT_TYPE else 'json'
     try:
         if args:
             if args.INPUT:
@@ -210,7 +258,7 @@ def obj_type(args):
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_TYPE)
 
 def obj_search(args):
-    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'array'
     try:
         if args:
             if args.INPUT:
@@ -219,21 +267,99 @@ def obj_search(args):
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
 
-            paths = r.search_path(args.key)
+            paths = r.search_path(args.key, report_parent=args.PARENT_ONLY)
 
             if dump_type == 'json':
                 print(json.dumps(paths))
             elif dump_type == 'yaml':
                 print(yaml.safe_dump(paths))
-            elif dump_type == 'list':
+            elif dump_type in ['list', 'array']:
                 for p in paths:
                     print(p)
             else:
-                raise CLIError(f"Unsupported dump type {dump_type}, only YAML, JSON, and LIST", cli_tool=CLIError.CLITool.OBJ_SEARCH)
+                raise CLIError(f"Unsupported dump type {dump_type}, only YAML, JSON, and ARRAY", cli_tool=CLIError.CLITool.OBJ_SEARCH)
 
 
     except Exception as exc:
         raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_SEARCH)
+
+def obj_find(args):
+    from collections import Counter
+
+    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'array'
+    pattern = re.compile(
+        r'(?P<key>[\w-]+\s+)'  # key: one or more word characters, followed by optional whitespace
+        r'(?P<operator>>=|<=|!=|=|>|<|eq|nq|gte|lte|gt|lt)\s+' 
+        r'(?P<value>\S+)'
+    )
+    try:
+        if args:
+            if args.INPUT:
+                _input = args.INPUT
+            else:
+                _input = sys.stdin.read()
+            r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
+
+            if args.key:
+                m = pattern.fullmatch(args.key)
+                if m:
+                    v = yaml.safe_load(m.group("value").strip())
+                    paths = r.find_key_value(key=m.group("key").strip(),
+                                             value=v,
+                                             op=m.group("operator").strip(),
+                                             report_parent=args.PARENT_ONLY)
+                else:
+                    raise CLIError(f"Could not match <key><comp><value> with {args.key}", cli_tool=CLIError.CLITool.OBJ_FIND)
+            else:
+                paths = list()
+                for cond in args.OR:
+                    m = pattern.fullmatch(cond)
+                    if m:
+                        v = yaml.safe_load(m.group("value").strip())
+                        paths.extend(
+                            r.find_key_value(key=m.group("key").strip(),
+                                             value=v,
+                                             op=m.group("operator").strip(),
+                                             report_parent=args.PARENT_ONLY)
+                        )
+                    else:
+                        raise CLIError(f"Could not match <key><comp><value> with {args.key}",
+                                       cli_tool=CLIError.CLITool.OBJ_FIND)
+
+                _paths = list()
+                for cond in args.AND:
+                    m = pattern.fullmatch(cond)
+                    if m:
+                        v = yaml.safe_load(m.group("value").strip())
+                        _paths.extend(
+                            r.find_key_value(key=m.group("key").strip(),
+                                             value=v,
+                                             op=m.group("operator").strip(),
+                                             report_parent=args.PARENT_ONLY)
+                        )
+                    else:
+                        raise CLIError(f"Could not match <key><comp><value> with {args.key}",
+                                       cli_tool=CLIError.CLITool.OBJ_FIND)
+                for k, v in Counter(_paths).items():
+                    if v == len(args.AND):
+                        paths.append(k)
+                paths = list(dict.fromkeys(paths))
+
+
+
+            if dump_type == 'json':
+                print(json.dumps(paths))
+            elif dump_type == 'yaml':
+                print(yaml.safe_dump(paths))
+            elif dump_type in ['list', 'array']:
+                for p in paths:
+                    print(p)
+            else:
+                raise CLIError(f"Unsupported dump type {dump_type}, only YAML, JSON, and ARRAY", cli_tool=CLIError.CLITool.OBJ_FIND)
+
+
+    except Exception as exc:
+        raise CLIError(message=str(exc), cli_tool=CLIError.CLITool.OBJ_FIND)
 
 def obj_func(args):
     def guess_parse(param_value):
@@ -269,7 +395,6 @@ def obj_func(args):
         else:
             raise ValueError('Could not interpret type, only str, int, float, bool, list, dict accepted.')
 
-    dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'yaml'
     try:
         re_pat = re.compile(r"(.+?)=(.+)")
         if args:
@@ -278,6 +403,8 @@ def obj_func(args):
             else:
                 _input = sys.stdin.read()
             r = UnsafeRickle(_input, load_lambda=args.LOAD_LAMBDA)
+
+            dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else r._input_type
 
             params = dict()
             if args.params:
@@ -296,7 +423,9 @@ def obj_func(args):
 
             if not v is None:
                 if isinstance(v, Rickle):
-                    if dump_type == 'json':
+                    if dump_type in ['yaml', 'object', 'array']:
+                        print(v.to_yaml())
+                    elif dump_type in ['json', 'url']:
                         print(v.to_json())
                     elif dump_type == 'toml':
                         print(v.to_toml())
@@ -305,9 +434,11 @@ def obj_func(args):
                     elif dump_type == 'ini':
                         print(v.to_ini())
                     else:
-                        print(v.to_yaml())
+                        raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_FUNC)
                 elif isinstance(v, dict):
-                    if dump_type == 'json':
+                    if dump_type in ['yaml', 'object', 'array']:
+                        print(yaml.safe_dump(v))
+                    elif dump_type in ['json', 'url']:
                         print(json.dumps(v))
                     elif dump_type == 'toml':
                         print(tomlw.dumps(v))
@@ -318,7 +449,7 @@ def obj_func(args):
                             import xmltodict
                             print(xmltodict.unparse(input_dict=v, pretty=True))
                     else:
-                        print(yaml.safe_dump(v))
+                        raise CLIError(f"Unsupported dump type {dump_type}", cli_tool=CLIError.CLITool.OBJ_FUNC)
                 else:
                     print(v)
     except Exception as exc:

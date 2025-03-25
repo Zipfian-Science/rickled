@@ -222,12 +222,17 @@ $ rickle obj get --help
 $ rickle obj set --help
 ```
 ```bash script
+$ rickle obj put --help
+```
+```bash script
 $ rickle obj del --help
 ```
 ```bash script
 $ rickle obj search --help
 ```
-
+```bash script
+$ rickle obj find --help
+```
 ---
 
 ### 5.1 Paths
@@ -308,9 +313,40 @@ path:
       - three
 ```
 
+> [!NOTE]
+> To put a value with a path that does not exist (i.e. create the path) use `put`
+
 ---
 
-### 5.3 Search
+### 5.3 Put
+
+```bash script
+$ rickle obj --input test.yaml put /path/to/non/existing bar
+```
+
+OR
+
+```bash script
+$ cat test.yaml | rickle put /path/to/non/existing bar
+```
+
+will output the following: 
+
+```yaml
+path:
+  to:
+    non:
+      existing: bar
+    value: "hello world"
+    values:
+      - one
+      - two
+      - three
+```
+
+---
+
+### 5.4 Search
 
 Consider the following:
 
@@ -342,7 +378,7 @@ Will output the following (in YAML):
 - /path/and/another/key
 ```
 
-Different output types are passed with the `--output-type` flag, including the `list` type to print paths as lines. 
+Different output types are passed with the `--output-type` flag, including the `array` type to print paths as lines. 
 
 ```bash script
 $ cat test.yaml | rickle --output-type list obj search key
@@ -357,9 +393,46 @@ Will instead output the following:
 
 ---
 
+### 5.5 Find
+
+Alternative to search where a key with a matching value (condition) is "found":
+
+Consider the file `arr-dev.jsonl`:
+
+```json lines
+{"name": "Lindsay", "surname": "Funke", "score": 29}
+{"name": "Gob", "surname": "Bluth", "score": 14}
+{"name": "Tobias", "surname": "Funke", "score": 19}
+{"name": "Buster", "surname": "Bluth", "score": 25}
+```
+
+Using the find tool: 
+
+```bash script
+cat arr-dev.jsonl | rickle obj find "surname = Bluth" 
+```
+
+outputs 
+
+```
+/[1]/surname
+/[3]/surname
+```
+
+Examples of using find:
+
+```bash script
+cat arr-dev.jsonl | rickle obj find --or "score < 19" "score > 25"
+cat arr-dev.jsonl | rickle obj find --and "score > 14" "score < 20"
+cat arr-dev.jsonl | rickle obj find --and "surname = Bluth" "score < 20" -p
+```
+
+---
+
 ## 6. Serving via HTTP(s)
 
 A nifty little use of this Python tool is the ability to host a webserver, using a YAML (or other) file.
+For this functionality to work the "net" extras need to be installed, `pip install rickel[net]`.  
  
 ```bash script
 $ rickle serve --help

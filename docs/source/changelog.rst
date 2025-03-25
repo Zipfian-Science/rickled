@@ -8,12 +8,24 @@ Changelog
 History
 ==========================
 
+Version 1.2.3 (2025-03-25)
+--------------------------
+
+* Adding ability to load list (array) instead of dict (object), opening way for lists of configs.
+* New list type internal representation "array".
+* Added new ``put`` method for putting values in Rickle with any path. Where the path does not exist, the path will be created.
+* Changed ``set`` to only mutate paths that already exist. Creating clear distinction between set and put.
+* Added multi document YAML support.
+* Added JSONL support.
+* Added new ``find`` CLI tool to find key / value pairs.
+
 Version 1.2.2 (2025-02-17)
 --------------------------
 
 * Rename of entire project from ``rickled`` to ``rickle``!
 * Fixed bug in CLI tool not able to run
 * Made ``provider_access_key`` optional for ``secret`` type.
+* Can now use list type in path method, for example ``[0]/path/to`` will reference the first object in the list.
 
 Version 1.2.1 (2025-02-12)
 --------------------------
