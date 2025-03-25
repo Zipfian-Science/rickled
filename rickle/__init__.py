@@ -418,11 +418,17 @@ class BaseRickle:
         values = list()
         if key in dictionary:
             if (op == '=' and dictionary[key] == value) or \
+                    (op == 'eq' and dictionary[key] == value) or \
                 (op == '!=' and dictionary[key] != value) or \
+                    (op == 'ne' and dictionary[key] != value) or \
                 (op == '>' and dictionary[key] > value) or \
+                    (op == 'gt' and dictionary[key] > value) or \
                 (op == '>=' and dictionary[key] >= value) or \
+                    (op == 'gte' and dictionary[key] >= value) or \
                 (op == '<' and dictionary[key] < value) or \
-                (op == '<=' and dictionary[key] <= value) :
+                    (op == 'lt' and dictionary[key] < value) or \
+                (op == '<=' and dictionary[key] <= value) or\
+                    (op == 'lte' and dictionary[key] <= value):
                 if report_parent:
                     values = [f'{parent_path}']
                 else:
@@ -490,21 +496,25 @@ class BaseRickle:
         except StopIteration:
             return list()
 
-    def _search_path(self, key, dictionary=None, parent_path=None):
+    def _search_path(self, key, dictionary=None, parent_path=None, report_parent: bool = False):
         values = list()
         if key in dictionary:
-            values = [f'{parent_path}{self._path_sep}{key}']
+            if report_parent:
+                values = [f'{parent_path}']
+            else:
+                values = [f'{parent_path}{self._path_sep}{key}']
         for k, v in dictionary.items():
             if isinstance(v, BaseRickle):
                 try:
                     value = self._search_path(key=key, dictionary=v.dict(),
-                                              parent_path=f'{parent_path}{self._path_sep}{k}')
+                                              parent_path=f'{parent_path}{self._path_sep}{k}', report_parent=report_parent)
                     values.extend(value)
                 except StopIteration:
                     continue
             if isinstance(v, dict):
                 try:
-                    value = self._search_path(key=key, dictionary=v, parent_path=f'{parent_path}{self._path_sep}{k}')
+                    value = self._search_path(key=key, dictionary=v, parent_path=f'{parent_path}{self._path_sep}{k}',
+                                              report_parent=report_parent)
                     values.extend(value)
                 except StopIteration:
                     continue
@@ -512,10 +522,14 @@ class BaseRickle:
                 try:
                     for ix, el in enumerate(v):
                         if isinstance(el, dict):
-                            value = self._search_path(key=key, dictionary=el, parent_path=f'{parent_path}{self._path_sep}{k}{self._path_sep}[{ix}]')
+                            value = self._search_path(key=key, dictionary=el,
+                                                      parent_path=f'{parent_path}{self._path_sep}{k}{self._path_sep}[{ix}]',
+                                                      report_parent=report_parent)
                             values.extend(value)
                         if isinstance(el, BaseRickle):
-                            value = self._search_path(key=key, dictionary=el.dict(), parent_path=f'{parent_path}{self._path_sep}{k}{self._path_sep}[{ix}]')
+                            value = self._search_path(key=key, dictionary=el.dict(),
+                                                      parent_path=f'{parent_path}{self._path_sep}{k}{self._path_sep}[{ix}]',
+                                                      report_parent=report_parent)
                             values.extend(value)
                 except StopIteration:
                     continue
@@ -523,7 +537,7 @@ class BaseRickle:
             return values
         raise StopIteration
 
-    def search_path(self, key: str) -> list:
+    def search_path(self, key: str, report_parent: bool = False) -> list:
         """
         Search the current Rickle for all paths that match the search key. Returns empty list if nothing is found.
 
@@ -535,8 +549,9 @@ class BaseRickle:
         """
         try:
             if self._input_type == 'array':
-                return self._search_path(key=key, dictionary={f'[{ix}]':_d.dict() for ix, _d in enumerate(self.__list__)}, parent_path='')
-            return self._search_path(key=key, dictionary=self.dict(), parent_path='')
+                return self._search_path(key=key, dictionary={f'[{ix}]':_d.dict() for ix, _d in enumerate(self.__list__)},
+                                         parent_path='', report_parent=report_parent)
+            return self._search_path(key=key, dictionary=self.dict(), parent_path='', report_parent=report_parent)
         except StopIteration:
             return list()
 

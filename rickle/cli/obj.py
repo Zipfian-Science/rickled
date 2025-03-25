@@ -267,7 +267,7 @@ def obj_search(args):
                 _input = sys.stdin.read()
             r = Rickle(_input, load_lambda=args.LOAD_LAMBDA)
 
-            paths = r.search_path(args.key)
+            paths = r.search_path(args.key, report_parent=args.PARENT_ONLY)
 
             if dump_type == 'json':
                 print(json.dumps(paths))
@@ -288,8 +288,8 @@ def obj_find(args):
 
     dump_type = args.OUTPUT_TYPE.lower() if args.OUTPUT_TYPE else 'array'
     pattern = re.compile(
-        r'(?P<key>[\w-]+\s?)'  # key: one or more word characters, followed by optional whitespace
-        r'(?P<operator>>=|<=|!=|=|>|<)\s?' 
+        r'(?P<key>[\w-]+\s+)'  # key: one or more word characters, followed by optional whitespace
+        r'(?P<operator>>=|<=|!=|=|>|<|eq|nq|gte|lte|gt|lt)\s+' 
         r'(?P<value>\S+)'
     )
     try:
@@ -325,7 +325,7 @@ def obj_find(args):
                     else:
                         raise CLIError(f"Could not match <key><comp><value> with {args.key}",
                                        cli_tool=CLIError.CLITool.OBJ_FIND)
-                paths = list(dict.fromkeys(paths))
+
                 _paths = list()
                 for cond in args.AND:
                     m = pattern.fullmatch(cond)
@@ -343,6 +343,7 @@ def obj_find(args):
                 for k, v in Counter(_paths).items():
                     if v == len(args.AND):
                         paths.append(k)
+                paths = list(dict.fromkeys(paths))
 
 
 

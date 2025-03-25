@@ -349,6 +349,12 @@ Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Us
                                    type=str,
                                    help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to search",
                                    metavar='key')
+    search_obj_parser.add_argument('--parent',
+                                 '-p',
+                                 dest="PARENT_ONLY",
+                                 action='store_true',
+                                 default=False,
+                                 help=f"only list {cli_bcolors.OKBLUE}parent{cli_bcolors.ENDC} node", )
 
     search_obj_parser.set_defaults(func=obj_search)
 
@@ -363,14 +369,27 @@ Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Us
                                                   formatter_class=argparse.RawTextHelpFormatter,
                                                   help=f'For {cli_bcolors.OKBLUE}finding{cli_bcolors.ENDC} key/value (paths) in objects',
                                                   description=f"""
-    {cli_bcolors.HEADER}Tool for finding key/value pairs in objects{cli_bcolors.ENDC}.
+{cli_bcolors.HEADER}Tool for finding key/value pairs in objects{cli_bcolors.ENDC}.
 
-    Examples: 
+Examples: 
 
-        $ cat config.yaml | rickle obj find key=value
+    $ cat config.yaml | rickle obj find "key=value"
+    $ cat config.yaml | rickle obj find --or "threshold < 0.2" "threshold > 0.8"
+    $ cat config.yaml | rickle obj find --and "threshold gt 0.2" "threshold lt 0.8" -p
 
-    Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Using ARRAY will only print the path(s).
-
+Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Using ARRAY will only print the path(s).
+Either key or --or / --and can be used, with key taking precedence. Both --or and --and can be combined with the first 
+being executed and then the later. Using --parent / -p will output the parent node paths. Comparison operators include:
+    
+    Comparison         |  op | alt |
+    ================================
+    equals             |   = |  eq |
+    not equals         |  != |  ne |
+    less than          |   < |  lt |
+    greater than       |   > |  gt |
+    less than equal    |  <= | lte |
+    greater than equal |  >= | gte |
+    --------------------------------
 
     """, )
 

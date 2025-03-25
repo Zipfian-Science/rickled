@@ -239,13 +239,14 @@ Which will show the following list of options:
        del                 For deleting keys (paths) in objects
        type                Printing value type
        search              For searching keys (paths) in objects
+       find                For finding key/value (paths) in objects
        func                Executing functions defined in objects
 
    optional arguments:
      -h, --help            show this help message and exit
      --input               input file to create object from
      --output              write to output file
-     --load-lambda         load lambda types
+     --load-lambda, -l     load lambda types
 
 Using this tool requires input of a YAML, JSON, TOML (etc.) file. This is done with the ``--input`` option or alternatively piped.
 
@@ -514,7 +515,7 @@ Or:
 
    map
 
-Using ``--output-type`` the printed type changes. Available types include ``YAML``, ``JSON``, ``TOML``, ``XML``, and ``python``.
+Using ``--output-type`` the printed type changes. Available types include ``YAML``, ``JSON`` (default), ``TOML``, ``XML``, and ``python``.
 
 Depending on this type, the value could be:
 
@@ -591,36 +592,117 @@ Where searching for the ``usr`` key:
 
 .. code-block:: yaml
 
-   - /root_node/usr
-   - /root_node/level_one/usr
-   - /root_node/other/usr
+   /root_node/usr
+   /root_node/level_one/usr
+   /root_node/other/usr
 
-To print the values as is (instead of YAML or JSON), use the ``--output-type`` type ``ARRAY`` (or ``LIST``):
+To print the values as YAML (or JSON), use the ``--output-type`` type ``YAML``:
 
 .. code-block:: shell
 
-    cat conf-multi.yaml | rickle --output-type ARRAY obj search usr
+    cat conf-multi.yaml | rickle --output-type YAML obj search usr
 
 ...prints the following paths:
 
 .. code-block:: text
 
-   /root_node/usr
-   /root_node/level_one/usr
-   /root_node/other/usr
+   - /root_node/usr
+   - /root_node/level_one/usr
+   - /root_node/other/usr
 
 The path separator will be used as is set in the env:
 
 .. code-block:: shell
 
     export RICKLE_PATH_SEP=.
-    cat conf-multi.yaml | rickle --output-type LIST obj search usr
+    cat conf-multi.yaml | rickle obj search usr
 
 .. code-block:: text
 
    .root_node.usr
    .root_node.level_one.usr
    .root_node.other.usr
+
+Find
+---------------------
+
+Find is useful for find paths of key/value pairs. Using ``--help`` shows some examples along with the following table:
+
+.. code-block:: text
+
+   Comparison         |  op | alt |
+   ================================
+   equals             |   = |  eq |
+   not equals         |  != |  ne |
+   less than          |   < |  lt |
+   greater than       |   > |  gt |
+   less than equal    |  <= | lte |
+   greater than equal |  >= | gte |
+   --------------------------------
+
+To find a path, the key, comparison operator (as show above, including alternatives) and value must be given.
+
+Consider the following JSONL file:
+
+.. code-block:: json
+   :linenos:
+   :caption: arr-dev.jsonl
+   :name: arr-dev-jsonl
+
+   {"name": "Lindsay", "surname": "Funke", "score": 29}
+   {"name": "Gob", "surname": "Bluth", "score": 14}
+   {"name": "Tobias", "surname": "Funke", "score": 19}
+   {"name": "Buster", "surname": "Bluth", "score": 25}
+
+Key / values can be found for example:
+
+.. code-block:: shell
+
+    cat arr-dev.jsonl | rickle obj find "surname = Bluth"
+
+Prints the following output:
+
+.. code-block:: text
+
+   /[1]/surname
+   /[3]/surname
+
+Comparisons can also be disjunct using ``--or``:
+
+.. code-block:: shell
+
+    cat arr-dev.jsonl | rickle obj find --or "score < 19" "score > 25"
+
+Outputting the result:
+
+.. code-block:: text
+
+   /[0]/score
+   /[1]/score
+
+Likewise comparisons can also be conjunct using ``--and``:
+
+.. code-block:: shell
+
+    cat arr-dev.jsonl | rickle obj find --and "score > 14" "score < 20"
+
+Outputting the result:
+
+.. code-block:: text
+
+   /[2]/score
+
+Using the ``--parent`` or shorthand ``-p`` can be used in combination with the ``--and`` to get the path of a object.
+
+.. code-block:: shell
+
+    cat arr-dev.jsonl | rickle obj find --and "surname = Bluth" "score < 20" -p
+
+Outputting the result:
+
+.. code-block:: text
+
+   /[1]
 
 Func
 ---------------------

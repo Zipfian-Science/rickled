@@ -8,7 +8,7 @@ Changelog
 History
 ==========================
 
-Version 1.2.3 (2025-02-17)
+Version 1.2.3 (2025-03-25)
 --------------------------
 
 * Adding ability to load list (array) instead of dict (object), opening way for lists of configs.
@@ -17,6 +17,7 @@ Version 1.2.3 (2025-02-17)
 * Changed ``set`` to only mutate paths that already exist. Creating clear distinction between set and put.
 * Added multi document YAML support.
 * Added JSONL support.
+* Added new ``find`` CLI tool to find key / value pairs.
 
 Version 1.2.2 (2025-02-17)
 --------------------------
