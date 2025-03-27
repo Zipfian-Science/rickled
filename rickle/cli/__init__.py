@@ -66,7 +66,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
                              dest='OUTPUT_TYPE',
                              type=str,
                              metavar='',
-                             help=f"output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (default = YAML)",
+                             help=f"output {cli_bcolors.OKBLUE}file type{cli_bcolors.ENDC} (default = input type or YAML)",
                              default=None)
 
     subparsers = parser.add_subparsers()
@@ -79,7 +79,7 @@ Supported file types ({cli_bcolors.OKBLUE}-t{cli_bcolors.ENDC}) include:
     # ██      ███      ██  ███   ████  ████
 
     parser_conv = subparsers.add_parser('conv',
-                                        help=f'{cli_bcolors.OKBLUE}Converting{cli_bcolors.ENDC} files between formats',
+                                        help=f'{cli_bcolors.OKBLUE}converting{cli_bcolors.ENDC} files between formats',
                                         formatter_class=argparse.RawTextHelpFormatter,
                                         description=f"""
 {cli_bcolors.HEADER}Tool for converting files to or from different formats{cli_bcolors.ENDC}.
@@ -140,7 +140,7 @@ Supported formats:
     # ██      ██       ███      ██
 
     parser_obj = subparsers.add_parser('obj',
-                                       help=f'Tool for reading or editing {cli_bcolors.OKBLUE} objects {cli_bcolors.ENDC}',
+                                       help=f'tool for reading or editing {cli_bcolors.OKBLUE}objects{cli_bcolors.ENDC}',
                                        formatter_class=argparse.RawTextHelpFormatter,
                                        description=f"""
 {cli_bcolors.HEADER}Tool for reading or editing files in different formats{cli_bcolors.ENDC}.
@@ -176,7 +176,7 @@ Input is used to create a Rickle {cli_bcolors.HEADER}object{cli_bcolors.ENDC} wh
     #  \___|___| |_|
 
     get_obj_parser = subparsers_obj.add_parser('get',
-                                               help=f'{cli_bcolors.OKBLUE}Getting{cli_bcolors.ENDC} values from objects',
+                                               help=f'{cli_bcolors.OKBLUE}getting{cli_bcolors.ENDC} values from objects',
                                                formatter_class=argparse.RawTextHelpFormatter,
                                                description=f"""
 {cli_bcolors.HEADER}Tool for getting values from objects{cli_bcolors.ENDC}.
@@ -190,7 +190,7 @@ Examples:
 
     get_obj_parser.add_argument('key',
                                 type=str,
-                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} (path) to get value",
+                                help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} (path) to get value",
                                 metavar='key')
 
     get_obj_parser.set_defaults(func=obj_get)
@@ -203,7 +203,7 @@ Examples:
 
     set_obj_parser = subparsers_obj.add_parser('set',
                                                formatter_class=argparse.RawTextHelpFormatter,
-                                               help=f'{cli_bcolors.OKBLUE}Setting{cli_bcolors.ENDC} values in objects',
+                                               help=f'{cli_bcolors.OKBLUE}setting{cli_bcolors.ENDC} values in objects',
                                                description=f"""
 {cli_bcolors.HEADER}Tool for setting values in objects{cli_bcolors.ENDC}.
 
@@ -219,11 +219,11 @@ Examples:
 
     set_obj_parser.add_argument('key',
                                 type=str,
-                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to set value",
+                                help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} to set value",
                                 metavar='key')
     set_obj_parser.add_argument('value',
                                 type=str,
-                                help=f"{cli_bcolors.OKBLUE}Value{cli_bcolors.ENDC} to set",
+                                help=f"{cli_bcolors.OKBLUE}value{cli_bcolors.ENDC} to set",
                                 metavar='value')
 
     set_obj_parser.set_defaults(func=obj_set)
@@ -237,7 +237,7 @@ Examples:
 
     put_obj_parser = subparsers_obj.add_parser('put',
                                                formatter_class=argparse.RawTextHelpFormatter,
-                                               help=f'{cli_bcolors.OKBLUE}Putting{cli_bcolors.ENDC} values in objects',
+                                               help=f'{cli_bcolors.OKBLUE}putting{cli_bcolors.ENDC} values in objects',
                                                description=f"""
     {cli_bcolors.HEADER}Tool for putting values in objects with new paths{cli_bcolors.ENDC}.
 
@@ -251,11 +251,11 @@ Examples:
 
     put_obj_parser.add_argument('key',
                                 type=str,
-                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to put value",
+                                help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} to put value",
                                 metavar='key')
     put_obj_parser.add_argument('value',
                                 type=str,
-                                help=f"{cli_bcolors.OKBLUE}Value{cli_bcolors.ENDC} to put",
+                                help=f"{cli_bcolors.OKBLUE}value{cli_bcolors.ENDC} to put",
                                 metavar='value')
 
     put_obj_parser.set_defaults(func=obj_put)
@@ -269,7 +269,7 @@ Examples:
 
     del_obj_parser = subparsers_obj.add_parser('del',
                                                formatter_class=argparse.RawTextHelpFormatter,
-                                               help=f'For {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys (paths) in objects',
+                                               help=f'for {cli_bcolors.OKBLUE}deleting{cli_bcolors.ENDC} keys (paths) in objects',
                                                description=f"""
 {cli_bcolors.HEADER}Tool for deleting keys (paths) in objects{cli_bcolors.ENDC}.
 
@@ -280,7 +280,7 @@ Examples:
 
     del_obj_parser.add_argument('key',
                                 type=str,
-                                help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to delete",
+                                help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} to delete",
                                 metavar='key')
 
     del_obj_parser.set_defaults(func=obj_del)
@@ -293,7 +293,7 @@ Examples:
 
     type_obj_parser = subparsers_obj.add_parser('type',
                                                 formatter_class=argparse.RawTextHelpFormatter,
-                                                help=f'Printing value {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} ',
+                                                help=f'printing value {cli_bcolors.OKBLUE}type{cli_bcolors.ENDC} ',
                                                 description=f"""
 {cli_bcolors.HEADER}Tool for printing the type of the value for a key in the object{cli_bcolors.ENDC}.
 
@@ -319,7 +319,7 @@ Types depend on --output-type and can be the following (default is JSON):
 
     type_obj_parser.add_argument('key',
                                  type=str,
-                                 help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to print value type",
+                                 help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} to print value type",
                                  metavar='key')
 
     type_obj_parser.set_defaults(func=obj_type)
@@ -332,7 +332,7 @@ Types depend on --output-type and can be the following (default is JSON):
 
     search_obj_parser = subparsers_obj.add_parser('search',
                                                   formatter_class=argparse.RawTextHelpFormatter,
-                                                  help=f'For {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} keys (paths) in objects',
+                                                  help=f'for {cli_bcolors.OKBLUE}searching{cli_bcolors.ENDC} keys (paths) in objects',
                                                   description=f"""
 {cli_bcolors.HEADER}Tool for searching keys in objects{cli_bcolors.ENDC}.
 
@@ -347,7 +347,7 @@ Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Us
 
     search_obj_parser.add_argument('key',
                                    type=str,
-                                   help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} to search",
+                                   help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} to search",
                                    metavar='key')
     search_obj_parser.add_argument('--parent',
                                  '-p',
@@ -367,7 +367,7 @@ Only the following --output-type is allowed: YAML, JSON, and ARRAY (default). Us
 
     find_obj_parser = subparsers_obj.add_parser('find',
                                                   formatter_class=argparse.RawTextHelpFormatter,
-                                                  help=f'For {cli_bcolors.OKBLUE}finding{cli_bcolors.ENDC} key/value (paths) in objects',
+                                                  help=f'for {cli_bcolors.OKBLUE}finding{cli_bcolors.ENDC} key/value (paths) in objects',
                                                   description=f"""
 {cli_bcolors.HEADER}Tool for finding key/value pairs in objects{cli_bcolors.ENDC}.
 
@@ -405,7 +405,7 @@ being executed and then the later. Using --parent / -p will output the parent no
                                  default=[],
                                  dest='OR')
     find_obj_parser.add_argument('--and',
-                                 help=f"list of {cli_bcolors.OKBLUE}OR{cli_bcolors.ENDC} conditions",
+                                 help=f"list of {cli_bcolors.OKBLUE}AND{cli_bcolors.ENDC} conditions",
                                  nargs='+',
                                  default=[],
                                  dest='AND')
@@ -414,7 +414,7 @@ being executed and then the later. Using --parent / -p will output the parent no
                               dest="PARENT_ONLY",
                               action='store_true',
                               default=False,
-                              help=f"only list {cli_bcolors.OKBLUE}parent{cli_bcolors.ENDC} node", )
+                              help=f"only list {cli_bcolors.OKBLUE}parent{cli_bcolors.ENDC} node(s)", )
 
     find_obj_parser.set_defaults(func=obj_find)
 
@@ -427,7 +427,7 @@ being executed and then the later. Using --parent / -p will output the parent no
 
     func_obj_parser = subparsers_obj.add_parser('func',
                                                 formatter_class=argparse.RawTextHelpFormatter,
-                                                help=f'Executing {cli_bcolors.OKBLUE}functions{cli_bcolors.ENDC} defined in objects',
+                                                help=f'executing {cli_bcolors.OKBLUE}functions{cli_bcolors.ENDC} defined in objects',
                                                 description=f"""
 {cli_bcolors.HEADER}Tool for executing functions defined in objects{cli_bcolors.ENDC}.
 To enable unsafe usage, the environment variable {cli_bcolors.WARNING}RICKLE_UNSAFE_LOAD{cli_bcolors.ENDC} must be set and {cli_bcolors.WARNING}--load-lambda{cli_bcolors.ENDC} passed.  
@@ -464,11 +464,11 @@ This will infer input params.
                                  default=False)
     func_obj_parser.add_argument('key',
                                  type=str,
-                                 help=f"{cli_bcolors.OKBLUE}Key{cli_bcolors.ENDC} (name) of function",
+                                 help=f"{cli_bcolors.OKBLUE}key{cli_bcolors.ENDC} (name) of function",
                                  metavar='key')
     func_obj_parser.add_argument('params',
                                  type=str,
-                                 help=f"{cli_bcolors.OKBLUE}Params{cli_bcolors.ENDC} for function",
+                                 help=f"{cli_bcolors.OKBLUE}params{cli_bcolors.ENDC} for function",
                                  metavar='params', nargs='+')
 
     func_obj_parser.set_defaults(func=obj_func)
@@ -482,7 +482,7 @@ This will infer input params.
 
     if importlib.util.find_spec('twisted'):
         parser_serve = subparsers.add_parser('serve',
-                                             help=f'Serving objects through {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
+                                             help=f'serving objects through {cli_bcolors.OKBLUE}http(s){cli_bcolors.ENDC}',
                                              formatter_class=argparse.RawTextHelpFormatter,
                                              description=f"""
 {cli_bcolors.HEADER}Tool for serving objects through http(s){cli_bcolors.ENDC}.
@@ -548,6 +548,12 @@ Unsafe usage like functions can be enabled:
                                   help=f"ssl {cli_bcolors.OKBLUE}certificate{cli_bcolors.ENDC} file path",
                                   default=None,
                                   metavar='')
+        parser_serve.add_argument('--auth',
+                                  dest='AUTH',
+                                  type=str,
+                                  help=f"basic {cli_bcolors.OKBLUE}auth{cli_bcolors.ENDC} (username:password)",
+                                  default=None,
+                                  metavar='')
         parser_serve.add_argument('--load-lambda',
                                   '-l',
                                   dest="LOAD_LAMBDA",
@@ -583,7 +589,7 @@ Unsafe usage like functions can be enabled:
     # ██      ███      ██  ████  █        █  ████  █  ████  █
 
     parser_schema = subparsers.add_parser('schema',
-                                          help=f'Generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of YAML files',
+                                          help=f'generating and checking {cli_bcolors.OKBLUE}schemas{cli_bcolors.ENDC} of files',
                                           formatter_class=argparse.RawTextHelpFormatter,
                                           description=f"""
 {cli_bcolors.HEADER}Tool for generating and checking schemas of several different formats{cli_bcolors.ENDC}.
@@ -601,7 +607,7 @@ Supported formats:
     #  \___|_||_|___\___|_|\_\
 
     parser_schema_check = schema_subparsers.add_parser('check',
-                                                       help=f'{cli_bcolors.OKBLUE}Checking{cli_bcolors.ENDC} schemas of files',
+                                                       help=f'{cli_bcolors.OKBLUE}checking{cli_bcolors.ENDC} schemas of files',
                                                        formatter_class=argparse.RawTextHelpFormatter,
                                                        description=f"""
 {cli_bcolors.HEADER}Tool for checking schemas of files{cli_bcolors.ENDC}.
@@ -671,7 +677,7 @@ See {cli_bcolors.UNDERLINE}https://python-jsonschema.readthedocs.io{cli_bcolors.
     #  \___|___|_|\_|
 
     parser_schema_gen = schema_subparsers.add_parser('gen',
-                                                     help=f'Tool for {cli_bcolors.OKBLUE}generating{cli_bcolors.ENDC} schemas of files',
+                                                     help=f'tool for {cli_bcolors.OKBLUE}generating{cli_bcolors.ENDC} schemas of files',
                                                      formatter_class=argparse.RawTextHelpFormatter,
                                                      description=f"""
 {cli_bcolors.HEADER}Tool for generating schemas of files{cli_bcolors.ENDC}.

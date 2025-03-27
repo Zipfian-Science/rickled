@@ -7,13 +7,14 @@ import json
 import yaml
 import tomli_w as tomlw
 
-from rickle import Rickle, toml_null_stripper
+from rickle import BaseRickle, toml_null_stripper, __version__ as rickle_version
 
 try:
     from twisted.web import server, resource
     from twisted.internet import reactor, endpoints, ssl
     from twisted.python import log
     from twisted.internet import ssl
+    from twisted.web import http
 except (ImportError, ModuleNotFoundError):
     warnings.warn('Required Python package not found.', ImportWarning)
 
@@ -22,15 +23,28 @@ class HttpResource(resource.Resource):
     isLeaf = True
     numberRequests = 0
 
-    def __init__(self, rickle, serialised: bool = False, output_type: str = 'json'):
+    def __init__(self, rickle, serialised: bool = False, output_type: str = 'json', basic_auth: dict = None):
         self.rickle = rickle
         self.serialised = serialised
         self.output_type = output_type.strip().lower()
+        self.basic_auth = basic_auth
         super().__init__()
 
     def render_GET(self, request):
 
+        request.setHeader(b"server", f"rickle/{rickle_version}".encode("utf-8"))
+        if self.basic_auth:
+            user = request.getUser().decode("utf-8")
+            password = request.getPassword().decode("utf-8")
+
+            if not user in self.basic_auth.keys() or password != self.basic_auth[user]:
+                request.setHeader('WWW-Authenticate', 'Basic')
+                request.setResponseCode(http.UNAUTHORIZED)
+
+                return f"<html><h1>401 Authorization Required</h1></html>".encode("utf-8")
+
         uri = request.uri.decode("utf-8")
+
 
         try:
             content = self.rickle(uri)
@@ -47,7 +61,7 @@ class HttpResource(resource.Resource):
 
         request.setResponseCode(200)
         try:
-            if isinstance(content, Rickle):
+            if isinstance(content, BaseRickle):
                 if self.output_type == 'yaml':
                     request.setHeader(b"content-type", b"application/yaml")
                     response = content.to_yaml(serialised=self.serialised)
@@ -103,9 +117,10 @@ def serve_rickle_http(rickle,
                        serialised: bool = False,
                        output_type: str = 'json',
                        path_to_private_key: str = None,
-                       path_to_certificate: str = None):
+                       path_to_certificate: str = None,
+                       basic_auth: dict = None):
     log.startLogging(sys.stdout)
-    site = server.Site(HttpResource(rickle, serialised=serialised, output_type=output_type))
+    site = server.Site(HttpResource(rickle, serialised=serialised, output_type=output_type, basic_auth=basic_auth))
 
     if path_to_private_key and path_to_certificate:
         ssl_context = ssl.DefaultOpenSSLContextFactory(

@@ -8,6 +8,12 @@ Changelog
 History
 ==========================
 
+Version 1.2.4 (2025-03-25)
+--------------------------
+
+* Documentation and README cleanup and fixing errors (spelling, examples, etc.).
+* Added ``Basic Auth`` to serve tool.
+
 Version 1.2.3 (2025-03-25)
 --------------------------
 
@@ -102,73 +108,73 @@ Version 1.1.1 (2024-03-19)
 Version 1.1.0 (2024-02-05)
 --------------------------
 
-* Added `set` to BaseRickle, as a equivalent to the `get` method.
-* Updated the `get` method to handle document paths.
-* Added `remove` method to delete items from object.
-* Added the `__delitem__` dunder, now able to `del rickle['key']`.
-* Fixed bug where `search_path` was exiting loops in dictionary too early (after first find).
+* Added ``set`` to BaseRickle, as a equivalent to the ``get`` method.
+* Updated the ``get`` method to handle document paths.
+* Added ``remove`` method to delete items from object.
+* Added the ``__delitem__`` dunder, now able to ``del rickle['key']``.
+* Fixed bug where ``search_path`` was exiting loops in dictionary too early (after first find).
 * Implemented type guessing of params for functions when using path like calling.
-* Added ability to add params to callable. Example `rickle('/path/to/func', x=1, y='str')`.
-* Bug fix in trying to parse URL by user `deajan`, commit `7cb1773`.
+* Added ability to add params to callable. Example ``rickle('/path/to/func', x=1, y='str')``.
+* Bug fix in trying to parse URL by user ``deajan``, commit ``7cb1773``.
 
 
 Version 1.0.2 (2023-12-12)
 --------------------------
 
-* Added `strict` boolean parameter for allowing properties that are reserved keywords.
+* Added ``strict`` boolean parameter for allowing properties that are reserved keywords.
 
 Version 1.0.1 (2023-10-03)
 --------------------------
 
 * Added the ability to load a Rickle from URL at init.
-* Added the `-b` flag to `serve` CLI tool to open host on browser.
-* Bug fix in `infer_read_file_type` when reading unknown file suffix.
-* Renamed the `-i` flag to `-a` in `serve` CLI tool.
+* Added the ``-b`` flag to ``serve`` CLI tool to open host on browser.
+* Bug fix in ``infer_read_file_type`` when reading unknown file suffix.
+* Renamed the ``-i`` flag to ``-a`` in ``serve`` CLI tool.
 
 Version 1.0.0 (2023-09-20)
 --------------------------
 
-* Added the schema validation tool `Schema` in `tools`.
+* Added the schema validation tool ``schema`` in ``tools``.
 * Added all CLI tools.
 * Now releasing version 1.0.0
 
 Version 0.3.5 (2023-09-09)
 --------------------------
 
-* Added the first of the `rickled.tools`, the `Converter`.
-* Added first CLI tools `rickle conv` and `rickle serve`.
+* Added the first of the ``rickled.tools``, the ``converter``.
+* Added first CLI tools ``rickle conv`` and ``rickle serve``.
 
 Version 0.3.4 (2023-07-20)
 --------------------------
 
-* Fixed error when importing from `rickled.net` when openssl is not installed.
+* Fixed error when importing from ``rickled.net`` when openssl is not installed.
 
 Version 0.3.3 (2023-07-20)
 --------------------------
 
-* Adding optional install of `twisted` library.
-* Added `serve_rickle_http` and `serve_rickle_https` to `rickled.net` to serve Rickles as REST API.
+* Adding optional install of ``twisted`` library.
+* Added ``serve_rickle_http`` and ``serve_rickle_https`` to ``rickled.net`` to serve Rickles as REST API.
 
 
 Version 0.3.2 (2023-04-07)
 --------------------------
 
-* When calling `dict()` on rickle, hot loaded items were not being serialised. Fixed.
+* When calling ``dict`` on rickle, hot loaded items were not being serialised. Fixed.
 
 Version 0.3.1 (2023-04-02)
 --------------------------
 
 * Fixed issue for path based query, where Rickle objects are considered callable (rightfully).
-* Uses `inspect.isfunction` instead of `callable`.
-* Added `meta` to base class for getting metadata of a property.
+* Uses ``inspect.isfunction`` instead of ``callable``.
+* Added ``meta`` to base class for getting metadata of a property.
 
 Version 0.3.0 (2023-02-16)
 --------------------------
 
 * Bumped up to minor 3, close to releasing version 1.0 after http server is implemented.
-* Added the `hot_load` property to API calls, making it load on call instead of only on start.
-* Added the `hot_load` property to HTML page, making it load on call instead of only on start.
-* Added the `hot_load` property to add file, making it load on call instead of only on start.
+* Added the ``hot_load`` property to API calls, making it load on call instead of only on start.
+* Added the ``hot_load`` property to HTML page, making it load on call instead of only on start.
+* Added the ``hot_load`` property to add file, making it load on call instead of only on start.
 
 Version 0.2.7 (2023-02-15)
 --------------------------
